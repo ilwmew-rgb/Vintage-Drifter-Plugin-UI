@@ -190,7 +190,19 @@ const AnalogCables = ({ position = 'left', parallel = true }) => {
 };
 
 // --- UI Components ---
-const MatteKnob = ({ label, value, onChange, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride }) => {
+const KNOB_STYLES = [
+  { name: 'Original (Levitating)', boxShadow: '12px 12px 20px rgba(0,0,0,0.45), 4px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)', backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)', backgroundColor: '#111' },
+  { name: 'Heavy Cast Iron', boxShadow: '0px 20px 25px rgba(0,0,0,0.6), 0px 5px 10px rgba(0,0,0,0.8), inset 0px 2px 4px rgba(255,255,255,0.1), inset 0px -4px 8px rgba(0,0,0,0.9)', backgroundImage: 'radial-gradient(circle at 50% 10%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.95) 100%)', backgroundColor: '#1a1a1a' },
+  { name: 'Anodized Studio', boxShadow: '0px 10px 15px rgba(0,0,0,0.3), 0px 3px 6px rgba(0,0,0,0.4), inset 0px 1px 1px rgba(255,255,255,0.2), inset 0px -1px 2px rgba(0,0,0,0.6)', backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.6) 100%)', backgroundColor: '#262626' },
+  { name: 'Vintage Bakelite', boxShadow: '8px 12px 15px rgba(0,0,0,0.6), 2px 4px 6px rgba(0,0,0,0.5), inset 2px 2px 4px rgba(255,255,255,0.3), inset -3px -3px 6px rgba(0,0,0,0.8)', backgroundImage: 'radial-gradient(circle at 25% 25%, rgba(255,255,255,0.25) 0%, rgba(0,0,0,0.9) 80%)', backgroundColor: '#111' },
+  { name: 'Dark Brushed Metal', boxShadow: '0px 12px 20px rgba(0,0,0,0.5), 0px 4px 8px rgba(0,0,0,0.6), inset 0px 1px 3px rgba(255,255,255,0.4), inset 0px -2px 5px rgba(0,0,0,0.9)', backgroundImage: 'conic-gradient(from 180deg at 50% 50%, #1a1a1a 0deg, #3a3a3a 45deg, #1a1a1a 90deg, #3a3a3a 135deg, #1a1a1a 180deg, #3a3a3a 225deg, #1a1a1a 270deg, #3a3a3a 315deg, #1a1a1a 360deg)', backgroundColor: '#111' },
+  { name: 'Soft Matte Rubber', boxShadow: '0px 15px 30px rgba(0,0,0,0.35), 0px 5px 15px rgba(0,0,0,0.45), inset 0px 1px 1px rgba(255,255,255,0.05), inset 0px -2px 4px rgba(0,0,0,0.5)', backgroundImage: 'none', backgroundColor: '#1f1f1f' },
+  { name: 'Recessed Dome', boxShadow: '0px 2px 4px rgba(0,0,0,0.8), 0px 0px 2px rgba(0,0,0,0.9), inset 0px 5px 10px rgba(255,255,255,0.1), inset 0px -5px 10px rgba(0,0,0,0.9)', backgroundImage: 'radial-gradient(circle at 50% 20%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%)', backgroundColor: '#141414' },
+  { name: 'Machined Grip', boxShadow: '0px 10px 15px rgba(0,0,0,0.7), 0px 2px 4px rgba(0,0,0,0.8), inset 0px 1px 2px rgba(255,255,255,0.3), inset 0px -1px 3px rgba(0,0,0,0.9)', backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, #1a1a1a 0px, #2a2a2a 2px, #1a1a1a 4px)', backgroundColor: '#111' },
+  { name: 'Polished Onyx', boxShadow: '0px 15px 25px rgba(0,0,0,0.6), 0px 6px 12px rgba(0,0,0,0.7), inset 0px 2px 5px rgba(255,255,255,0.5), inset 0px -3px 8px rgba(0,0,0,0.9)', backgroundImage: 'radial-gradient(circle at 35% 25%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 30%, rgba(0,0,0,0.9) 100%)', backgroundColor: '#0a0a0a' }
+];
+
+const MatteKnob = ({ label, value, onChange, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride, shadingStyle }) => {
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
   const startVal = useRef(0);
@@ -201,7 +213,7 @@ const MatteKnob = ({ label, value, onChange, min = 0, max = 100, size = 60, colo
   const isCoral = color === 'coral';
   return (
     <div className="flex flex-col items-center justify-center group select-none relative z-10">
-      <div className="relative rounded-full cursor-ns-resize touch-none" style={{ width: size, height: size, backgroundColor: isCoral ? '#e66a53' : '#111', boxShadow: isCoral ? '10px 10px 18px rgba(180,60,40,0.4), 4px 4px 6px rgba(180,60,40,0.3), inset 2px 2px 5px rgba(255,255,255,0.4), inset -2px -2px 5px rgba(0,0,0,0.3)' : '12px 12px 20px rgba(0,0,0,0.45), 4px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)', backgroundImage: isCoral ? 'none' : 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)' }}
+      <div className="relative rounded-full cursor-ns-resize touch-none" style={{ width: size, height: size, backgroundColor: isCoral ? '#e66a53' : (shadingStyle?.backgroundColor || '#111'), boxShadow: isCoral ? '10px 10px 18px rgba(180,60,40,0.4), 4px 4px 6px rgba(180,60,40,0.3), inset 2px 2px 5px rgba(255,255,255,0.4), inset -2px -2px 5px rgba(0,0,0,0.3)' : (shadingStyle?.boxShadow || '12px 12px 20px rgba(0,0,0,0.45), 4px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)'), backgroundImage: isCoral ? 'none' : (shadingStyle?.backgroundImage || 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)') }}
         onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
         <div className="absolute inset-0 transition-transform duration-75" style={{ transform: `rotate(${rotation}deg)` }}>
           <div className="absolute top-[10%] left-1/2 -translate-x-1/2 rounded-full" style={{ width: size * 0.06, height: size * 0.25, background: isCoral ? '#fff' : 'linear-gradient(to bottom, #d4af37, #8a6a1c)', boxShadow: isCoral ? '0 1px 2px rgba(0,0,0,0.5)' : '0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.8)' }} />
@@ -479,6 +491,7 @@ export default function App() {
   const [currentPreset, setCurrentPreset] = useState(-1);
   const [frameStyle, setFrameStyle] = useState(0);
   const [modeStyle, setModeStyle] = useState(0);
+  const [knobStyle, setKnobStyle] = useState(0);
   const [bgIndex, setBgIndex] = useState(0);
   const [showOutputs, setShowOutputs] = useState(true);
   const [parallelCables, setParallelCables] = useState(true);
@@ -583,7 +596,7 @@ export default function App() {
             <div className="absolute bottom-[10%] left-[12%] z-10 flex gap-6 items-end">
               <div className="flex flex-col items-center gap-3">
                 <HardwareLED active={power && lfoEnabled} color="gold" size={6} label="LFO" pulse={true} />
-                <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} labelColorOverride="text-white/90 drop-shadow-md" />
+                <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} labelColorOverride="text-white/90 drop-shadow-md" shadingStyle={KNOB_STYLES[knobStyle]} />
               </div>
             </div>
 
@@ -657,6 +670,23 @@ export default function App() {
             </div>
           </div>
           <span className="text-white/90 text-[15px] font-medium tracking-wide">mode style</span>
+        </div>
+
+        {/* Dropdown 3: Knob Shading Style */}
+        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
+          <div className="relative w-full h-14">
+            <select 
+              value={knobStyle} 
+              onChange={e => setKnobStyle(Number(e.target.value))}
+              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
+            >
+              {KNOB_STYLES.map((style, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{style.name}</option>)}
+            </select>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{KNOB_STYLES[knobStyle].name}</span>
+            </div>
+          </div>
+          <span className="text-white/90 text-[15px] font-medium tracking-wide">knob shading</span>
         </div>
 
         {/* Dropdown 3: Background */}
