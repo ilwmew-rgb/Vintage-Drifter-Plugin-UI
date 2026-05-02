@@ -89,21 +89,105 @@ const DetailedFernsRight = () => (
   </svg>
 );
 
-const AnalogCables = () => (
-  <div className="absolute top-0 left-[35%] -translate-x-1/2 -translate-y-[85%] w-[45%] z-0 pointer-events-none">
-    <svg viewBox="0 0 400 300" className="w-full h-auto" style={{ filter: 'drop-shadow(15px 25px 25px rgba(0,0,0,0.5))' }}>
-      <defs>
-        <linearGradient id="cableGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#1a1a1a"/><stop offset="20%" stopColor="#3a3a3a"/><stop offset="50%" stopColor="#111"/><stop offset="80%" stopColor="#2a2a2a"/><stop offset="100%" stopColor="#050505"/></linearGradient>
-        <linearGradient id="jackGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#111"/><stop offset="30%" stopColor="#444"/><stop offset="70%" stopColor="#0a0a0a"/><stop offset="100%" stopColor="#222"/></linearGradient>
-      </defs>
-      <path d="M 150,210 C 150,120 90,80 30,-20" fill="none" stroke="url(#cableGrad)" strokeWidth="24" strokeLinecap="round" />
-      <rect x="134" y="200" width="32" height="100" fill="url(#jackGrad)" rx="4" /><rect x="130" y="270" width="40" height="30" fill="#111" rx="2" /><rect x="134" y="215" width="32" height="4" fill="#d1c5ab" opacity="0.8" />
-      <path d="M 250,210 C 250,120 310,80 370,-20" fill="none" stroke="url(#cableGrad)" strokeWidth="24" strokeLinecap="round" />
-      <rect x="234" y="200" width="32" height="100" fill="url(#jackGrad)" rx="4" /><rect x="230" y="270" width="40" height="30" fill="#111" rx="2" /><rect x="234" y="215" width="32" height="4" fill="#e66a53" opacity="0.9" />
-      {[...Array(6)].map((_, i) => (<g key={`rib-${i}`}><line x1="134" y1={235 + i*6} x2="166" y2={235 + i*6} stroke="#050505" strokeWidth="2" /><line x1="234" y1={235 + i*6} x2="266" y2={235 + i*6} stroke="#050505" strokeWidth="2" /></g>))}
-    </svg>
-  </div>
-);
+const HardwareLED = ({ active, color = 'red', size = 8, label, pulse = false }) => {
+  const colors = {
+    red: { bg: '#ff4444', glow: '0 0 12px #ff4444' },
+    green: { bg: '#44ff44', glow: '0 0 12px #44ff44' },
+    amber: { bg: '#ffaa00', glow: '0 0 12px #ffaa00' },
+    coral: { bg: '#e66a53', glow: '0 0 12px #e66a53' },
+    gold: { bg: '#d4af37', glow: '0 0 12px #d4af37' }
+  };
+  const theme = colors[color] || colors.red;
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="relative flex items-center justify-center" style={{ width: size + 4, height: size + 4 }}>
+        <div className="absolute inset-0 rounded-full bg-black/40 shadow-inner" />
+        <div 
+          className={`rounded-full transition-all duration-200 ${pulse && active ? 'animate-pulse' : ''}`}
+          style={{ 
+            width: size, 
+            height: size, 
+            backgroundColor: active ? theme.bg : '#222',
+            boxShadow: active ? theme.glow : 'inset 0 1px 1px rgba(0,0,0,0.5)',
+            border: active ? 'none' : '1px solid rgba(255,255,255,0.05)'
+          }}
+        />
+      </div>
+      {label && <span className="text-[9px] font-bold tracking-[0.2em] text-[#8b7b65] uppercase">{label}</span>}
+    </div>
+  );
+};
+
+
+const AnalogCables = ({ position = 'left', parallel = true }) => {
+  const leftCable1Splayed = "M 150,210 C 150,120 90,80 30,-20";
+  const leftCable2Splayed = "M 235,210 C 235,120 295,80 355,-20";
+  const rightCable1Splayed = "M 150,210 C 150,150 70,90 10,-20";
+  const rightCable2Splayed = "M 235,210 C 235,100 320,130 380,-20";
+
+  const leftCable1Parallel = "M 150,210 C 150,120 90,80 30,-20";
+  const leftCable2Parallel = "M 235,210 C 235,120 175,80 115,-20";
+  const rightCable1Parallel = "M 150,210 C 150,120 220,80 280,-20";
+  const rightCable2Parallel = "M 235,210 C 235,100 290,60 350,-20";
+
+  const path1 = position === 'left' ? (parallel ? leftCable1Parallel : leftCable1Splayed) : (parallel ? rightCable1Parallel : rightCable1Splayed);
+  const path2 = position === 'left' ? (parallel ? leftCable2Parallel : leftCable2Splayed) : (parallel ? rightCable2Parallel : rightCable2Splayed);
+
+  return (
+    <div className={`absolute top-0 ${position === 'left' ? 'left-[20%] -translate-x-1/2' : 'right-[20%] translate-x-1/2'} -translate-y-[85%] w-[45%] z-0 pointer-events-none`}>
+      <svg viewBox="0 0 400 300" className="w-full h-auto" style={{ 
+        filter: 'drop-shadow(15px 25px 20px rgba(0,0,0,0.6))',
+        transform: position === 'right' ? 'scaleX(-1)' : 'none'
+      }}>
+        <defs>
+          <linearGradient id="jackGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#0a0a0a"/>
+            <stop offset="15%" stopColor="#2a2a2a"/>
+            <stop offset="30%" stopColor="#666"/>
+            <stop offset="50%" stopColor="#1a1a1a"/>
+            <stop offset="80%" stopColor="#0a0a0a"/>
+            <stop offset="95%" stopColor="#333"/>
+            <stop offset="100%" stopColor="#000"/>
+          </linearGradient>
+        </defs>
+
+        {/* Cable 1 */}
+        <g>
+          <path d={path1} fill="none" stroke="#050505" strokeWidth="26" strokeLinecap="round" />
+          <path d={path1} fill="none" stroke="#1c1c1c" strokeWidth="22" strokeLinecap="round" />
+          <path d={path1} fill="none" stroke="#2a2a2a" strokeWidth="12" strokeLinecap="round" style={{ transform: 'translate(-1px, -1px)' }} />
+          <path d={path1} fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" opacity="0.15" style={{ transform: 'translate(-3px, -3px)' }} />
+        </g>
+        
+        {/* Jack 1 */}
+        <rect x="134" y="200" width="32" height="100" fill="url(#jackGrad)" rx="4" />
+        <rect x="130" y="270" width="40" height="30" fill="#111" rx="2" />
+        <rect x="134" y="215" width="32" height="4" fill="#d1c5ab" opacity="0.9" />
+        
+        {/* Cable 2 */}
+        <g>
+          <path d={path2} fill="none" stroke="#050505" strokeWidth="26" strokeLinecap="round" />
+          <path d={path2} fill="none" stroke="#1c1c1c" strokeWidth="22" strokeLinecap="round" />
+          <path d={path2} fill="none" stroke="#2a2a2a" strokeWidth="12" strokeLinecap="round" style={{ transform: 'translate(-1px, -1px)' }} />
+          <path d={path2} fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" opacity="0.15" style={{ transform: 'translate(-3px, -3px)' }} />
+        </g>
+
+        {/* Jack 2 */}
+        <rect x="219" y="200" width="32" height="100" fill="url(#jackGrad)" rx="4" />
+        <rect x="215" y="270" width="40" height="30" fill="#111" rx="2" />
+        <rect x="219" y="215" width="32" height="4" fill="#e66a53" opacity="0.9" />
+        
+        {/* Ribs */}
+        {[...Array(6)].map((_, i) => (
+          <g key={`rib-${i}`}>
+            <line x1="134" y1={235 + i*6} x2="166" y2={235 + i*6} stroke="#050505" strokeWidth="2" />
+            <line x1="219" y1={235 + i*6} x2="251" y2={235 + i*6} stroke="#050505" strokeWidth="2" />
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+};
 
 // --- UI Components ---
 const MatteKnob = ({ label, value, onChange, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride }) => {
@@ -133,12 +217,12 @@ const GlassButton = ({ active, onClick, label, size = 45 }) => (
     <button onClick={onClick} className="relative rounded-full outline-none flex items-center justify-center group transition-transform active:scale-95" style={{ width: size, height: size, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: active ? '10px 10px 20px rgba(0,0,0,0.2), 0 0 15px rgba(212,175,55,0.4), inset 0 0 10px rgba(255,255,255,0.5)' : '10px 10px 20px rgba(0,0,0,0.15)' }}>
       <div className="rounded-full transition-all duration-300" style={{ width: size * 0.4, height: size * 0.4, backgroundColor: active ? '#d4af37' : 'rgba(0,0,0,0.3)', boxShadow: active ? '0 0 10px #d4af37' : 'inset 0 1px 3px rgba(0,0,0,0.5)' }} />
     </button>
-    <span className="text-[8px] font-bold tracking-[0.2em] uppercase text-[#5a5549]">{label}</span>
+    <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-[#5a5549]">{label}</span>
   </div>
 );
 
 const MiniToggle = ({ active, onClick, label }) => (
-  <button onClick={onClick} className={`px-3 py-1.5 rounded-full text-[8px] font-bold tracking-widest uppercase transition-all ${active ? 'bg-[#d4af37] text-[#111] shadow-[0_0_8px_rgba(212,175,55,0.4)]' : 'bg-black/20 text-[#7a7465] border border-white/10'}`}>{label}</button>
+  <button onClick={onClick} className={`px-3 py-1.5 rounded-full text-[9px] font-bold tracking-widest uppercase transition-all ${active ? 'bg-[#d4af37] text-[#111] shadow-[0_0_8px_rgba(212,175,55,0.4)]' : 'bg-black/20 text-[#7a7465] border border-white/10'}`}>{label}</button>
 );
 
 const DropdownSelect = ({ options, value, onChange, width = 80 }) => (
@@ -203,7 +287,7 @@ const PresetBrowser = ({ presets, currentPreset, onPrev, onNext, onLoad, onSave 
           <option value={-1} className="bg-[#2d2c2b]">— Init —</option>
           {presets.map((name, i) => <option key={i} value={i} className="bg-[#2d2c2b]">{name}</option>)}
         </select>
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[#edd39a] text-[8px] pointer-events-none">▼</div>
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[#edd39a] text-[9px] pointer-events-none">▼</div>
       </div>
       <button onClick={onNext} className="w-7 h-7 rounded-full bg-[#2d2c2b] text-[#edd39a] text-sm font-bold flex items-center justify-center hover:bg-[#3d3c3b] transition-colors shadow-lg border border-white/5">›</button>
       <button onClick={() => { setSaveName('My Preset'); setShowSave(true); }} className="ml-1 px-3 py-1.5 rounded-lg bg-[#e66a53] text-white text-[9px] font-bold tracking-wider uppercase hover:brightness-110 transition-all shadow-lg">Save</button>
@@ -251,6 +335,127 @@ const SHAPES = ['Sine', 'Triangle', 'Drift'];
 const SYNC_DIVS = ['4/1', '2/1', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/4T', '1/8T', '1/16T', '1/4D', '1/8D', '1/16D'];
 const DEMO_PRESETS = ['Subtle Warmth', 'Vinyl Drift', 'Tape Machine', 'Broken Cassette', 'Chorus Width', 'Slow Swirl', 'Synced Wobble', 'Sweet Dream', 'Subtle Detune', 'Broken Radio', 'Drum Saturator', 'Lush & Full'];
 
+const MODE_STYLE_NAMES = [
+  'Glassmorphism (Original)',
+  'Flush Walnut (Gold)', 'Flush Walnut (Ivory)', 'Flush Walnut (Matte)'
+];
+
+const BACKGROUNDS = [
+  { name: 'Warm Sand', color: '#c8bba6' },
+  { name: 'Aged Cork', color: '#b5a895' },
+  { name: 'Muted Clay', color: '#a39785' },
+  { name: 'Smoked Taupe', color: '#918676' },
+  { name: 'Warm Charcoal', color: '#2a2826' },
+  { name: 'Deep Espresso', color: '#2d2621' },
+  { name: 'Dark Slate', color: '#212326' },
+  { name: 'Midnight Ash', color: '#1c1c1a' }
+];
+
+const ModeSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
+  const modes = ['calm', 'vintage', 'unstable'];
+  
+  switch (styleIndex) {
+    case 0: // Glassmorphism (Original)
+      return (
+        <div className="absolute top-[48%] left-[8%] -translate-y-1/2 flex flex-col gap-4 p-4 rounded-[2rem] bg-white/20 backdrop-blur-md border border-white/40 shadow-xl z-10">
+          {modes.map(m => (
+            <div key={m} className="flex flex-col items-center gap-2 z-10">
+              <button onClick={() => setMode(m)} className="relative w-8 h-8 rounded-full outline-none flex items-center justify-center transition-transform active:scale-95" style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: power && mode === m ? '5px 5px 15px rgba(0,0,0,0.15), 0 0 12px rgba(212,175,55,0.3), inset 0 0 8px rgba(255,255,255,0.5)' : '5px 5px 15px rgba(0,0,0,0.1)' }}>
+                <div className="rounded-full transition-all duration-300" style={{ width: 12, height: 12, backgroundColor: power && mode === m ? '#d4af37' : 'rgba(0,0,0,0.2)', boxShadow: power && mode === m ? '0 0 8px #d4af37' : 'inset 0 1px 2px rgba(0,0,0,0.3)' }} />
+              </button>
+              <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-[#7a7465]">{m}</span>
+            </div>
+          ))}
+        </div>
+      );
+
+
+    case 1: // Flush Walnut (Gold)
+      return (
+        <div className="absolute top-[48%] left-[8%] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-full z-10" style={{ 
+          backgroundImage: 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.4)), url("/textures/walnut.png")', 
+          backgroundSize: 'cover',
+          boxShadow: 'inset 2px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1)',
+          border: '1px solid rgba(0,0,0,0.8)'
+        }}>
+          {modes.map(m => (
+            <div key={m} className="flex flex-col items-center gap-2">
+              <button onClick={() => setMode(m)} className={`w-8 h-8 rounded-full transition-all border border-[#111] flex items-center justify-center
+                ${power && mode === m ? 'shadow-[inset_2px_2px_5px_rgba(0,0,0,0.9)] scale-95' : 'shadow-[3px_4px_6px_rgba(0,0,0,0.6),inset_1px_1px_2px_rgba(255,255,255,0.4)]'}
+              `} style={{ background: 'linear-gradient(135deg, #d4af37 0%, #8a6a1c 100%)' }}>
+                 <div className={`w-1.5 h-1.5 rounded-full ${power && mode === m ? 'bg-[#e66a53] shadow-[0_0_5px_#e66a53]' : 'bg-[#33250a] shadow-inner'}`} />
+              </button>
+              <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-[#d4af37] drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">{m}</span>
+            </div>
+          ))}
+        </div>
+      );
+
+    case 2: // Flush Walnut (Ivory)
+      return (
+        <div className="absolute top-[48%] left-[8%] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-full z-10" style={{ 
+          backgroundImage: 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.4)), url("/textures/walnut.png")', 
+          backgroundSize: 'cover',
+          boxShadow: 'inset 2px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1)',
+          border: '1px solid rgba(0,0,0,0.8)'
+        }}>
+          {modes.map(m => (
+            <div key={m} className="flex flex-col items-center gap-2">
+              <button onClick={() => setMode(m)} className={`w-9 h-9 rounded-full transition-all flex items-center justify-center border border-[#111]
+                ${power && mode === m ? 'bg-[#dcd5c4] shadow-[inset_2px_4px_8px_rgba(0,0,0,0.4)] scale-95' : 'bg-gradient-to-br from-[#ffffff] to-[#e8e0cc] shadow-[0_4px_6px_rgba(0,0,0,0.7),inset_1px_1px_2px_white]'}
+              `}>
+                <div className={`w-2 h-2 rounded-full border border-black/10 transition-all ${power && mode === m ? 'bg-[#e66a53] shadow-[0_0_8px_#e66a53,inset_1px_1px_2px_rgba(255,255,255,0.5)]' : 'bg-[#d2c9b4] shadow-inner'}`} />
+              </button>
+              <span className="text-[9px] font-bold tracking-[0.2em] uppercase text-[#e8e0cc] drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]">{m}</span>
+            </div>
+          ))}
+        </div>
+      );
+
+    case 3: // Flush Walnut (Matte)
+      return (
+        <div className="absolute top-[48%] left-[8%] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-[2rem] z-10" style={{ 
+          backgroundImage: 'linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.2)), url("/textures/walnut.png")', 
+          backgroundSize: 'cover',
+          boxShadow: 'inset 2px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1)',
+          border: '1px solid rgba(0,0,0,0.8)'
+        }}>
+          {modes.map(m => {
+            const ledColor = m === 'calm' ? '#4ade80' : m === 'vintage' ? '#fb923c' : '#ef4444';
+            return (
+              <div key={m} className="flex flex-col items-center gap-2">
+                <button onClick={() => setMode(m)} className={`w-9 h-9 rounded-xl transition-all flex items-center justify-center border border-black
+                  ${power && mode === m ? 'bg-[#111] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.9)] scale-95' : 'bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.1)]'}
+                `}>
+                  <div 
+                    className={`w-3 h-[3px] rounded-full ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
+                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
+                  />
+                </button>
+                <span className="text-[9px] font-bold tracking-[0.25em] uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" style={{ color: '#d3ba8c' }}>{m}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+
+
+    default: return null;
+  }
+};
+
+const FRAMES = [
+  { name: 'Naked', style: {} },
+
+  { name: 'Oiled Walnut (Premium)', inset: '-inset-5', radius: '3rem',
+    style: { 
+      backgroundImage: 'url("/textures/walnut.png")', 
+      backgroundSize: '200px', 
+      boxShadow: 'inset 2px 2px 6px rgba(255,255,255,0.1), inset -2px -2px 8px rgba(0,0,0,0.8), 10px 15px 35px rgba(0,0,0,0.6)',
+      border: '1px solid #111'
+    } },
+];
+
 export default function App() {
   const [power, setPower] = useState(true);
   const [input, setInput] = useState(50);
@@ -272,6 +477,11 @@ export default function App() {
   const [lfoShape, setLfoShape] = useState(0);
   const [lfoSyncDiv, setLfoSyncDiv] = useState(4);
   const [currentPreset, setCurrentPreset] = useState(-1);
+  const [frameStyle, setFrameStyle] = useState(0);
+  const [modeStyle, setModeStyle] = useState(0);
+  const [bgIndex, setBgIndex] = useState(0);
+  const [showOutputs, setShowOutputs] = useState(true);
+  const [parallelCables, setParallelCables] = useState(true);
 
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -284,11 +494,33 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#c8bba6] flex items-center justify-center p-4 sm:p-8 font-sans overflow-hidden">
-      <div ref={containerRef} className="relative w-full max-w-[850px] aspect-square flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 font-sans overflow-hidden gap-16 xl:gap-24 flex-col lg:flex-row" style={{ backgroundColor: BACKGROUNDS[bgIndex].color, transition: 'background-color 0.5s ease' }}>
+      
+      {/* Plugin Area */}
+      <div ref={containerRef} className="relative w-full max-w-[680px] aspect-square flex items-center justify-center flex-shrink-0">
         <div className="absolute" style={{ width: 850, height: 850, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
+          
+          {/* Frame Wrapper */}
+          <div 
+            className={`absolute ${FRAMES[frameStyle].inset || '-inset-6'} transition-all duration-500 pointer-events-none`} 
+            style={{ borderRadius: FRAMES[frameStyle].radius || '4.5rem', zIndex: -1, ...FRAMES[frameStyle].style }}
+          >
+            {FRAMES[frameStyle].innerStyle && (
+              <div 
+                className={`absolute ${FRAMES[frameStyle].innerStyle.inset || 'inset-2'} transition-all duration-500`} 
+                style={{ borderRadius: FRAMES[frameStyle].innerStyle.radius || '4rem', ...FRAMES[frameStyle].innerStyle }} 
+              />
+            )}
+            {FRAMES[frameStyle].overlayStyle && (
+              <div 
+                className="absolute inset-0 opacity-50 mix-blend-overlay pointer-events-none transition-all duration-500" 
+                style={{ borderRadius: 'inherit', ...FRAMES[frameStyle].overlayStyle }} 
+              />
+            )}
+          </div>
 
-          <AnalogCables />
+          <AnalogCables position="left" parallel={parallelCables} />
+          {showOutputs && <AnalogCables position="right" parallel={parallelCables} />}
 
           <PresetBrowser presets={DEMO_PRESETS} currentPreset={currentPreset}
             onPrev={() => setCurrentPreset(p => (p - 1 + DEMO_PRESETS.length) % DEMO_PRESETS.length)}
@@ -308,7 +540,7 @@ export default function App() {
             <div className={`absolute inset-0 bg-[#3a352d]/50 backdrop-grayscale transition-all duration-700 z-40 pointer-events-none ${power ? 'opacity-0' : 'opacity-100'}`} />
 
             <div className="absolute top-[6%] left-[8%] z-10 flex flex-col items-start">
-              <h1 className="text-3xl font-black tracking-tighter text-[#e66a53] drop-shadow-sm flex gap-3"><span>VINTAGE</span> <span>DRIFTER</span></h1>
+              <h1 className="text-3xl leading-none font-black tracking-tighter text-[#e66a53] drop-shadow-sm flex gap-3"><span>VINTAGE</span> <span>DRIFTER</span></h1>
               <p className="text-[10px] tracking-[0.4em] font-bold text-[#8b7b65] mt-1">POLARIS BOTANICA</p>
             </div>
 
@@ -317,7 +549,7 @@ export default function App() {
               <button onClick={() => setPower(!power)} className="relative w-8 h-14 bg-[#111] rounded-md border border-white/10 shadow-[inset_0_2px_5px_rgba(0,0,0,0.8),10px_10px_20px_rgba(0,0,0,0.4)] flex justify-center items-center">
                 <div className="w-3 h-8 rounded-full bg-gradient-to-b from-[#edd39a] to-[#a88842] shadow-[0_5px_10px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(255,255,255,0.9)] transition-transform duration-200" style={{ transform: power ? 'translateY(-8px)' : 'translateY(8px)' }} />
               </button>
-              <div className="text-center text-[8px] tracking-[0.2em] font-bold text-[#8b7b65] mt-4">POWER</div>
+              <div className="text-center text-[9px] tracking-[0.2em] font-bold text-[#8b7b65] mt-4">POWER</div>
             </div>
 
             <div className="absolute top-[16%] left-[30%] z-10 flex gap-8">
@@ -329,27 +561,30 @@ export default function App() {
               <BotanicalCenterDial drift={drift} setDrift={setDrift} spread={spread} setSpread={setSpread} rate={rate} />
             </div>
 
-            <div className="absolute top-[48%] left-[8%] -translate-y-1/2 flex flex-col gap-4 p-4 rounded-[2rem] bg-white/20 backdrop-blur-md border border-white/40 shadow-xl z-10">
-              <GlassButton label="Calm" active={power && mode === 'calm'} onClick={() => setMode('calm')} size={30} />
-              <GlassButton label="Vintage" active={power && mode === 'vintage'} onClick={() => setMode('vintage')} size={30} />
-              <GlassButton label="Unstable" active={power && mode === 'unstable'} onClick={() => setMode('unstable')} size={30} />
-              <GlassButton label="Dream" active={power && mode === 'dream'} onClick={() => setMode('dream')} size={30} />
-            </div>
+            <ModeSelectorEngine mode={mode} setMode={setMode} styleIndex={modeStyle} power={power} />
 
             <div className="absolute top-[38%] right-[10%] z-10 grid grid-cols-2 gap-x-6 gap-y-10 justify-items-center">
               <div className="relative">
                 <MatteKnob label="Filter" value={character} onChange={setCharacter} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
-                <button onClick={() => setCharFilter(charFilter === 1 ? 0 : 1)} className="absolute -top-1 -right-3 px-1.5 py-0.5 rounded text-[7px] font-bold bg-black/30 text-[#edd39a] border border-white/10 hover:bg-black/50 transition-colors">
+                <button onClick={() => setCharFilter(charFilter === 1 ? 0 : 1)} className="absolute -top-1 -right-3 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/30 text-[#edd39a] border border-white/10 hover:bg-black/50 transition-colors">
                   {charFilter === 1 ? '12dB' : '6dB'}
                 </button>
               </div>
               <MatteKnob label="Sweeten" value={sweeten} onChange={setSweeten} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
-              <MatteKnob label="Sat" value={biasHF} onChange={setBiasHF} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
+              <div className="relative">
+                <div className="absolute -right-6 top-1/2 -translate-y-1/2">
+                  <HardwareLED active={power && biasHF > 20} color="coral" size={6} label="DRV" />
+                </div>
+                <MatteKnob label="Sat" value={biasHF} onChange={setBiasHF} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
+              </div>
               <MatteKnob label="Noise" value={noise} onChange={setNoise} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
             </div>
 
-            <div className="absolute bottom-[10%] left-[12%] z-10">
-              <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} labelColorOverride="text-white/90 drop-shadow-md" />
+            <div className="absolute bottom-[10%] left-[12%] z-10 flex gap-6 items-end">
+              <div className="flex flex-col items-center gap-3">
+                <HardwareLED active={power && lfoEnabled} color="gold" size={6} label="LFO" pulse={true} />
+                <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} labelColorOverride="text-white/90 drop-shadow-md" />
+              </div>
             </div>
 
             <div className="absolute bottom-[6%] left-[26%] z-10 flex flex-col gap-2">
@@ -368,11 +603,11 @@ export default function App() {
             <div className="absolute bottom-[12%] left-[50%] -translate-x-1/2 z-10 flex gap-8 p-3 rounded-full bg-[#2d2c2b] shadow-2xl border border-white/10" style={{ boxShadow: '12px 12px 20px rgba(0,0,0,0.45)' }}>
               <div className="flex flex-col items-center">
                 <input type="range" className="w-16 accent-[#d4af37]" min="0" max="100" value={depth} onChange={e => setDepth(Number(e.target.value))} />
-                <span className="text-[7px] text-[#a19e95] tracking-widest mt-1 uppercase">Depth</span>
+                <span className="text-[9px] text-[#a19e95] tracking-widest mt-1 uppercase">Depth</span>
               </div>
               <div className="flex flex-col items-center">
                 <input type="range" className="w-16 accent-[#d4af37]" min="0" max="100" value={stereoPhase} onChange={e => setStereoPhase(Number(e.target.value))} />
-                <span className="text-[7px] text-[#a19e95] tracking-widest mt-1 uppercase">Stereo φ</span>
+                <span className="text-[9px] text-[#a19e95] tracking-widest mt-1 uppercase">Stereo φ</span>
               </div>
             </div>
 
@@ -385,6 +620,84 @@ export default function App() {
 
           </div>
         </div>
+      </div>
+
+      {/* Sidebar Panel - Sketch Style */}
+      <div className="hidden lg:flex flex-col items-center pt-16 gap-10 w-[240px] rounded-[3.5rem] border-[4px] border-white/80 shrink-0" style={{ height: '600px' }}>
+        
+        {/* Dropdown 1: Frame Style */}
+        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
+          <div className="relative w-full h-14">
+            <select 
+              value={frameStyle} 
+              onChange={e => setFrameStyle(Number(e.target.value))}
+              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
+            >
+              {FRAMES.map((f, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{f.name}</option>)}
+            </select>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              <span className="text-white font-medium text-[15px] tracking-wide">{FRAMES[frameStyle].name}</span>
+            </div>
+          </div>
+          <span className="text-white/90 text-[15px] font-medium tracking-wide">frame style</span>
+        </div>
+
+        {/* Dropdown 2: Mode Selector Style */}
+        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
+          <div className="relative w-full h-14">
+            <select 
+              value={modeStyle} 
+              onChange={e => setModeStyle(Number(e.target.value))}
+              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
+            >
+              {MODE_STYLE_NAMES.map((name, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{name}</option>)}
+            </select>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{MODE_STYLE_NAMES[modeStyle]}</span>
+            </div>
+          </div>
+          <span className="text-white/90 text-[15px] font-medium tracking-wide">mode style</span>
+        </div>
+
+        {/* Dropdown 3: Background */}
+        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
+          <div className="relative w-full h-14">
+            <select 
+              value={bgIndex} 
+              onChange={e => setBgIndex(Number(e.target.value))}
+              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
+            >
+              {BACKGROUNDS.map((bg, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{bg.name}</option>)}
+            </select>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{BACKGROUNDS[bgIndex].name}</span>
+            </div>
+          </div>
+          <span className="text-white/90 text-[15px] font-medium tracking-wide">environment</span>
+        </div>
+
+        {/* Toggle Outputs */}
+        <div className="w-full px-6 flex flex-col items-center gap-3 relative mt-4">
+          <button 
+            onClick={() => setShowOutputs(!showOutputs)}
+            className={`w-14 h-8 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${showOutputs ? 'bg-white/20' : 'bg-transparent'}`}
+          >
+            <div className={`w-5 h-5 rounded-full bg-white transition-transform duration-300 ${showOutputs ? 'translate-x-7' : 'translate-x-0'}`} />
+          </button>
+          <span className="text-white/90 text-[15px] font-medium tracking-wide">output cables</span>
+        </div>
+
+        {/* Toggle Cable Routing */}
+        <div className="w-full px-6 flex flex-col items-center gap-3 relative mt-4">
+          <button 
+            onClick={() => setParallelCables(!parallelCables)}
+            className={`w-14 h-8 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${parallelCables ? 'bg-white/20' : 'bg-transparent'}`}
+          >
+            <div className={`w-5 h-5 rounded-full bg-white transition-transform duration-300 ${parallelCables ? 'translate-x-7' : 'translate-x-0'}`} />
+          </button>
+          <span className="text-white/90 text-[15px] font-medium tracking-wide text-center leading-tight">parallel routing</span>
+        </div>
+
       </div>
 
       <style dangerouslySetInnerHTML={{__html: `
