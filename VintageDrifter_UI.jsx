@@ -67,15 +67,17 @@ const WobblyAura = ({ drift, spread, active, rate }) => {
 };
 
 // --- Botanical SVGs ---
-const DetailedMonstera = () => (
+const DetailedMonstera = ({ showStems = true }) => (
   <svg viewBox="0 0 200 200" className="absolute -bottom-10 -left-10 w-80 h-80 pointer-events-none opacity-[0.9] mix-blend-multiply z-0" style={{ filter: 'drop-shadow(15px 15px 20px rgba(0,0,0,0.4))' }}>
     <defs><clipPath id="monstera-cuts"><rect width="200" height="200" fill="white" /><ellipse cx="20" cy="70" rx="35" ry="12" transform="rotate(25 20 70)" fill="black" /><ellipse cx="10" cy="110" rx="40" ry="15" transform="rotate(10 10 110)" fill="black" /><ellipse cx="30" cy="160" rx="30" ry="10" transform="rotate(-15 30 160)" fill="black" /><ellipse cx="160" cy="50" rx="40" ry="15" transform="rotate(-30 160 50)" fill="black" /><ellipse cx="180" cy="100" rx="45" ry="16" transform="rotate(-10 180 100)" fill="black" /><ellipse cx="160" cy="150" rx="35" ry="12" transform="rotate(15 160 150)" fill="black" /><circle cx="110" cy="40" r="8" fill="black" /><ellipse cx="60" cy="80" rx="12" ry="6" transform="rotate(30 60 80)" fill="black" /><ellipse cx="140" cy="90" rx="15" ry="7" transform="rotate(-20 140 90)" fill="black" /><circle cx="120" cy="130" r="9" fill="black" /><circle cx="70" cy="140" r="7" fill="black" /></clipPath></defs>
-    <g transform="translate(10, 10) rotate(15) scale(0.9)"><path d="M 100 10 C 170 10 190 70 180 130 C 170 190 120 190 100 190 C 80 190 30 190 20 130 C 10 70 30 10 100 10 Z" fill="#2c3e35" clipPath="url(#monstera-cuts)" /><path d="M 100 10 C 100 10 95 190 95 190" stroke="#1e2a24" strokeWidth="3" fill="none" /></g>
-    <g transform="translate(-20, 80) rotate(-20) scale(0.6)"><path d="M 100 10 C 170 10 190 70 180 130 C 170 190 120 190 100 190 C 80 190 30 190 20 130 C 10 70 30 10 100 10 Z" fill="#1e2a24" clipPath="url(#monstera-cuts)" /><path d="M 100 10 C 100 10 95 190 95 190" stroke="#111" strokeWidth="4" fill="none" /></g>
+    <g transform="translate(10, 10) rotate(15) scale(0.9)"><path d="M 100 10 C 170 10 190 70 180 130 C 170 190 120 190 100 190 C 80 190 30 190 20 130 C 10 70 30 10 100 10 Z" fill="#2c3e35" clipPath="url(#monstera-cuts)" />{showStems && <path d="M 100 10 C 100 10 95 190 95 190" stroke="#1e2a24" strokeWidth="3" fill="none" />}</g>
+    <g transform="translate(-20, 80) rotate(-20) scale(0.6)"><path d="M 100 10 C 170 10 190 70 180 130 C 170 190 120 190 100 190 C 80 190 30 190 20 130 C 10 70 30 10 100 10 Z" fill="#1e2a24" clipPath="url(#monstera-cuts)" />{showStems && <path d="M 100 10 C 100 10 95 190 95 190" stroke="#111" strokeWidth="4" fill="none" />}</g>
   </svg>
 );
 
-const DetailedFernsRight = () => (
+const DetailedFernsRight = ({ showFerns = true }) => {
+  if (!showFerns) return null;
+  return (
   <svg viewBox="0 0 200 200" className="absolute -bottom-10 -right-10 w-80 h-80 pointer-events-none opacity-[0.9] mix-blend-multiply z-0" style={{ filter: 'drop-shadow(-10px 15px 20px rgba(0,0,0,0.4))' }}>
     <g transform="translate(60, 20) rotate(35) scale(0.8)">
       <line x1="100" y1="200" x2="100" y2="0" stroke="#2c3e35" strokeWidth="4" strokeLinecap="round" />
@@ -87,7 +89,8 @@ const DetailedFernsRight = () => (
     </g>
     <g transform="translate(40, 100)"><circle cx="50" cy="50" r="18" fill="#a63c3c" /><circle cx="65" cy="40" r="14" fill="#c44d4d" /><circle cx="40" cy="35" r="12" fill="#8a2e2e" /><circle cx="55" cy="55" r="8" fill="#e66a53" /><path d="M 50 68 Q 60 90 80 120" stroke="#a63c3c" strokeWidth="2" fill="none" /></g>
   </svg>
-);
+  );
+};
 
 const HardwareLED = ({ active, color = 'red', size = 8, label, pulse = false }) => {
   const colors = {
@@ -202,7 +205,7 @@ const KNOB_STYLES = [
   { name: 'Polished Onyx', boxShadow: '0px 15px 25px rgba(0,0,0,0.6), 0px 6px 12px rgba(0,0,0,0.7), inset 0px 2px 5px rgba(255,255,255,0.5), inset 0px -3px 8px rgba(0,0,0,0.9)', backgroundImage: 'radial-gradient(circle at 35% 25%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 30%, rgba(0,0,0,0.9) 100%)', backgroundColor: '#0a0a0a' }
 ];
 
-const MatteKnob = ({ label, value, onChange, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride, shadingStyle }) => {
+const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride, shadingStyle }) => {
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
   const startVal = useRef(0);
@@ -212,7 +215,7 @@ const MatteKnob = ({ label, value, onChange, min = 0, max = 100, size = 60, colo
   const rotation = ((value - min) / (max - min) * 270) - 135;
   const isCoral = color === 'coral';
   return (
-    <div className="flex flex-col items-center justify-center group select-none relative z-10">
+    <div className="flex flex-col items-center justify-center group select-none relative z-10" onDoubleClick={onDoubleClick}>
       <div className="relative rounded-full cursor-ns-resize touch-none" style={{ width: size, height: size, backgroundColor: isCoral ? '#e66a53' : (shadingStyle?.backgroundColor || '#111'), boxShadow: isCoral ? '10px 10px 18px rgba(180,60,40,0.4), 4px 4px 6px rgba(180,60,40,0.3), inset 2px 2px 5px rgba(255,255,255,0.4), inset -2px -2px 5px rgba(0,0,0,0.3)' : (shadingStyle?.boxShadow || '12px 12px 20px rgba(0,0,0,0.45), 4px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)'), backgroundImage: isCoral ? 'none' : (shadingStyle?.backgroundImage || 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)') }}
         onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
         <div className="absolute inset-0 transition-transform duration-75" style={{ transform: `rotate(${rotation}deg)` }}>
@@ -243,7 +246,14 @@ const DropdownSelect = ({ options, value, onChange, width = 80 }) => (
   </select>
 );
 
-const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate }) => {
+const CENTER_DIAL_SHADOWS = [
+  { name: 'Original', shadow: '18px 18px 35px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.1), inset -3px -3px 8px rgba(0,0,0,0.8)' },
+  { name: 'Refined Grounded', shadow: '2px 2px 8px rgba(0,0,0,0.7), 18px 18px 40px rgba(0,0,0,0.4), inset 1px 1px 3px rgba(255,255,255,0.15), inset -4px -4px 10px rgba(0,0,0,0.9)' },
+  { name: 'Balanced Distance', shadow: '1px 1px 5px rgba(0,0,0,0.4), 18px 18px 35px rgba(0,0,0,0.5), inset 2px 2px 4px rgba(255,255,255,0.15), inset -3px -3px 8px rgba(0,0,0,0.85)' },
+  { name: 'Crisp Hover', shadow: '2px 2px 6px rgba(0,0,0,0.3), 20px 20px 30px rgba(0,0,0,0.45), inset 1px 1px 2px rgba(255,255,255,0.2), inset -2px -2px 6px rgba(0,0,0,0.9)' }
+];
+
+const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowStyle, onDoubleClickDrift, onDoubleClickSpread }) => {
   const [isDraggingDrift, setIsDraggingDrift] = useState(false);
   const [isDraggingSpread, setIsDraggingSpread] = useState(false);
   const driftY = useRef(0), driftStart = useRef(0), spreadY = useRef(0), spreadStart = useRef(0);
@@ -259,8 +269,8 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate }) => {
   return (
     <div className="relative flex justify-center items-center z-20" style={{ width: 340, height: 340 }}>
       <WobblyAura drift={drift} spread={spread} active={isDraggingDrift || isDraggingSpread} rate={rate} />
-      <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center group z-10" style={{ width: 320, height: 320, backgroundColor: '#1f1e1d', backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, transparent, transparent 2px, rgba(0,0,0,0.4) 3px, rgba(0,0,0,0.4) 4px), conic-gradient(from 0deg at 50% 50%, #111, #333, #111, #333, #111)', boxShadow: '18px 18px 35px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.1), inset -3px -3px 8px rgba(0,0,0,0.8)' }}
-        onPointerDown={handleSpreadDown} onPointerMove={handleSpreadMove} onPointerUp={handleSpreadUp} onPointerCancel={handleSpreadUp}>
+      <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center group z-10" style={{ width: 320, height: 320, backgroundColor: '#1f1e1d', backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, transparent, transparent 2px, rgba(0,0,0,0.4) 3px, rgba(0,0,0,0.4) 4px), conic-gradient(from 0deg at 50% 50%, #111, #333, #111, #333, #111)', boxShadow: shadowStyle || '2px 2px 8px rgba(0,0,0,0.7), 18px 18px 40px rgba(0,0,0,0.4), inset 1px 1px 3px rgba(255,255,255,0.15), inset -4px -4px 10px rgba(0,0,0,0.9)' }}
+        onPointerDown={handleSpreadDown} onPointerMove={handleSpreadMove} onPointerUp={handleSpreadUp} onPointerCancel={handleSpreadUp} onDoubleClick={onDoubleClickSpread}>
         <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40">
           <circle cx="160" cy="160" r="140" fill="none" stroke="#d4af37" strokeWidth="1" strokeDasharray="4 8" />
           <circle cx="160" cy="160" r="120" fill="none" stroke="#d4af37" strokeWidth="0.5" />
@@ -271,7 +281,7 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate }) => {
           <div className="absolute top-[8%] left-1/2 -translate-x-1/2 w-2 h-6 bg-[#e66a53] rounded-full shadow-[0_0_10px_#e66a53]" />
         </div>
         <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center hover:brightness-110 transition-all z-20" style={{ width: 140, height: 140, background: 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 20%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #a88842 0deg, #edd39a 45deg, #a88842 90deg, #edd39a 135deg, #a88842 180deg, #edd39a 225deg, #a88842 270deg, #edd39a 315deg, #a88842 360deg)', boxShadow: '15px 15px 30px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.9), inset -4px -4px 8px rgba(0,0,0,0.6)' }}
-          onPointerDown={handleDriftDown} onPointerMove={handleDriftMove} onPointerUp={handleDriftUp} onPointerCancel={handleDriftUp}>
+          onPointerDown={handleDriftDown} onPointerMove={handleDriftMove} onPointerUp={handleDriftUp} onPointerCancel={handleDriftUp} onDoubleClick={onDoubleClickDrift}>
           <div className="absolute inset-2 rounded-full pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(255,255,255,0.2) 100%)', boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.8), 0 1px 1px rgba(255,255,255,0.5)' }} />
           <div className="absolute inset-0 transition-transform duration-75 pointer-events-none" style={{ transform: `rotate(${driftRot}deg)` }}>
             <div className="absolute top-[12%] left-1/2 -translate-x-1/2 w-1.5 h-7 bg-[#1a1a1a] rounded-full opacity-95 shadow-[inset_0_2px_4px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.4)]" />
@@ -468,6 +478,259 @@ const FRAMES = [
     } },
 ];
 
+const FILTER_SWITCH_NAMES = [
+  'Original Pill',
+  'Metal Toggle',
+  'Studio Push',
+  'Bakelite Slider',
+  'LED Tactile',
+  'Minimalist Engraved',
+  'Brass Rocker',
+  'Japandi Wood'
+];
+
+const FilterSwitchEngine = ({ value, onChange, styleIndex }) => {
+  const is12 = value === 1;
+  const label = is12 ? '12dB' : '6dB';
+
+  switch (styleIndex) {
+    case 0:
+      return (
+        <button onClick={() => onChange(is12 ? 0 : 1)} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/30 text-[#edd39a] border border-white/10 hover:bg-black/50 transition-colors shadow-sm">
+          {label}
+        </button>
+      );
+    case 1:
+      return (
+        <div className="flex flex-col items-center gap-1 cursor-pointer group" onClick={() => onChange(is12 ? 0 : 1)}>
+          <div className="w-3.5 h-6 rounded-sm bg-gradient-to-b from-[#888] to-[#444] shadow-[inset_0_1px_2px_rgba(255,255,255,0.5),2px_2px_4px_rgba(0,0,0,0.8)] relative flex justify-center border border-[#222]">
+            <div className={`w-2 h-3.5 rounded-full bg-gradient-to-b from-[#ddd] to-[#999] absolute transition-all duration-150 shadow-[0_2px_3px_rgba(0,0,0,0.6)] ${is12 ? 'top-[1px]' : 'bottom-[1px]'}`} />
+          </div>
+          <span className="text-[7px] font-bold text-[#edd39a] drop-shadow-md">{label}</span>
+        </div>
+      );
+    case 2:
+      return (
+        <button onClick={() => onChange(is12 ? 0 : 1)} className="w-7 h-7 rounded-full bg-[#1a1a1a] border-2 border-[#333] shadow-[0_3px_6px_rgba(0,0,0,0.8)] relative flex justify-center items-center overflow-hidden active:scale-95 transition-transform group">
+          <div className={`absolute inset-1 rounded-full transition-colors duration-200 ${is12 ? 'bg-[#e66a53] shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_0_8px_#e66a53]' : 'bg-[#2a2a2a] shadow-[inset_0_2px_4px_rgba(0,0,0,0.9)]'}`} />
+          <span className="relative z-10 text-[7px] font-black tracking-tighter text-white drop-shadow-md">{label}</span>
+        </button>
+      );
+    case 3:
+      return (
+        <div className="flex flex-col items-center cursor-pointer group" onClick={() => onChange(is12 ? 0 : 1)}>
+          <div className="w-7 h-3.5 rounded bg-[#1a110b] border border-black/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.1)] relative">
+            <div className={`w-3.5 h-full rounded-[2px] bg-gradient-to-b from-[#4a2e22] to-[#2c1a12] absolute top-0 transition-all duration-200 border-t border-white/20 shadow-[1px_0_3px_rgba(0,0,0,0.9)] ${is12 ? 'right-0' : 'left-0'}`} />
+          </div>
+          <span className="text-[7px] font-bold text-[#edd39a] mt-0.5">{label}</span>
+        </div>
+      );
+    case 4:
+      return (
+        <button onClick={() => onChange(is12 ? 0 : 1)} className="w-6 h-6 rounded bg-gradient-to-b from-[#333] to-[#111] border border-[#111] shadow-[2px_2px_5px_rgba(0,0,0,0.8),inset_1px_1px_2px_rgba(255,255,255,0.1)] flex flex-col justify-center gap-0.5 items-center active:scale-95 transition-transform group">
+          <div className={`w-1.5 h-1.5 rounded-full ${is12 ? 'bg-[#ff4444] shadow-[0_0_6px_#ff4444]' : 'bg-[#ffaa00] shadow-[0_0_6px_#ffaa00]'}`} />
+          <span className="text-[6px] font-bold text-[#aaa]">{label}</span>
+        </button>
+      );
+    case 5:
+      return (
+        <button onClick={() => onChange(is12 ? 0 : 1)} className="px-2 py-1 bg-gradient-to-br from-[#dfd5c5] to-[#bca68e] rounded-sm shadow-[1px_1px_4px_rgba(0,0,0,0.5),inset_1px_1px_2px_rgba(255,255,255,0.6)] border border-[#9a8670] active:shadow-[inset_1px_1px_4px_rgba(0,0,0,0.5)] transition-all">
+          <span className="text-[8px] font-black text-[#4a3e2e] mix-blend-multiply opacity-80">{label}</span>
+        </button>
+      );
+    case 6:
+      return (
+        <div className="w-7 h-5 rounded-sm bg-[#111] p-[1.5px] shadow-[0_2px_5px_rgba(0,0,0,0.8)] cursor-pointer group" onClick={() => onChange(is12 ? 0 : 1)}>
+          <div className={`w-full h-full rounded-[1px] bg-gradient-to-b from-[#ffe082] to-[#c79121] shadow-[inset_0_1px_2px_rgba(255,255,255,0.8),inset_0_-1px_2px_rgba(0,0,0,0.5)] border border-[#6a4c0a] flex items-center justify-center transition-transform duration-150 ${is12 ? 'rotate-x-12' : '-rotate-x-12'}`} style={{ perspective: '100px' }}>
+             <span className="text-[6px] font-black text-[#4a2e05] opacity-80">{label}</span>
+          </div>
+        </div>
+      );
+    case 7:
+      return (
+        <div className="flex items-center gap-1.5 cursor-pointer group" onClick={() => onChange(is12 ? 0 : 1)}>
+           <div className={`w-4 h-4 rounded-full bg-gradient-to-br from-[#d4b998] to-[#b89873] border border-[#8a6e51] shadow-[2px_2px_5px_rgba(0,0,0,0.5),inset_1px_1px_3px_rgba(255,255,255,0.5)] flex justify-center items-center transition-transform duration-200 ${is12 ? 'rotate-90' : 'rotate-0'}`}>
+             <div className="w-2.5 h-0.5 bg-[#4a3521] shadow-inner rounded-full" />
+           </div>
+           <span className="text-[7px] font-bold text-[#e66a53] tracking-wider drop-shadow-sm">{label}</span>
+        </div>
+      );
+    default: return null;
+  }
+};
+
+const IO_SCALE_NAMES = [
+  "None", 
+  "Classic Dots", 
+  "Studio Ticks", 
+  "Minimalist Arcs", 
+  "Vintage Continuous",
+  "Modern Percent",
+  "Bold Industrial",
+  "Japandi Radial",
+  "Decibel Arcs",
+  "Radar Sweep",
+  "Broadcast Ring",
+  "Precision Diamond",
+  "Double Arc",
+  "Compass Rose"
+];
+
+const KnobScaleRing = ({ styleIndex, size = 55 }) => {
+  if (styleIndex === 0) return null;
+  
+  const r = size / 2 + 25; // Increased radius for scale to prevent clipping
+  const vBox = `-${r} -${r} ${r*2} ${r*2}`;
+  const ringStyle = { 
+    width: r*2, 
+    height: r*2, 
+    top: size / 2, 
+    left: '50%', 
+    transform: 'translate(-50%, -50%)' 
+  };
+  const svgClass = "absolute pointer-events-none overflow-visible";
+
+  switch (styleIndex) {
+    case 1:
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          {[...Array(11)].map((_, i) => {
+            const angle = -140 + (i * 28);
+            const rad = (angle - 90) * (Math.PI / 180);
+            return <circle key={i} cx={Math.cos(rad) * (r-14)} cy={Math.sin(rad) * (r-14)} r="1.8" fill="#5a5549" opacity="0.8" />;
+          })}
+          <text x={0} y={-r + 9} textAnchor="middle" fill="#3a352d" fontSize="10" fontWeight="bold" opacity="0.9">0</text>
+          <text x={-r + 14} y={r - 16} textAnchor="end" fill="#5a5549" fontSize="9" fontWeight="bold" opacity="0.8">-24</text>
+          <text x={r - 14} y={r - 16} textAnchor="start" fill="#5a5549" fontSize="9" fontWeight="bold" opacity="0.8">+12</text>
+        </svg>
+      );
+    case 2:
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          {[...Array(10)].map((_, i) => {
+            const angle = -140 + (i * 31.11);
+            return <line key={i} x1="0" y1={-r + 11} x2="0" y2={-r + 17} stroke="#5a5549" strokeWidth="1.2" opacity="0.8" transform={`rotate(${angle})`} />;
+          })}
+          <text x={-r + 15} y={r - 13} textAnchor="end" fill="#5a5549" fontSize="7" fontWeight="bold" opacity="0.7">1</text>
+          <text x={r - 15} y={r - 13} textAnchor="start" fill="#5a5549" fontSize="7" fontWeight="bold" opacity="0.7">10</text>
+        </svg>
+      );
+    case 3:
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          <path d={`M ${Math.cos(-230 * Math.PI/180)*(r-11)} ${Math.sin(-230 * Math.PI/180)*(r-11)} A ${r-11} ${r-11} 0 0 1 ${Math.cos(-95 * Math.PI/180)*(r-11)} ${Math.sin(-95 * Math.PI/180)*(r-11)}`} fill="none" stroke="#5a5549" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+          <path d={`M ${Math.cos(-85 * Math.PI/180)*(r-11)} ${Math.sin(-85 * Math.PI/180)*(r-11)} A ${r-11} ${r-11} 0 0 1 ${Math.cos(50 * Math.PI/180)*(r-11)} ${Math.sin(50 * Math.PI/180)*(r-11)}`} fill="none" stroke="#3a352d" strokeWidth="1.5" strokeLinecap="round" opacity="0.9" />
+        </svg>
+      );
+    case 4:
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          <path d={`M ${Math.cos(-230 * Math.PI/180)*(r-13)} ${Math.sin(-230 * Math.PI/180)*(r-13)} A ${r-13} ${r-13} 0 0 1 ${Math.cos(50 * Math.PI/180)*(r-13)} ${Math.sin(50 * Math.PI/180)*(r-13)}`} fill="none" stroke="#5a5549" strokeWidth="3" opacity="0.4" />
+          {[...Array(21)].map((_, i) => {
+            const angle = -140 + (i * 14);
+            const isMajor = i % 5 === 0;
+            return <line key={i} x1="0" y1={-r + 9} x2="0" y2={-r + 15} stroke="#5a5549" strokeWidth={isMajor ? 1.5 : 0.8} opacity="0.8" transform={`rotate(${angle})`} />;
+          })}
+        </svg>
+      );
+    case 5:
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          {[...Array(31)].map((_, i) => {
+            const angle = -140 + (i * 9.33);
+            const rad = (angle - 90) * (Math.PI / 180);
+            return <circle key={i} cx={Math.cos(rad) * (r-13)} cy={Math.sin(rad) * (r-13)} r="0.8" fill="#3a352d" opacity={0.4 + (i/30)*0.6} />;
+          })}
+          <text x={-r + 9} y={r - 9} textAnchor="end" fill="#5a5549" fontSize="6" opacity="0.8">0%</text>
+          <text x={r - 9} y={r - 9} textAnchor="start" fill="#3a352d" fontSize="6" opacity="1.0">100%</text>
+        </svg>
+      );
+    case 6:
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          {[0, 1, 2, 3, 4].map((i) => {
+            const angle = -140 + (i * 70);
+            return <line key={i} x1="0" y1={-r + 11} x2="0" y2={-r + 17} stroke="#3a352d" strokeWidth="3" strokeLinecap="square" transform={`rotate(${angle})`} />;
+          })}
+          {[0, 1, 2, 3, 4].map((i) => {
+            const angle = -140 + (i * 70);
+            return <line key={`i-${i}`} x1="0" y1={-r + 12} x2="0" y2={-r + 16} stroke="#8b7b65" strokeWidth="1.5" strokeLinecap="square" opacity="0.9" transform={`rotate(${angle})`} />;
+          })}
+        </svg>
+      );
+    case 7:
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          <path d={`M ${Math.cos(-230 * Math.PI/180)*(r-15)} ${Math.sin(-230 * Math.PI/180)*(r-15)} A ${r-15} ${r-15} 0 0 1 ${Math.cos(50 * Math.PI/180)*(r-15)} ${Math.sin(50 * Math.PI/180)*(r-15)}`} fill="none" stroke="#5a5549" strokeWidth="0.8" strokeDasharray="2 4" opacity="0.7" />
+          <path d={`M ${Math.cos(-230 * Math.PI/180)*(r-9)} ${Math.sin(-230 * Math.PI/180)*(r-9)} A ${r-9} ${r-9} 0 0 1 ${Math.cos(50 * Math.PI/180)*(r-9)} ${Math.sin(50 * Math.PI/180)*(r-9)}`} fill="none" stroke="#5a5549" strokeWidth="0.4" strokeDasharray="1 3" opacity="0.5" />
+          <circle cx={Math.cos(-90 * Math.PI/180)*(r-15)} cy={Math.sin(-90 * Math.PI/180)*(r-15)} r="2" fill="#3a352d" opacity="1.0" />
+        </svg>
+      );
+    case 8: // Decibel Arcs
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          <path d={`M ${Math.cos(-230 * Math.PI/180)*(r-14)} ${Math.sin(-230 * Math.PI/180)*(r-14)} A ${r-14} ${r-14} 0 0 1 ${Math.cos(50 * Math.PI/180)*(r-14)} ${Math.sin(50 * Math.PI/180)*(r-14)}`} fill="none" stroke="#5a5549" strokeWidth="0.5" opacity="0.3" />
+          <text x={0} y={-r + 9} textAnchor="middle" fill="#3a352d" fontSize="9" fontWeight="bold">0</text>
+          <text x={-r + 14} y={r - 16} textAnchor="end" fill="#5a5549" fontSize="8" fontWeight="bold">-12</text>
+          <text x={r - 14} y={r - 16} textAnchor="start" fill="#5a5549" fontSize="8" fontWeight="bold">+12</text>
+          {[0, 1, 2].map(i => {
+            const a = -140 + (i * 140);
+            return <circle key={i} cx={Math.cos((a-90)*Math.PI/180)*(r-14)} cy={Math.sin((a-90)*Math.PI/180)*(r-14)} r="2" fill="#3a352d" />;
+          })}
+        </svg>
+      );
+    case 9: // Radar Sweep
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          {[...Array(20)].map((_, i) => {
+            const angle = -140 + (i * 14.7);
+            const rad = (angle - 90) * (Math.PI / 180);
+            return <circle key={i} cx={Math.cos(rad)*(r-13)} cy={Math.sin(rad)*(r-13)} r={1 + i*0.1} fill="#5a5549" opacity={0.1 + i*0.04} />;
+          })}
+        </svg>
+      );
+    case 10: // Broadcast Ring
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          {[...Array(6)].map((_, i) => {
+            const angle = -140 + (i * 56);
+            return <line key={i} x1="0" y1={-r + 12} x2="0" y2={-r + 19} stroke="#5a5549" strokeWidth="4" strokeLinecap="round" opacity="0.8" transform={`rotate(${angle})`} />;
+          })}
+          <circle cx="0" cy="0" r={r-15} fill="none" stroke="#5a5549" strokeWidth="1" strokeDasharray="2 10" opacity="0.2" />
+        </svg>
+      );
+    case 11: // Precision Diamond
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          {[...Array(11)].map((_, i) => {
+            const angle = -140 + (i * 28);
+            return <rect key={i} x="-2" y={-r + 13} width="4" height="4" fill="#3a352d" opacity="0.8" transform={`rotate(${angle})`} />;
+          })}
+        </svg>
+      );
+    case 12: // Double Arc
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          <path d={`M ${Math.cos(-230 * Math.PI/180)*(r-15)} ${Math.sin(-230 * Math.PI/180)*(r-15)} A ${r-15} ${r-15} 0 0 1 ${Math.cos(50 * Math.PI/180)*(r-15)} ${Math.sin(50 * Math.PI/180)*(r-15)}`} fill="none" stroke="#3a352d" strokeWidth="2" opacity="0.8" />
+          <path d={`M ${Math.cos(-230 * Math.PI/180)*(r-10)} ${Math.sin(-230 * Math.PI/180)*(r-10)} A ${r-10} ${r-10} 0 0 1 ${Math.cos(50 * Math.PI/180)*(r-10)} ${Math.sin(50 * Math.PI/180)*(r-10)}`} fill="none" stroke="#5a5549" strokeWidth="1" strokeDasharray="1 3" opacity="0.5" />
+        </svg>
+      );
+    case 13: // Compass Rose
+      return (
+        <svg viewBox={vBox} className={svgClass} style={ringStyle}>
+          {[0, 90, 180, 270].map(a => (
+            <g key={a} transform={`rotate(${a - 45})`}>
+              <line x1="0" y1={-r + 10} x2="0" y2={-r + 20} stroke="#3a352d" strokeWidth="1.5" />
+              <line x1="-5" y1={-r + 15} x2="5" y2={-r + 15} stroke="#3a352d" strokeWidth="0.5" />
+            </g>
+          ))}
+          <circle cx="0" cy="0" r={r-15} fill="none" stroke="#5a5549" strokeWidth="0.5" strokeDasharray="4 4" opacity="0.3" />
+        </svg>
+      );
+    default: return null;
+  }
+};
+
 export default function App() {
   const [power, setPower] = useState(true);
   const [input, setInput] = useState(50);
@@ -492,9 +755,14 @@ export default function App() {
   const [frameStyle, setFrameStyle] = useState(0);
   const [modeStyle, setModeStyle] = useState(0);
   const [knobStyle, setKnobStyle] = useState(0);
+  const [centerDialStyle, setCenterDialStyle] = useState(1);
   const [bgIndex, setBgIndex] = useState(0);
   const [showOutputs, setShowOutputs] = useState(true);
   const [parallelCables, setParallelCables] = useState(true);
+  const [showStems, setShowStems] = useState(false);
+  const [showFerns, setShowFerns] = useState(true);
+  const [filterSwitchStyle, setFilterSwitchStyle] = useState(0);
+  const [ioScaleStyle, setIoScaleStyle] = useState(1);
 
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -547,8 +815,8 @@ export default function App() {
             <div className="absolute top-[40%] -left-[15%] w-[40%] h-[40%] bg-[#e0a96d] rounded-full mix-blend-multiply opacity-70" />
             <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-[#b04a4a] rounded-full mix-blend-multiply opacity-50" />
 
-            <DetailedMonstera />
-            <DetailedFernsRight />
+            <DetailedMonstera showStems={showStems} />
+            <DetailedFernsRight showFerns={showFerns} />
 
             <div className={`absolute inset-0 bg-[#3a352d]/50 backdrop-grayscale transition-all duration-700 z-40 pointer-events-none ${power ? 'opacity-0' : 'opacity-100'}`} />
 
@@ -565,32 +833,42 @@ export default function App() {
               <div className="text-center text-[9px] tracking-[0.2em] font-bold text-[#8b7b65] mt-4">POWER</div>
             </div>
 
-            <div className="absolute top-[16%] left-[30%] z-10 flex gap-8">
-              <MatteKnob label="Input" value={input} onChange={setInput} size={55} />
-              <MatteKnob label="Output" value={output} onChange={setOutput} size={55} />
+            <div className="absolute top-[calc(16%+15px)] left-[calc(30%-40px)] z-10 flex gap-[68px]">
+              <div className="relative">
+                <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
+                <MatteKnob label="Input" value={input} onChange={setInput} onDoubleClick={() => setInput(50)} size={55} />
+              </div>
+              <div className="relative">
+                <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
+                <MatteKnob label="Output" value={output} onChange={setOutput} onDoubleClick={() => setOutput(50)} size={55} />
+              </div>
             </div>
 
             <div className="absolute top-[52%] left-[50%] -translate-x-1/2 -translate-y-1/2">
-              <BotanicalCenterDial drift={drift} setDrift={setDrift} spread={spread} setSpread={setSpread} rate={rate} />
+              <BotanicalCenterDial 
+                drift={drift} setDrift={setDrift} onDoubleClickDrift={() => setDrift(0)}
+                spread={spread} setSpread={setSpread} onDoubleClickSpread={() => setSpread(0)}
+                rate={rate} shadowStyle={CENTER_DIAL_SHADOWS[centerDialStyle].shadow} 
+              />
             </div>
 
             <ModeSelectorEngine mode={mode} setMode={setMode} styleIndex={modeStyle} power={power} />
 
-            <div className="absolute top-[38%] right-[10%] z-10 grid grid-cols-2 gap-x-6 gap-y-10 justify-items-center">
+            <div className="absolute top-[38%] right-[10%] z-30 grid grid-cols-2 gap-x-6 gap-y-10 justify-items-center">
               <div className="relative">
-                <MatteKnob label="Filter" value={character} onChange={setCharacter} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
-                <button onClick={() => setCharFilter(charFilter === 1 ? 0 : 1)} className="absolute -top-1 -right-3 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/30 text-[#edd39a] border border-white/10 hover:bg-black/50 transition-colors">
-                  {charFilter === 1 ? '12dB' : '6dB'}
-                </button>
+                <MatteKnob label="Filter" value={character} onChange={setCharacter} onDoubleClick={() => setCharacter(0)} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
+                <div className="absolute -top-3 -right-6 z-40">
+                  <FilterSwitchEngine value={charFilter} onChange={setCharFilter} styleIndex={filterSwitchStyle} />
+                </div>
               </div>
-              <MatteKnob label="Sweeten" value={sweeten} onChange={setSweeten} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
+              <MatteKnob label="Sweeten" value={sweeten} onChange={setSweeten} onDoubleClick={() => setSweeten(0)} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
               <div className="relative">
                 <div className="absolute -right-6 top-1/2 -translate-y-1/2">
                   <HardwareLED active={power && biasHF > 20} color="coral" size={6} label="DRV" />
                 </div>
-                <MatteKnob label="Sat" value={biasHF} onChange={setBiasHF} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
+                <MatteKnob label="Sat" value={biasHF} onChange={setBiasHF} onDoubleClick={() => setBiasHF(0)} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
               </div>
-              <MatteKnob label="Noise" value={noise} onChange={setNoise} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
+              <MatteKnob label="Noise" value={noise} onChange={setNoise} onDoubleClick={() => setNoise(0)} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
             </div>
 
             <div className="absolute bottom-[10%] left-[12%] z-10 flex gap-6 items-end">
@@ -636,7 +914,7 @@ export default function App() {
       </div>
 
       {/* Sidebar Panel - Sketch Style */}
-      <div className="hidden lg:flex flex-col items-center pt-16 gap-10 w-[240px] rounded-[3.5rem] border-[4px] border-white/80 shrink-0" style={{ height: '600px' }}>
+      <div className="hidden lg:flex flex-col items-center py-10 gap-6 w-[280px] rounded-[3.5rem] border-[4px] border-white/80 shrink-0">
         
         {/* Dropdown 1: Frame Style */}
         <div className="w-full px-6 flex flex-col items-center gap-3 relative">
@@ -689,6 +967,23 @@ export default function App() {
           <span className="text-white/90 text-[15px] font-medium tracking-wide">knob shading</span>
         </div>
 
+        {/* Dropdown 4: Center Dial Shading */}
+        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
+          <div className="relative w-full h-14">
+            <select 
+              value={centerDialStyle} 
+              onChange={e => setCenterDialStyle(Number(e.target.value))}
+              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
+            >
+              {CENTER_DIAL_SHADOWS.map((style, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{style.name}</option>)}
+            </select>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{CENTER_DIAL_SHADOWS[centerDialStyle].name}</span>
+            </div>
+          </div>
+          <span className="text-white/90 text-[15px] font-medium tracking-wide">center dial</span>
+        </div>
+
         {/* Dropdown 3: Background */}
         <div className="w-full px-6 flex flex-col items-center gap-3 relative">
           <div className="relative w-full h-14">
@@ -706,26 +1001,87 @@ export default function App() {
           <span className="text-white/90 text-[15px] font-medium tracking-wide">environment</span>
         </div>
 
-        {/* Toggle Outputs */}
-        <div className="w-full px-6 flex flex-col items-center gap-3 relative mt-4">
-          <button 
-            onClick={() => setShowOutputs(!showOutputs)}
-            className={`w-14 h-8 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${showOutputs ? 'bg-white/20' : 'bg-transparent'}`}
-          >
-            <div className={`w-5 h-5 rounded-full bg-white transition-transform duration-300 ${showOutputs ? 'translate-x-7' : 'translate-x-0'}`} />
-          </button>
-          <span className="text-white/90 text-[15px] font-medium tracking-wide">output cables</span>
+        {/* Dropdown 5: Filter Switch */}
+        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
+          <div className="relative w-full h-14">
+            <select 
+              value={filterSwitchStyle} 
+              onChange={e => setFilterSwitchStyle(Number(e.target.value))}
+              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
+            >
+              {FILTER_SWITCH_NAMES.map((name, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{name}</option>)}
+            </select>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{FILTER_SWITCH_NAMES[filterSwitchStyle]}</span>
+            </div>
+          </div>
+          <span className="text-white/90 text-[15px] font-medium tracking-wide">filter switch</span>
         </div>
 
-        {/* Toggle Cable Routing */}
-        <div className="w-full px-6 flex flex-col items-center gap-3 relative mt-4">
-          <button 
-            onClick={() => setParallelCables(!parallelCables)}
-            className={`w-14 h-8 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${parallelCables ? 'bg-white/20' : 'bg-transparent'}`}
-          >
-            <div className={`w-5 h-5 rounded-full bg-white transition-transform duration-300 ${parallelCables ? 'translate-x-7' : 'translate-x-0'}`} />
-          </button>
-          <span className="text-white/90 text-[15px] font-medium tracking-wide text-center leading-tight">parallel routing</span>
+        {/* Dropdown 6: I/O Scale */}
+        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
+          <div className="relative w-full h-14">
+            <select 
+              value={ioScaleStyle} 
+              onChange={e => setIoScaleStyle(Number(e.target.value))}
+              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
+            >
+              {IO_SCALE_NAMES.map((name, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{name}</option>)}
+            </select>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{IO_SCALE_NAMES[ioScaleStyle]}</span>
+            </div>
+          </div>
+          <span className="text-white/90 text-[15px] font-medium tracking-wide">i/o scales</span>
+        </div>
+
+        {/* Toggles Grid */}
+        <div className="w-full px-4 grid grid-cols-2 gap-x-2 gap-y-5 mt-2">
+          
+          {/* Toggle Outputs */}
+          <div className="flex flex-col items-center gap-2">
+            <button 
+              onClick={() => setShowOutputs(!showOutputs)}
+              className={`w-12 h-7 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${showOutputs ? 'bg-white/20' : 'bg-transparent'}`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${showOutputs ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+            <span className="text-white/90 text-[12px] font-medium tracking-wide text-center leading-tight">cables</span>
+          </div>
+
+          {/* Toggle Cable Routing */}
+          <div className="flex flex-col items-center gap-2">
+            <button 
+              onClick={() => setParallelCables(!parallelCables)}
+              className={`w-12 h-7 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${parallelCables ? 'bg-white/20' : 'bg-transparent'}`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${parallelCables ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+            <span className="text-white/90 text-[12px] font-medium tracking-wide text-center leading-tight">parallel</span>
+          </div>
+
+          {/* Toggle Monstera Stems */}
+          <div className="flex flex-col items-center gap-2">
+            <button 
+              onClick={() => setShowStems(!showStems)}
+              className={`w-12 h-7 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${showStems ? 'bg-white/20' : 'bg-transparent'}`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${showStems ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+            <span className="text-white/90 text-[12px] font-medium tracking-wide text-center leading-tight">stems</span>
+          </div>
+
+          {/* Toggle Right Ferns */}
+          <div className="flex flex-col items-center gap-2">
+            <button 
+              onClick={() => setShowFerns(!showFerns)}
+              className={`w-12 h-7 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${showFerns ? 'bg-white/20' : 'bg-transparent'}`}
+            >
+              <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${showFerns ? 'translate-x-6' : 'translate-x-0'}`} />
+            </button>
+            <span className="text-white/90 text-[12px] font-medium tracking-wide text-center leading-tight">ferns</span>
+          </div>
+
         </div>
 
       </div>
