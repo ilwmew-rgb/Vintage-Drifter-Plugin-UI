@@ -272,9 +272,9 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
       <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center group z-10" style={{ width: 320, height: 320, backgroundColor: '#1f1e1d', backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, transparent, transparent 2px, rgba(0,0,0,0.4) 3px, rgba(0,0,0,0.4) 4px), conic-gradient(from 0deg at 50% 50%, #111, #333, #111, #333, #111)', boxShadow: shadowStyle || '2px 2px 8px rgba(0,0,0,0.7), 18px 18px 40px rgba(0,0,0,0.4), inset 1px 1px 3px rgba(255,255,255,0.15), inset -4px -4px 10px rgba(0,0,0,0.9)' }}
         onPointerDown={handleSpreadDown} onPointerMove={handleSpreadMove} onPointerUp={handleSpreadUp} onPointerCancel={handleSpreadUp} onDoubleClick={onDoubleClickSpread}>
         <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40">
-          <circle cx="160" cy="160" r="140" fill="none" stroke="#d4af37" strokeWidth="1" strokeDasharray="4 8" />
+          <circle cx="160" cy="160" r="140" fill="none" stroke="#d4af37" strokeWidth="1" strokeDasharray="4 6.995" />
           <circle cx="160" cy="160" r="120" fill="none" stroke="#d4af37" strokeWidth="0.5" />
-          <circle cx="160" cy="160" r="90" fill="none" stroke="#d4af37" strokeWidth="2" strokeDasharray="20 40" />
+          <circle cx="160" cy="160" r="90" fill="none" stroke="#d4af37" strokeWidth="2" strokeDasharray="20 42.83" />
           {[...Array(11)].map((_, i) => (<text key={i} x="160" y="35" fill="#d4af37" fontSize="8" fontFamily="monospace" textAnchor="middle" style={{ transformOrigin: '160px 160px', transform: `rotate(${-135 + i * 27}deg)` }}>{i < 9 ? `0${i+1}` : `${i+1}`}</text>))}
         </svg>
         <div className="absolute inset-0 transition-transform duration-75 pointer-events-none" style={{ transform: `rotate(${spreadRot}deg)` }}>
@@ -822,18 +822,17 @@ export default function App() {
 
             <div className="absolute top-[6%] left-[8%] z-10 flex flex-col items-start">
               <h1 className="text-3xl leading-none font-black tracking-tighter text-[#e66a53] drop-shadow-sm flex gap-3"><span>VINTAGE</span> <span>DRIFTER</span></h1>
-              <p className="text-[10px] tracking-[0.4em] font-bold text-[#8b7b65] mt-1">POLARIS BOTANICA</p>
+              <p className="text-[10px] tracking-[0.4em] font-bold text-[#8b7b65] mt-1">BY POLARIS DSP</p>
             </div>
 
             <div className="absolute top-[6%] right-[10%] z-10 flex flex-col items-center">
-              <div className="text-[12px] font-black tracking-[0.2em] text-[#e66a53] mb-4 drop-shadow-sm">POLARIS DSP</div>
+              <div className="text-[12px] font-black tracking-[0.2em] text-[#e66a53] mb-4 drop-shadow-sm">POWER</div>
               <button onClick={() => setPower(!power)} className="relative w-8 h-14 bg-[#111] rounded-md border border-white/10 shadow-[inset_0_2px_5px_rgba(0,0,0,0.8),10px_10px_20px_rgba(0,0,0,0.4)] flex justify-center items-center">
                 <div className="w-3 h-8 rounded-full bg-gradient-to-b from-[#edd39a] to-[#a88842] shadow-[0_5px_10px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(255,255,255,0.9)] transition-transform duration-200" style={{ transform: power ? 'translateY(-8px)' : 'translateY(8px)' }} />
               </button>
-              <div className="text-center text-[9px] tracking-[0.2em] font-bold text-[#8b7b65] mt-4">POWER</div>
             </div>
 
-            <div className="absolute top-[calc(16%+15px)] left-[calc(30%-40px)] z-10 flex gap-[68px]">
+            <div className="absolute top-[calc(16%+20px)] left-[calc(30%-40px)] z-10 flex gap-[68px]">
               <div className="relative">
                 <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
                 <MatteKnob label="Input" value={input} onChange={setInput} onDoubleClick={() => setInput(50)} size={55} />
