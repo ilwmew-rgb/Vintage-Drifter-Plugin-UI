@@ -618,8 +618,8 @@ const KnobScaleRing = ({ styleIndex, size = 55 }) => {
     case 3:
       return (
         <svg viewBox={vBox} className={svgClass} style={ringStyle}>
-          <path d={`M ${Math.cos(-230 * Math.PI/180)*(r-11)} ${Math.sin(-230 * Math.PI/180)*(r-11)} A ${r-11} ${r-11} 0 0 1 ${Math.cos(-95 * Math.PI/180)*(r-11)} ${Math.sin(-95 * Math.PI/180)*(r-11)}`} fill="none" stroke="#5a5549" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
-          <path d={`M ${Math.cos(-85 * Math.PI/180)*(r-11)} ${Math.sin(-85 * Math.PI/180)*(r-11)} A ${r-11} ${r-11} 0 0 1 ${Math.cos(50 * Math.PI/180)*(r-11)} ${Math.sin(50 * Math.PI/180)*(r-11)}`} fill="none" stroke="#3a352d" strokeWidth="1.5" strokeLinecap="round" opacity="0.9" />
+          <path d={`M ${Math.cos(-230 * Math.PI/180)*(r-13)} ${Math.sin(-230 * Math.PI/180)*(r-13)} A ${r-13} ${r-13} 0 0 1 ${Math.cos(-95 * Math.PI/180)*(r-13)} ${Math.sin(-95 * Math.PI/180)*(r-13)}`} fill="none" stroke="#5a5549" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+          <path d={`M ${Math.cos(-85 * Math.PI/180)*(r-13)} ${Math.sin(-85 * Math.PI/180)*(r-13)} A ${r-13} ${r-13} 0 0 1 ${Math.cos(50 * Math.PI/180)*(r-13)} ${Math.sin(50 * Math.PI/180)*(r-13)}`} fill="none" stroke="#3a352d" strokeWidth="1.5" strokeLinecap="round" opacity="0.9" />
         </svg>
       );
     case 4:
