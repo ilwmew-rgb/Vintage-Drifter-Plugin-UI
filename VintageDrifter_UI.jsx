@@ -1645,17 +1645,6 @@ export default function App() {
     if (selectedAuraShape === id) setSelectedAuraShape(null);
   };
 
-  useEffect(() => {
-    setBottomLeftShapes(current => {
-      const hasGeneratedPositions = current.leaf1?.size !== 320 || current.leaf2?.size !== 320;
-      if (!hasGeneratedPositions) return current;
-      return {
-        ...current,
-        leaf1: { ...BOTTOM_LEFT_SHAPE_PRESETS.leaf1 },
-        leaf2: { ...BOTTOM_LEFT_SHAPE_PRESETS.leaf2 }
-      };
-    });
-  }, []);
 
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
