@@ -1680,8 +1680,8 @@ export default function App() {
   const [selectedHardwareSection, setSelectedHardwareSection] = useState(null);
   const [selectedCircle, setSelectedCircle] = useState(null);
   const [auraShapes, setAuraShapes] = useState([
-    { id: 'aura-1', x: 425, y: 425, size: 295, blur: 60, opac: 8, angle: 135, color1: '#a34433', color2: '#e66a53', animated: true, locked: true },
-    { id: 'aura-2', x: 425, y: 425, size: 634, blur: 58, opac: 5, angle: 0, color1: '#e66a53', color2: '#a34433', animated: true, locked: true }
+    { id: 'aura-1', enabled: true, x: 425, y: 425, size: 295, blur: 60, opacity: 0.08, gradientAngle: 135, color1: '#a34433', color2: '#e66a53', isAnimated: true, locked: true, rotate: 0, blobRadius: generateRandomBlob() },
+    { id: 'aura-2', enabled: true, x: 425, y: 425, size: 634, blur: 58, opacity: 0.05, gradientAngle: 0, color1: '#e66a53', color2: '#a34433', isAnimated: true, locked: true, rotate: 0, blobRadius: generateRandomBlob() }
   ]);
   const [selectedAuraShape, setSelectedAuraShape] = useState(null);
   const [filterSwitchStyle, setFilterSwitchStyle] = useState(0);
