@@ -18,17 +18,13 @@ const SAKURA_IMAGE_PRESETS = {
 const DECORATIVE_CIRCLE_PRESETS = {
   circle1: { enabled: true, locked: true, x: 595, y: 680, size: 680, rotate: 0, color: '#e66a53', opacity: 0.9 },
   circle2: { enabled: true, locked: true, x: 43, y: 510, size: 340, rotate: 0, color: '#e0a96d', opacity: 0.7 },
-  circle3: { enabled: true, locked: true, x: 638, y: 298, size: 255, rotate: 0, color: '#b04a4a', opacity: 0.5 },
-  circle4: { enabled: true, locked: true, x: 140, y: 780, size: 280, rotate: 0, color: '#3c4d3c', opacity: 0.6 },
-  circle5: { enabled: true, locked: true, x: 80, y: 810, size: 220, rotate: 0, color: '#4d4d3c', opacity: 0.5 }
+  circle3: { enabled: true, locked: true, x: 638, y: 298, size: 255, rotate: 0, color: '#b04a4a', opacity: 0.5 }
 };
 
 const DECORATIVE_CIRCLE_LABELS = {
   circle1: 'Bottom Coral',
   circle2: 'Left Ochre',
-  circle3: 'Top Wine',
-  circle4: 'Rate Moss',
-  circle5: 'Rate Earth'
+  circle3: 'Top Wine'
 };
 
 const BOTTOM_LEFT_SHAPE_PRESETS = {
@@ -1843,7 +1839,7 @@ export default function App() {
       </div>
 
       {/* Sidebar Panel - Redesigned Sidebar */}
-      <div className="hidden lg:flex flex-col items-center gap-0 w-[300px] max-h-[calc(100vh-4rem)] overflow-y-auto rounded-[3rem] bg-black/30 backdrop-blur-3xl border border-white/10 shrink-0 shadow-2xl custom-scrollbar">
+      <div className="hidden lg:flex flex-col items-stretch gap-0 w-[300px] max-h-[calc(100vh-4rem)] overflow-y-auto rounded-[3rem] bg-black/30 backdrop-blur-3xl border border-white/10 shrink-0 shadow-2xl custom-scrollbar pb-12">
         
         {/* SECTION 1: GLOBAL STYLE */}
         <CollapsibleSection title="Master Design" defaultOpen={true}>
@@ -1950,6 +1946,43 @@ export default function App() {
                   </button>
                   <span className="text-[8px] text-white/50 uppercase font-black tracking-widest">Ferns</span>
                </div>
+            </div>
+
+            <div className="flex flex-col gap-6 border-t border-white/5 pt-6">
+              <span className="text-[9px] text-white/40 uppercase font-black tracking-[0.2em]">Bottom Shapes (Rate Area)</span>
+              {Object.entries(bottomLeftShapeSettings).map(([id, settings]) => (
+                <div key={id} className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <button 
+                      onClick={() => setSelectedBottomShape(id)}
+                      className={`px-3 py-1.5 rounded-full border-2 text-[9px] font-black uppercase tracking-widest transition-all ${selectedBottomShape === id ? 'bg-[#e66a53] border-transparent text-white' : 'bg-white/5 border-white/10 text-white/60'}`}
+                    >
+                      {BOTTOM_LEFT_SHAPE_LABELS[id]}
+                    </button>
+                    <SakuraToggle active={settings.enabled} onClick={() => updateBottomLeftShape(id, { enabled: !settings.enabled })} label={settings.enabled ? 'ON' : 'OFF'} />
+                  </div>
+                  {selectedBottomShape === id && !settings.locked && (
+                    <div className="flex flex-col gap-3 px-1">
+                      <SakuraRange label="size" value={settings.size} min={50} max={800} onChange={v => updateBottomLeftShape(id, { size: v })} />
+                      <SakuraRange label="rot" value={settings.rotate} min={0} max={360} onChange={v => updateBottomLeftShape(id, { rotate: v })} />
+                      <button 
+                        onClick={() => updateBottomLeftShape(id, { locked: !settings.locked })}
+                        className="w-full py-2 rounded-lg bg-white/10 text-[8px] font-bold text-white/60 uppercase tracking-widest border border-white/10"
+                      >
+                        {settings.locked ? 'Unlock for Edit' : 'Lock Position'}
+                      </button>
+                    </div>
+                  )}
+                  {settings.locked && selectedBottomShape === id && (
+                    <button 
+                      onClick={() => updateBottomLeftShape(id, { locked: false })}
+                      className="w-full py-2 rounded-lg bg-[#d4af37]/20 text-[8px] font-bold text-[#edd39a] uppercase tracking-widest border border-[#d4af37]/30"
+                    >
+                      Unlock Position
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </CollapsibleSection>
