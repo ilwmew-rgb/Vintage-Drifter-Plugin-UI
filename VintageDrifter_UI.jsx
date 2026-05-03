@@ -1936,7 +1936,7 @@ export default function App() {
               stageRef={pluginStageRef}
             >
               <div className="flex flex-col items-center gap-3">
-                <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} labelColorOverride="text-white/90 drop-shadow-md" shadingStyle={KNOB_STYLES[knobStyle]} />
+                <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} shadingStyle={KNOB_STYLES[knobStyle]} />
               </div>
             </EditableHardwareWrapper>
 
