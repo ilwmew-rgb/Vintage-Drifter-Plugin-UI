@@ -124,7 +124,7 @@ const EditableAuraShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stage
             <div
               className="absolute inset-0 pointer-events-none transition-all duration-300"
               style={{
-                backgroundColor: shape.color,
+                background: `linear-gradient(${shape.gradientAngle || 0}deg, ${shape.color1 || shape.color}, ${shape.color2 || shape.color})`,
                 opacity: shape.opacity,
                 filter: `blur(${shape.blur}px)`,
                 borderRadius: shape.blobRadius,
@@ -1613,7 +1613,9 @@ export default function App() {
       rotate: Math.random() * 360,
       opacity: 0.45,
       blur: 60,
-      color: ['#e66a53', '#edd39a', '#b04a4a', '#a63c3c', '#d4af37'][Math.floor(Math.random() * 5)],
+      color1: ['#e66a53', '#edd39a', '#b04a4a', '#a63c3c', '#d4af37'][Math.floor(Math.random() * 5)],
+      color2: ['#edd39a', '#e66a53', '#d4af37', '#b04a4a', '#7aa678'][Math.floor(Math.random() * 5)],
+      gradientAngle: Math.floor(Math.random() * 360),
       blobRadius: generateRandomBlob()
     };
     setAuraShapes(prev => [...prev, newShape]);
@@ -1969,9 +1971,36 @@ export default function App() {
                         <SakuraRange label="size" value={shape.size} min={50} max={1000} onChange={v => updateAuraShape(shape.id, { size: v })} />
                         <SakuraRange label="blur" value={shape.blur} min={0} max={150} onChange={v => updateAuraShape(shape.id, { blur: v })} />
                         <SakuraRange label="opac" value={Math.round(shape.opacity * 100)} min={0} max={100} onChange={v => updateAuraShape(shape.id, { opacity: v/100 })} />
+                        <SakuraRange label="angle" value={shape.gradientAngle || 0} min={0} max={360} onChange={v => updateAuraShape(shape.id, { gradientAngle: v })} />
+                        
+                        <div className="flex items-center justify-between gap-3 px-1 mt-1">
+                          <div className="flex flex-col gap-1.5 flex-1">
+                            <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Color 1</span>
+                            <div className="relative w-full h-8 rounded-lg overflow-hidden border border-white/10">
+                              <input 
+                                type="color" 
+                                value={shape.color1 || shape.color} 
+                                onChange={e => updateAuraShape(shape.id, { color1: e.target.value })}
+                                className="absolute -inset-2 w-[calc(100%+16px)] h-[calc(100%+16px)] cursor-pointer bg-transparent border-none"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1.5 flex-1">
+                            <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Color 2</span>
+                            <div className="relative w-full h-8 rounded-lg overflow-hidden border border-white/10">
+                              <input 
+                                type="color" 
+                                value={shape.color2 || (shape.color1 || shape.color)} 
+                                onChange={e => updateAuraShape(shape.id, { color2: e.target.value })}
+                                className="absolute -inset-2 w-[calc(100%+16px)] h-[calc(100%+16px)] cursor-pointer bg-transparent border-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
                         <button 
                           onClick={() => updateAuraShape(shape.id, { blobRadius: generateRandomBlob() })}
-                          className="w-full py-2 rounded-lg bg-white/10 text-[8px] font-bold text-white/80 uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
+                          className="w-full py-2 mt-2 rounded-lg bg-white/10 text-[8px] font-bold text-white/80 uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
                         >
                           Morph Shape
                         </button>
