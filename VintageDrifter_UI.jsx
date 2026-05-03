@@ -34,6 +34,8 @@ const DECORATIVE_CIRCLE_LABELS = {
 const CONTROL_SECTION_PRESETS = {
   io: { x: 220, y: 180, locked: true },
   mode: { x: 80, y: 400, locked: true },
+  driftVisual: { x: 760, y: 640, locked: true },
+  rate: { x: 100, y: 760, locked: true },
   lfo: { x: 280, y: 780, locked: true },
   autoGain: { x: 720, y: 750, locked: true }
 };
@@ -1869,7 +1871,7 @@ export default function App() {
               id="mode" 
               x={hardwarePositions.mode.x} 
               y={hardwarePositions.mode.y} 
-              locked={hardwarePositions.io.locked}
+              locked={hardwarePositions.mode.locked}
               selected={selectedHardwareSection === 'mode'}
               onSelect={setSelectedHardwareSection}
               onUpdate={updateHardwarePosition}
@@ -1895,28 +1897,48 @@ export default function App() {
               <MatteKnob label="Noise" value={noise} onChange={setNoise} onDoubleClick={() => setNoise(0)} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
             </div>
 
-            <div className="absolute bottom-[28%] right-[7%] z-30 flex flex-col items-center gap-2">
-              <div className="relative w-[148px] h-9 rounded-lg bg-[#2d2c2b]/78 border border-white/15 shadow-[8px_10px_18px_rgba(0,0,0,0.28),inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-md">
-                <select
-                  value={driftAnimation}
-                  onChange={e => setDriftAnimation(Number(e.target.value))}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                >
-                  {DRIFT_ANIMATION_STYLES.map((name, i) => <option key={i} value={i} className="bg-[#2d2c2b] text-[#edd39a]">{name}</option>)}
-                </select>
-                <div className="absolute inset-0 flex items-center justify-center px-6 pointer-events-none">
-                  <span className="text-[#edd39a] text-[9px] font-black tracking-[0.12em] uppercase text-center leading-tight">{DRIFT_ANIMATION_STYLES[driftAnimation]}</span>
+            <EditableHardwareWrapper 
+              id="driftVisual" 
+              x={hardwarePositions.driftVisual.x} 
+              y={hardwarePositions.driftVisual.y} 
+              locked={hardwarePositions.driftVisual.locked}
+              selected={selectedHardwareSection === 'driftVisual'}
+              onSelect={setSelectedHardwareSection}
+              onUpdate={updateHardwarePosition}
+              stageRef={pluginStageRef}
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative w-[148px] h-9 rounded-lg bg-[#2d2c2b]/78 border border-white/15 shadow-[8px_10px_18px_rgba(0,0,0,0.28),inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-md">
+                  <select
+                    value={driftAnimation}
+                    onChange={e => setDriftAnimation(Number(e.target.value))}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  >
+                    {DRIFT_ANIMATION_STYLES.map((name, i) => <option key={i} value={i} className="bg-[#2d2c2b] text-[#edd39a]">{name}</option>)}
+                  </select>
+                  <div className="absolute inset-0 flex items-center justify-center px-6 pointer-events-none">
+                    <span className="text-[#edd39a] text-[9px] font-black tracking-[0.12em] uppercase text-center leading-tight">{DRIFT_ANIMATION_STYLES[driftAnimation]}</span>
+                  </div>
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[#e66a53] text-[9px] pointer-events-none">▼</div>
                 </div>
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[#e66a53] text-[9px] pointer-events-none">▼</div>
+                <span className="text-[9px] font-bold tracking-[0.22em] uppercase text-white/90 drop-shadow-md">drift visual</span>
               </div>
-              <span className="text-[9px] font-bold tracking-[0.22em] uppercase text-white/90 drop-shadow-md">drift visual</span>
-            </div>
+            </EditableHardwareWrapper>
 
-            <div className="absolute bottom-[10%] left-[12%] z-10 flex gap-6 items-end">
+            <EditableHardwareWrapper 
+              id="rate" 
+              x={hardwarePositions.rate.x} 
+              y={hardwarePositions.rate.y} 
+              locked={hardwarePositions.rate.locked}
+              selected={selectedHardwareSection === 'rate'}
+              onSelect={setSelectedHardwareSection}
+              onUpdate={updateHardwarePosition}
+              stageRef={pluginStageRef}
+            >
               <div className="flex flex-col items-center gap-3">
                 <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} labelColorOverride="text-white/90 drop-shadow-md" shadingStyle={KNOB_STYLES[knobStyle]} />
               </div>
-            </div>
+            </EditableHardwareWrapper>
 
             <EditableHardwareWrapper 
               id="lfo" 
@@ -2009,7 +2031,14 @@ export default function App() {
             {Object.entries(hardwarePositions).map(([id, pos]) => (
               <div key={id} className="flex flex-col gap-3 p-4 rounded-2xl bg-white/5 border border-white/10">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black tracking-widest text-[#edd39a] uppercase">{id === 'io' ? 'I/O Knobs' : id === 'mode' ? 'Drift Modes' : id === 'lfo' ? 'LFO Controls' : 'Auto Gain'}</span>
+                  <span className="text-[10px] font-black tracking-widest text-[#edd39a] uppercase">
+                    {id === 'io' ? 'I/O Knobs' : 
+                     id === 'mode' ? 'Drift Modes' : 
+                     id === 'driftVisual' ? 'Drift Visual' : 
+                     id === 'rate' ? 'Rate Knob' : 
+                     id === 'lfo' ? 'LFO Controls' : 
+                     'Auto Gain'}
+                  </span>
                   <button 
                     onClick={() => updateHardwarePosition(id, { locked: !pos.locked })}
                     className={`px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border transition-all ${pos.locked ? 'bg-white/5 border-white/20 text-white/50' : 'bg-[#e66a53]/20 border-[#e66a53]/40 text-[#e66a53]'}`}
