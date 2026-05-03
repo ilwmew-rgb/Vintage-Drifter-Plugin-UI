@@ -122,7 +122,7 @@ const EditableAuraShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stage
             }}
           >
             <div
-              className="absolute inset-0 pointer-events-none transition-all duration-300"
+              className={`absolute inset-0 pointer-events-none transition-all duration-300 ${shape.isAnimated ? 'drift-aurora-sheet' : ''}`}
               style={{
                 background: `linear-gradient(${shape.gradientAngle || 0}deg, ${shape.color1 || shape.color}, ${shape.color2 || shape.color})`,
                 opacity: shape.opacity,
@@ -1581,6 +1581,17 @@ export default function App() {
       [id]: { ...DECORATIVE_CIRCLE_PRESETS[id], ...current[id], ...patch }
     }));
   };
+  const morphAllDecorativeCircles = () => {
+    setDecorativeCircles(current => {
+      const merged = { ...DECORATIVE_CIRCLE_PRESETS, ...current };
+      return Object.fromEntries(Object.entries(merged).map(([id, circle]) => [id, { 
+        ...circle, 
+        x: Math.round(100 + Math.random() * 650),
+        y: Math.round(100 + Math.random() * 650),
+        rotate: Math.random() * 360
+      }]));
+    });
+  };
   const updateAllDecorativeCircles = (patch) => {
     setDecorativeCircles(current => {
       const merged = { ...DECORATIVE_CIRCLE_PRESETS, ...current };
@@ -1616,10 +1627,20 @@ export default function App() {
       color1: ['#e66a53', '#edd39a', '#b04a4a', '#a63c3c', '#d4af37'][Math.floor(Math.random() * 5)],
       color2: ['#edd39a', '#e66a53', '#d4af37', '#b04a4a', '#7aa678'][Math.floor(Math.random() * 5)],
       gradientAngle: Math.floor(Math.random() * 360),
+      isAnimated: true,
       blobRadius: generateRandomBlob()
     };
     setAuraShapes(prev => [...prev, newShape]);
     setSelectedAuraShape(newShape.id);
+  };
+
+  const morphAllAuraShapes = () => {
+    setAuraShapes(prev => prev.map(s => ({
+      ...s,
+      blobRadius: generateRandomBlob(),
+      gradientAngle: Math.floor(Math.random() * 360),
+      rotate: Math.random() * 360
+    })));
   };
 
   const updateAuraShape = (id, patch) => {
@@ -1942,13 +1963,21 @@ export default function App() {
 
         {/* SECTION 4: AURA SHAPES (NEW) */}
         <CollapsibleSection title="Aura Sculptor">
-          <div className="flex flex-col gap-6">
-            <button 
-              onClick={addAuraShape}
-              className="w-full py-3 rounded-xl bg-[#e66a53] text-white text-[11px] font-black tracking-[0.2em] uppercase hover:brightness-110 shadow-lg active:scale-95 transition-all"
-            >
-              Generate New Shape
-            </button>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={addAuraShape}
+                className="w-full py-3 rounded-xl bg-[#e66a53] text-white text-[10px] font-black tracking-[0.15em] uppercase hover:brightness-110 shadow-lg active:scale-95 transition-all"
+              >
+                Add Shape
+              </button>
+              <button 
+                onClick={morphAllAuraShapes}
+                className="w-full py-3 rounded-xl bg-white/10 border border-white/20 text-[#edd39a] text-[10px] font-black tracking-[0.15em] uppercase hover:bg-white/20 shadow-lg active:scale-95 transition-all"
+              >
+                Morph All
+              </button>
+            </div>
 
             {auraShapes.length > 0 && (
               <div className="flex flex-col gap-4 border-t border-white/5 pt-4">
@@ -1998,12 +2027,20 @@ export default function App() {
                           </div>
                         </div>
 
-                        <button 
-                          onClick={() => updateAuraShape(shape.id, { blobRadius: generateRandomBlob() })}
-                          className="w-full py-2 mt-2 rounded-lg bg-white/10 text-[8px] font-bold text-white/80 uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
-                        >
-                          Morph Shape
-                        </button>
+                        <div className="flex items-center justify-between gap-2 mt-2">
+                          <button 
+                            onClick={() => updateAuraShape(shape.id, { isAnimated: !shape.isAnimated })}
+                            className={`flex-1 py-2 rounded-lg text-[8px] font-bold uppercase tracking-widest border transition-all ${shape.isAnimated ? 'bg-[#d4af37]/30 border-[#d4af37]/40 text-[#edd39a]' : 'bg-white/5 border-white/10 text-white/60'}`}
+                          >
+                            {shape.isAnimated ? 'Animated' : 'Static'}
+                          </button>
+                          <button 
+                            onClick={() => updateAuraShape(shape.id, { blobRadius: generateRandomBlob() })}
+                            className="flex-1 py-2 rounded-lg bg-white/10 text-[8px] font-bold text-white/80 uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
+                          >
+                            Morph Shape
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2019,6 +2056,7 @@ export default function App() {
             <div className="grid grid-cols-2 gap-2">
                <button onClick={() => updateAllDecorativeCircles({ enabled: true })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All On</button>
                <button onClick={() => updateAllDecorativeCircles({ enabled: false })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All Off</button>
+               <button onClick={morphAllDecorativeCircles} className="col-span-2 py-2 rounded-lg bg-[#d4af37]/20 border border-[#d4af37]/30 text-[9px] font-bold text-[#edd39a] uppercase hover:bg-[#d4af37]/30 transition-all">Morph All Circles</button>
             </div>
             {Object.entries(decorativeCircleSettings).map(([id, settings], index) => (
               <CircleControlGroup
