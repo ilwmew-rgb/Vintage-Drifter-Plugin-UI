@@ -18,13 +18,17 @@ const SAKURA_IMAGE_PRESETS = {
 const DECORATIVE_CIRCLE_PRESETS = {
   circle1: { enabled: true, locked: true, x: 595, y: 680, size: 680, rotate: 0, color: '#e66a53', opacity: 0.9 },
   circle2: { enabled: true, locked: true, x: 43, y: 510, size: 340, rotate: 0, color: '#e0a96d', opacity: 0.7 },
-  circle3: { enabled: true, locked: true, x: 638, y: 298, size: 255, rotate: 0, color: '#b04a4a', opacity: 0.5 }
+  circle3: { enabled: true, locked: true, x: 638, y: 298, size: 255, rotate: 0, color: '#b04a4a', opacity: 0.5 },
+  circle4: { enabled: true, locked: true, x: 140, y: 780, size: 280, rotate: 0, color: '#3c4d3c', opacity: 0.6 },
+  circle5: { enabled: true, locked: true, x: 80, y: 810, size: 220, rotate: 0, color: '#4d4d3c', opacity: 0.5 }
 };
 
 const DECORATIVE_CIRCLE_LABELS = {
   circle1: 'Bottom Coral',
   circle2: 'Left Ochre',
-  circle3: 'Top Wine'
+  circle3: 'Top Wine',
+  circle4: 'Rate Moss',
+  circle5: 'Rate Earth'
 };
 
 const BOTTOM_LEFT_SHAPE_PRESETS = {
@@ -118,7 +122,7 @@ const EditableAuraShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stage
               top: shape.y - shape.size / 2,
               width: shape.size,
               height: shape.size,
-              zIndex: selected ? 37 : 5
+              zIndex: selected ? 37 : 1
             }}
           >
             <div
@@ -1581,17 +1585,6 @@ export default function App() {
       [id]: { ...DECORATIVE_CIRCLE_PRESETS[id], ...current[id], ...patch }
     }));
   };
-  const morphAllDecorativeCircles = () => {
-    setDecorativeCircles(current => {
-      const merged = { ...DECORATIVE_CIRCLE_PRESETS, ...current };
-      return Object.fromEntries(Object.entries(merged).map(([id, circle]) => [id, { 
-        ...circle, 
-        x: Math.round(100 + Math.random() * 650),
-        y: Math.round(100 + Math.random() * 650),
-        rotate: Math.random() * 360
-      }]));
-    });
-  };
   const updateAllDecorativeCircles = (patch) => {
     setDecorativeCircles(current => {
       const merged = { ...DECORATIVE_CIRCLE_PRESETS, ...current };
@@ -2056,7 +2049,6 @@ export default function App() {
             <div className="grid grid-cols-2 gap-2">
                <button onClick={() => updateAllDecorativeCircles({ enabled: true })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All On</button>
                <button onClick={() => updateAllDecorativeCircles({ enabled: false })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All Off</button>
-               <button onClick={morphAllDecorativeCircles} className="col-span-2 py-2 rounded-lg bg-[#d4af37]/20 border border-[#d4af37]/30 text-[9px] font-bold text-[#edd39a] uppercase hover:bg-[#d4af37]/30 transition-all">Morph All Circles</button>
             </div>
             {Object.entries(decorativeCircleSettings).map(([id, settings], index) => (
               <CircleControlGroup
