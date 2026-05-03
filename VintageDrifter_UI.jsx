@@ -20,7 +20,7 @@ const DECORATIVE_CIRCLE_PRESETS = {
   circle2: { enabled: true, locked: true, x: 43, y: 510, size: 340, rotate: 0, color: '#e0a96d', opacity: 0.7 },
   circle3: { enabled: true, locked: true, x: 638, y: 298, size: 255, rotate: 0, color: '#b04a4a', opacity: 0.5 },
   leaf1: { enabled: true, locked: true, x: 120, y: 760, size: 320, rotate: -25, color: '#2c3e35', opacity: 0.9 },
-  leaf2: { enabled: true, locked: true, x: 180, y: 720, size: 280, rotate: 15, color: '#1e2a24', opacity: 0.9 }
+  leaf2: { enabled: true, locked: true, x: 180, y: 720, size: 280, rotate: 15, color: '#1e2a24', opacity: 0.6 }
 };
 
 const DECORATIVE_CIRCLE_LABELS = {
