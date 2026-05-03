@@ -1670,7 +1670,7 @@ export default function App() {
   const [parallelCables, setParallelCables] = useState(true);
   const [showStems, setShowStems] = useState(false);
   const [showFerns, setShowFerns] = useState(true);
-  const [sakuraImages, setSakuraImages] = useState({
+  const [sakuraImageState, setSakuraImageState] = useState({
     sakura: { ...SAKURA_IMAGE_PRESETS.sakura, enabled: false },
     sakura2: { ...SAKURA_IMAGE_PRESETS.sakura2, enabled: true },
     sakura3: { ...SAKURA_IMAGE_PRESETS.sakura3, enabled: true }
@@ -1687,16 +1687,16 @@ export default function App() {
   const [filterSwitchStyle, setFilterSwitchStyle] = useState(0);
   const [ioScaleStyle, setIoScaleStyle] = useState(6);
   const sakuraImageSettings = {
-    sakura: { ...SAKURA_IMAGE_PRESETS.sakura, ...sakuraImages.sakura },
-    sakura2: { ...SAKURA_IMAGE_PRESETS.sakura2, ...sakuraImages.sakura2 },
-    sakura3: { ...SAKURA_IMAGE_PRESETS.sakura3, ...sakuraImages.sakura3 }
+    sakura: { ...SAKURA_IMAGE_PRESETS.sakura, ...sakuraImageState.sakura },
+    sakura2: { ...SAKURA_IMAGE_PRESETS.sakura2, ...sakuraImageState.sakura2 },
+    sakura3: { ...SAKURA_IMAGE_PRESETS.sakura3, ...sakuraImageState.sakura3 }
   };
   const decorativeCircleSettings = Object.fromEntries(
     Object.entries(DECORATIVE_CIRCLE_PRESETS).map(([id, preset]) => [id, { ...preset, ...decorativeCircles[id] }])
   );
 
   const updateSakuraImage = (id, patch) => {
-    setSakuraImages(current => ({
+    setSakuraImageState(current => ({
       ...SAKURA_IMAGE_PRESETS,
       ...current,
       [id]: { ...SAKURA_IMAGE_PRESETS[id], ...current[id], ...patch }
