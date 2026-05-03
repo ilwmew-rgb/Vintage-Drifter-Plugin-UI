@@ -1,13 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
+import sakuraSrc from './Images/Sakura.png';
+import sakura2Src from './Images/Sakura2.png';
 
 const DRIFT_ANIMATION_STYLES = [
   'Original Drift',
+  'Original Flutter',
   'Aurora Veil',
   'Aurora Flutter'
 ];
 
+const SAKURA_IMAGE_PRESETS = {
+  sakura: { enabled: true, x: 845, y: 286, size: 305, rotate: 6 },
+  sakura2: { enabled: true, x: 0, y: 266, size: 335, rotate: 1 },
+  sakura3: { enabled: true, x: 872, y: 774, size: 338, rotate: 34 }
+};
+
 const ORGANIC_AURORA_VARIANTS = {
-  2: {
+  3: {
     type: 'fractalNoise',
     numOctaves: 2,
     seedValues: '17;17;52;23;23',
@@ -23,7 +32,7 @@ const ORGANIC_AURORA_VARIANTS = {
 };
 
 // --- Procedural Drift Animation Engine ---
-const OriginalWobblyAura = ({ drift, spread, active, rate }) => {
+const OriginalWobblyAura = ({ drift, spread, active, rate, originalFlutter = false }) => {
   const ring1Ref = useRef(null);
   const ring2Ref = useRef(null);
   const requestRef = useRef();
@@ -71,12 +80,45 @@ const OriginalWobblyAura = ({ drift, spread, active, rate }) => {
   const visualSpread = spread * 0.5;
   const spreadScaleX = 1 + (visualSpread / 166.6);
   const spreadScaleY = 1 + (visualSpread / 500);
+  const intensity = Math.max(0.08, drift / 100);
+  const flutterRestScale = originalFlutter ? 0.22 + intensity * 0.62 : 0;
+  const flutterBurstScale = originalFlutter ? 8 + intensity * 20 : 0;
+  const flutterBlur = 0.06 + intensity * 0.11;
+  const flutterCycle = Math.max(1.02, 1.62 - intensity * 0.2 - rate / 270);
+  const flutterFrequency = `${(0.018 + intensity * 0.01).toFixed(3)} ${(0.082 + intensity * 0.032).toFixed(3)}`;
 
   return (
     <div className={`absolute inset-0 pointer-events-none transition-all duration-700 ease-out flex justify-center items-center ${active ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
+      {originalFlutter && (
+        <svg className="absolute w-0 h-0" aria-hidden="true" focusable="false">
+          <defs>
+            <filter id="driftOriginalFlutter" x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
+              <feTurbulence type="fractalNoise" baseFrequency={flutterFrequency} numOctaves="2" seed="17" result="originalFlutterNoise">
+                <animate attributeName="seed" values="17;17;52;23;23" keyTimes="0;0.66;0.75;0.88;1" dur={`${flutterCycle}s`} repeatCount="indefinite" />
+              </feTurbulence>
+              <feGaussianBlur in="originalFlutterNoise" stdDeviation={flutterBlur} result="softOriginalFlutterNoise" />
+              <feColorMatrix
+                in="softOriginalFlutterNoise"
+                type="matrix"
+                values="1 0 0 0 0  0 0 0 0 0.5  0 0 1 0 0  0 0 0 1 0"
+                result="horizontalOriginalFlutterNoise"
+              />
+              <feDisplacementMap in="SourceGraphic" in2="horizontalOriginalFlutterNoise" scale={flutterRestScale} xChannelSelector="R" yChannelSelector="G">
+                <animate
+                  attributeName="scale"
+                  values={`${flutterRestScale};${flutterRestScale};${flutterBurstScale};${flutterRestScale};${flutterRestScale}`}
+                  keyTimes="0;0.66;0.75;0.88;1"
+                  dur={`${flutterCycle}s`}
+                  repeatCount="indefinite"
+                />
+              </feDisplacementMap>
+            </filter>
+          </defs>
+        </svg>
+      )}
       <div className="absolute w-full h-full rounded-full blur-[60px] transition-transform duration-75" style={{ backgroundColor: '#e66a53', opacity: 0.15 + (drift/100)*0.1 + (spread/100)*0.15, transform: `translateX(-${visualSpread * 1.5}px) scaleX(${1 + visualSpread/200})` }} />
       <div className="absolute w-full h-full rounded-full blur-[60px] transition-transform duration-75" style={{ backgroundColor: '#edd39a', opacity: 0.15 + (drift/100)*0.1 + (spread/100)*0.15, transform: `translateX(${visualSpread * 1.5}px) scaleX(${1 + visualSpread/200})` }} />
-      <div className="absolute w-[160%] h-[160%] flex justify-center items-center transition-transform duration-75" style={{ filter: 'drop-shadow(0 0 8px rgba(230,106,83,0.4))', transform: `scaleX(${spreadScaleX}) scaleY(${spreadScaleY})` }}>
+      <div className="absolute w-[160%] h-[160%] flex justify-center items-center transition-transform duration-75" style={{ filter: originalFlutter ? 'url(#driftOriginalFlutter) drop-shadow(0 0 8px rgba(230,106,83,0.4))' : 'drop-shadow(0 0 8px rgba(230,106,83,0.4))', transform: `scaleX(${spreadScaleX}) scaleY(${spreadScaleY})` }}>
         <div className="absolute w-[85%] h-[85%] transition-transform mix-blend-screen" style={{ animation: `spin ${animSpeed * 2.5}s linear infinite` }}>
           <div ref={ring1Ref} className="w-full h-full border-[2.5px] border-[#e66a53] border-dashed opacity-80" style={{ borderRadius: '50%', transition: 'border-radius 0.1s ease-out' }} />
         </div>
@@ -205,9 +247,75 @@ const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle }) => {
 };
 
 const WobblyAura = (props) => (
-  (props.animationStyle ?? 0) === 0
-    ? <OriginalWobblyAura {...props} />
+  (props.animationStyle ?? 0) <= 1
+    ? <OriginalWobblyAura {...props} originalFlutter={(props.animationStyle ?? 0) === 1} />
     : <CreativeDriftAura {...props} />
+);
+
+const SakuraImageLayer = ({ src, settings, alt }) => {
+  if (!settings.enabled) return null;
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="absolute pointer-events-none select-none"
+      draggable={false}
+      style={{
+        left: settings.x,
+        top: settings.y,
+        width: settings.size,
+        transform: `translate(-50%, -50%) rotate(${settings.rotate}deg)`,
+        transformOrigin: 'center',
+        zIndex: 39,
+        filter: 'brightness(0.95)',
+        mixBlendMode: 'luminosity'
+      }}
+    />
+  );
+};
+
+const SakuraToggle = ({ active, onClick, label }) => (
+  <div className="flex flex-col items-center gap-1.5">
+    <button
+      onClick={onClick}
+      className={`w-11 h-6 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${active ? 'bg-white/20' : 'bg-transparent'}`}
+    >
+      <div className={`w-3.5 h-3.5 rounded-full bg-white transition-transform duration-300 ${active ? 'translate-x-5' : 'translate-x-0'}`} />
+    </button>
+    <span className="text-white/90 text-[10px] font-medium tracking-wide text-center leading-tight">{label}</span>
+  </div>
+);
+
+const SakuraRange = ({ label, value, min, max, step = 1, onChange }) => (
+  <label className="grid grid-cols-[34px_1fr_34px] items-center gap-2 w-full">
+    <span className="text-white/90 text-[9px] font-bold tracking-[0.12em] uppercase">{label}</span>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={e => onChange(Number(e.target.value))}
+      className="w-full accent-white"
+    />
+    <span className="text-white/80 text-[9px] font-bold tabular-nums text-right">{value}</span>
+  </label>
+);
+
+const SakuraControlGroup = ({ title, settings, onToggle, onUpdate }) => (
+  <div className="w-full flex flex-col gap-2">
+    <div className="flex items-center justify-between">
+      <span className="text-white font-medium text-[13px] tracking-wide">{title}</span>
+      <SakuraToggle active={settings.enabled} onClick={onToggle} label={settings.enabled ? 'on' : 'off'} />
+    </div>
+    <div className={`flex flex-col gap-1.5 transition-opacity duration-200 ${settings.enabled ? 'opacity-100' : 'opacity-45'}`}>
+      <SakuraRange label="x" value={settings.x} min={0} max={1000} onChange={value => onUpdate({ x: value })} />
+      <SakuraRange label="y" value={settings.y} min={0} max={850} onChange={value => onUpdate({ y: value })} />
+      <SakuraRange label="size" value={settings.size} min={40} max={520} onChange={value => onUpdate({ size: value })} />
+      <SakuraRange label="rot" value={settings.rotate} min={-180} max={180} onChange={value => onUpdate({ rotate: value })} />
+    </div>
+  </div>
 );
 
 // --- Botanical SVGs ---
@@ -504,7 +612,17 @@ const DEMO_PRESETS = ['Subtle Warmth', 'Vinyl Drift', 'Tape Machine', 'Broken Ca
 
 const MODE_STYLE_NAMES = [
   'Glassmorphism (Original)',
-  'Flush Walnut (Gold)', 'Flush Walnut (Ivory)', 'Flush Walnut (Matte)'
+  'Flush Walnut (Gold)',
+  'Flush Walnut (Ivory)',
+  'Flush Walnut (Matte)',
+  'Pearl Capsule',
+  'Porcelain Tabs',
+  'Linen Radio',
+  'Petal Lamps',
+  'Ivory Toggle',
+  'Paper Dial',
+  'Brass Seeds',
+  'Silk Faders'
 ];
 
 const BACKGROUNDS = [
@@ -520,11 +638,19 @@ const BACKGROUNDS = [
 
 const ModeSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
   const modes = ['calm', 'vintage', 'unstable'];
+  const tone = {
+    calm: { color: '#7aa678', glow: 'rgba(122,166,120,0.38)', bg: '#dce8d0' },
+    vintage: { color: '#d49b4f', glow: 'rgba(212,155,79,0.42)', bg: '#efe0bb' },
+    unstable: { color: '#d96f5d', glow: 'rgba(217,111,93,0.42)', bg: '#efc2b8' }
+  };
+  const label = (m, active, extra = '') => (
+    <span className={`text-[8px] font-black tracking-[0.18em] uppercase transition-colors ${extra}`} style={{ color: active ? tone[m].color : '#8a7e6b' }}>{m}</span>
+  );
   
   switch (styleIndex) {
     case 0: // Glassmorphism (Original)
       return (
-        <div className="absolute top-[48%] left-[8%] -translate-y-1/2 flex flex-col gap-4 p-4 rounded-[2rem] bg-white/20 backdrop-blur-md border border-white/40 shadow-xl z-10">
+        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-4 p-4 rounded-[2rem] bg-white/20 backdrop-blur-md border border-white/40 shadow-xl z-10">
           {modes.map(m => (
             <div key={m} className="flex flex-col items-center gap-2 z-10">
               <button onClick={() => setMode(m)} className="relative w-8 h-8 rounded-full outline-none flex items-center justify-center transition-transform active:scale-95" style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: power && mode === m ? '5px 5px 15px rgba(0,0,0,0.15), 0 0 12px rgba(212,175,55,0.3), inset 0 0 8px rgba(255,255,255,0.5)' : '5px 5px 15px rgba(0,0,0,0.1)' }}>
@@ -536,10 +662,9 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
         </div>
       );
 
-
     case 1: // Flush Walnut (Gold)
       return (
-        <div className="absolute top-[48%] left-[8%] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-full z-10" style={{ 
+        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-full z-10" style={{ 
           backgroundImage: 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.4)), url("/textures/walnut.png")', 
           backgroundSize: 'cover',
           boxShadow: 'inset 2px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1)',
@@ -560,7 +685,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
 
     case 2: // Flush Walnut (Ivory)
       return (
-        <div className="absolute top-[48%] left-[8%] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-full z-10" style={{ 
+        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-full z-10" style={{ 
           backgroundImage: 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.4)), url("/textures/walnut.png")', 
           backgroundSize: 'cover',
           boxShadow: 'inset 2px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1)',
@@ -581,7 +706,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
 
     case 3: // Flush Walnut (Matte)
       return (
-        <div className="absolute top-[48%] left-[8%] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-[2rem] z-10" style={{ 
+        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-[2rem] z-10" style={{ 
           backgroundImage: 'linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.2)), url("/textures/walnut.png")', 
           backgroundSize: 'cover',
           boxShadow: 'inset 2px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1)',
@@ -606,7 +731,132 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
         </div>
       );
 
-
+    case 4:
+      return (
+        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 z-10 flex flex-col gap-3 rounded-[30px] border border-[#fff7e8]/80 bg-[#f7edd8]/78 px-3 py-4 shadow-[10px_18px_28px_rgba(81,57,38,0.18),inset_1px_1px_2px_rgba(255,255,255,0.9)]">
+          {modes.map(m => {
+            const active = power && mode === m;
+            return (
+              <button key={m} onClick={() => setMode(m)} className="group flex w-[72px] flex-col items-center gap-1.5 rounded-[22px] px-2 py-2 transition-all active:scale-95" style={{ background: active ? `linear-gradient(145deg, #fff9ed, ${tone[m].bg})` : 'linear-gradient(145deg, rgba(255,250,237,0.74), rgba(228,213,188,0.35))', boxShadow: active ? `0 0 0 1px rgba(255,255,255,0.9), 0 9px 18px ${tone[m].glow}, inset 1px 1px 2px rgba(255,255,255,0.95)` : 'inset 1px 1px 2px rgba(255,255,255,0.65), 4px 7px 12px rgba(89,68,48,0.1)' }}>
+                <span className="h-5 w-5 rounded-full transition-all" style={{ background: active ? tone[m].color : '#d8cbb4', boxShadow: active ? `0 0 14px ${tone[m].glow}` : 'inset 1px 1px 3px rgba(99,72,48,0.22)' }} />
+                {label(m, active)}
+              </button>
+            );
+          })}
+        </div>
+      );
+    case 5:
+      return (
+        <div className="absolute top-[48%] left-[5.5%] translate-x-[10px] -translate-y-1/2 z-10 flex rounded-[24px] border border-white/75 bg-[#f3e6cb]/82 p-1.5 shadow-[8px_14px_24px_rgba(71,50,33,0.17),inset_0_1px_2px_rgba(255,255,255,0.9)]">
+          {modes.map(m => {
+            const active = power && mode === m;
+            return (
+              <button key={m} onClick={() => setMode(m)} className="relative flex h-[82px] w-[38px] flex-col items-center justify-between rounded-[18px] px-1.5 py-2 transition-all active:scale-95" style={{ background: active ? '#fff6e5' : 'transparent', boxShadow: active ? `0 8px 18px ${tone[m].glow}, inset 1px 1px 2px rgba(255,255,255,0.95)` : 'none' }}>
+                <span className="h-8 w-3 rounded-full border border-white/60 transition-all" style={{ background: active ? `linear-gradient(180deg, #fffdf5, ${tone[m].color})` : 'linear-gradient(180deg, #eadfc9, #cab99b)', boxShadow: active ? `0 0 12px ${tone[m].glow}` : 'inset 0 1px 3px rgba(83,61,42,0.18)' }} />
+                <span className="origin-center rotate-[-90deg] whitespace-nowrap text-[8px] font-black uppercase tracking-[0.16em]" style={{ color: active ? tone[m].color : '#8b7d68' }}>{m}</span>
+              </button>
+            );
+          })}
+        </div>
+      );
+    case 6:
+      return (
+        <div className="absolute top-[48%] left-[7%] translate-x-[10px] -translate-y-1/2 z-10 flex flex-col gap-2 rounded-[18px] border border-[#fff7ea]/70 bg-[#eee1c6]/82 p-2 shadow-[8px_14px_22px_rgba(79,55,35,0.16)]" style={{ backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.38), rgba(255,255,255,0)), repeating-linear-gradient(90deg, rgba(120,92,62,0.035) 0px, rgba(120,92,62,0.035) 1px, transparent 1px, transparent 5px)' }}>
+          {modes.map(m => {
+            const active = power && mode === m;
+            return (
+              <button key={m} onClick={() => setMode(m)} className="flex w-[86px] items-center gap-2 rounded-[13px] px-2 py-1.5 transition-all active:scale-95" style={{ background: active ? 'rgba(255,249,235,0.92)' : 'rgba(255,255,255,0.22)', boxShadow: active ? `0 7px 16px ${tone[m].glow}, inset 1px 1px 2px rgba(255,255,255,0.9)` : 'inset 0 1px 1px rgba(255,255,255,0.45)' }}>
+                <span className="relative h-6 w-6 rounded-full border border-white/80" style={{ background: active ? tone[m].bg : '#d7c8ad' }}>
+                  <span className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ background: active ? tone[m].color : '#a99a80', boxShadow: active ? `0 0 10px ${tone[m].glow}` : 'none' }} />
+                </span>
+                {label(m, active, 'text-left')}
+              </button>
+            );
+          })}
+        </div>
+      );
+    case 7:
+      return (
+        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 z-10 flex flex-col gap-4 rounded-[999px] border border-white/80 bg-[#f5e9d1]/78 px-3 py-4 shadow-[8px_14px_26px_rgba(73,53,35,0.16),inset_0_1px_2px_rgba(255,255,255,0.86)]">
+          {modes.map(m => {
+            const active = power && mode === m;
+            return (
+              <div key={m} className="flex flex-col items-center gap-1.5">
+                <button onClick={() => setMode(m)} className="relative h-10 w-10 rounded-full border border-white/75 transition-all active:scale-95" style={{ background: active ? `radial-gradient(circle at 35% 28%, #fffaf0, ${tone[m].bg} 72%)` : 'radial-gradient(circle at 35% 28%, #fff8e7, #d9c8aa)', boxShadow: active ? `0 0 0 4px rgba(255,255,255,0.26), 0 0 16px ${tone[m].glow}, inset 1px 1px 3px rgba(255,255,255,0.85)` : '4px 6px 12px rgba(80,58,38,0.14), inset 1px 1px 3px rgba(255,255,255,0.72)' }}>
+                  <span className="absolute inset-[13px] rounded-full" style={{ background: tone[m].color, opacity: active ? 1 : 0.38, boxShadow: active ? `0 0 12px ${tone[m].glow}` : 'none' }} />
+                </button>
+                {label(m, active)}
+              </div>
+            );
+          })}
+        </div>
+      );
+    case 8:
+      return (
+        <div className="absolute top-[48%] left-[6%] translate-x-[10px] -translate-y-1/2 z-10 rounded-[24px] border border-[#fff6e6]/80 bg-[#efe0c2]/82 p-2 shadow-[8px_14px_24px_rgba(74,51,34,0.16),inset_1px_1px_2px_rgba(255,255,255,0.78)]">
+          <div className="flex flex-col gap-1.5">
+            {modes.map(m => {
+              const active = power && mode === m;
+              return (
+                <button key={m} onClick={() => setMode(m)} className="flex h-8 w-[92px] items-center justify-between rounded-[18px] px-2 transition-all active:scale-95" style={{ background: active ? 'rgba(255,248,232,0.96)' : 'rgba(255,255,255,0.22)', boxShadow: active ? `inset 0 0 0 1px rgba(255,255,255,0.8), 0 7px 15px ${tone[m].glow}` : 'inset 0 1px 1px rgba(255,255,255,0.42)' }}>
+                  {label(m, active)}
+                  <span className="h-5 w-9 rounded-full p-[3px]" style={{ background: active ? tone[m].bg : '#dccdb0', boxShadow: 'inset 1px 1px 3px rgba(92,66,42,0.18)' }}>
+                    <span className="block h-full w-3.5 rounded-full transition-transform duration-300" style={{ background: active ? tone[m].color : '#b9a98e', transform: active ? 'translateX(15px)' : 'translateX(0)', boxShadow: active ? `0 0 10px ${tone[m].glow}` : 'none' }} />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    case 9:
+      return (
+        <div className="absolute top-[48%] left-[7.5%] translate-x-[10px] -translate-y-1/2 z-10 flex flex-col items-center gap-2 rounded-[22px] border border-white/80 bg-[#f3e4ca]/80 px-2.5 py-3 shadow-[8px_14px_24px_rgba(78,55,36,0.15)]">
+          {modes.map((m, index) => {
+            const active = power && mode === m;
+            return (
+              <button key={m} onClick={() => setMode(m)} className="relative h-[42px] w-[68px] rounded-[16px] transition-all active:scale-95" style={{ background: active ? `linear-gradient(135deg, #fff9ec, ${tone[m].bg})` : 'linear-gradient(135deg, rgba(255,248,232,0.72), rgba(221,206,178,0.58))', boxShadow: active ? `0 9px 18px ${tone[m].glow}, inset 1px 1px 2px rgba(255,255,255,0.88)` : 'inset 1px 1px 2px rgba(255,255,255,0.6), 3px 5px 10px rgba(80,56,36,0.1)' }}>
+                <span className="absolute left-2 top-2 text-[8px] font-black tracking-[0.18em]" style={{ color: active ? tone[m].color : '#8a7e6b' }}>{String(index + 1).padStart(2, '0')}</span>
+                <span className="absolute bottom-2 left-2 text-[8px] font-black uppercase tracking-[0.16em]" style={{ color: active ? tone[m].color : '#8a7e6b' }}>{m}</span>
+                <span className="absolute right-2 top-1/2 h-5 w-1.5 -translate-y-1/2 rounded-full" style={{ background: active ? tone[m].color : '#cdbd9f', boxShadow: active ? `0 0 10px ${tone[m].glow}` : 'none' }} />
+              </button>
+            );
+          })}
+        </div>
+      );
+    case 10:
+      return (
+        <div className="absolute top-[48%] left-[7.5%] translate-x-[10px] -translate-y-1/2 z-10 flex flex-col gap-3 rounded-[999px] border border-white/75 bg-[#f5e7ce]/78 px-3 py-4 shadow-[8px_14px_24px_rgba(74,52,34,0.15)]">
+          {modes.map(m => {
+            const active = power && mode === m;
+            return (
+              <button key={m} onClick={() => setMode(m)} className="flex flex-col items-center gap-1 transition-transform active:scale-95">
+                <span className="relative flex h-9 w-9 items-center justify-center rounded-full" style={{ background: active ? '#fff7e7' : '#e2d2b5', boxShadow: active ? `0 8px 18px ${tone[m].glow}, inset 1px 1px 2px rgba(255,255,255,0.9)` : 'inset 1px 1px 3px rgba(255,255,255,0.55), 3px 5px 10px rgba(80,58,38,0.1)' }}>
+                  {[0, 1, 2].map(i => <span key={i} className="absolute h-1.5 w-1.5 rounded-full" style={{ background: active ? tone[m].color : '#b8a78a', transform: `rotate(${i * 120}deg) translateY(-8px)`, boxShadow: active ? `0 0 8px ${tone[m].glow}` : 'none' }} />)}
+                </span>
+                {label(m, active)}
+              </button>
+            );
+          })}
+        </div>
+      );
+    case 11:
+      return (
+        <div className="absolute top-[48%] left-[6%] translate-x-[10px] -translate-y-1/2 z-10 flex flex-col gap-2 rounded-[20px] border border-white/75 bg-[#f2e4c8]/78 p-2 shadow-[8px_14px_24px_rgba(75,53,35,0.15),inset_1px_1px_2px_rgba(255,255,255,0.78)]">
+          {modes.map(m => {
+            const active = power && mode === m;
+            return (
+              <button key={m} onClick={() => setMode(m)} className="flex w-[88px] items-center gap-2 rounded-[14px] px-2 py-2 transition-all active:scale-95" style={{ background: active ? '#fff7e7' : 'rgba(255,255,255,0.18)', boxShadow: active ? `0 8px 16px ${tone[m].glow}, inset 1px 1px 2px rgba(255,255,255,0.85)` : 'inset 0 1px 1px rgba(255,255,255,0.4)' }}>
+                <span className="h-7 w-2 rounded-full" style={{ background: active ? tone[m].color : '#ccb99b', boxShadow: active ? `0 0 12px ${tone[m].glow}` : 'inset 1px 1px 2px rgba(85,62,40,0.18)' }} />
+                <span className="flex flex-col items-start gap-1">
+                  {label(m, active, 'text-left')}
+                  <span className="h-[3px] w-9 rounded-full" style={{ background: active ? tone[m].color : '#d4c4a7', opacity: active ? 0.7 : 0.45 }} />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      );
     default: return null;
   }
 };
@@ -883,7 +1133,7 @@ export default function App() {
   const [drift, setDrift] = useState(0);
   const [spread, setSpread] = useState(50);
   const [character, setCharacter] = useState(80);
-  const [charFilter, setCharFilter] = useState(1);
+  const [charFilter, setCharFilter] = useState(0);
   const [sweeten, setSweeten] = useState(60);
   const [biasHF, setBiasHF] = useState(40);
   const [noise, setNoise] = useState(30);
@@ -901,14 +1151,28 @@ export default function App() {
   const [modeStyle, setModeStyle] = useState(0);
   const [knobStyle, setKnobStyle] = useState(0);
   const [centerDialStyle, setCenterDialStyle] = useState(1);
-  const [driftAnimation, setDriftAnimation] = useState(0);
-  const [bgIndex, setBgIndex] = useState(0);
+  const [driftAnimation, setDriftAnimation] = useState(3);
+  const [bgIndex, setBgIndex] = useState(7);
   const [showOutputs, setShowOutputs] = useState(true);
   const [parallelCables, setParallelCables] = useState(true);
   const [showStems, setShowStems] = useState(false);
-  const [showFerns, setShowFerns] = useState(true);
+  const [showFerns, setShowFerns] = useState(false);
+  const [sakuraImages, setSakuraImages] = useState(SAKURA_IMAGE_PRESETS);
   const [filterSwitchStyle, setFilterSwitchStyle] = useState(0);
-  const [ioScaleStyle, setIoScaleStyle] = useState(1);
+  const [ioScaleStyle, setIoScaleStyle] = useState(5);
+  const sakuraImageSettings = {
+    sakura: { ...SAKURA_IMAGE_PRESETS.sakura, ...sakuraImages.sakura },
+    sakura2: { ...SAKURA_IMAGE_PRESETS.sakura2, ...sakuraImages.sakura2 },
+    sakura3: { ...SAKURA_IMAGE_PRESETS.sakura3, ...sakuraImages.sakura3 }
+  };
+
+  const updateSakuraImage = (id, patch) => {
+    setSakuraImages(current => ({
+      ...SAKURA_IMAGE_PRESETS,
+      ...current,
+      [id]: { ...SAKURA_IMAGE_PRESETS[id], ...current[id], ...patch }
+    }));
+  };
 
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -963,6 +1227,9 @@ export default function App() {
 
             <DetailedMonstera showStems={showStems} />
             <DetailedFernsRight showFerns={showFerns} />
+            <SakuraImageLayer src={sakuraSrc} settings={sakuraImageSettings.sakura} alt="Sakura decorative layer" />
+            <SakuraImageLayer src={sakura2Src} settings={sakuraImageSettings.sakura2} alt="Sakura 2 decorative layer" />
+            <SakuraImageLayer src={sakura2Src} settings={sakuraImageSettings.sakura3} alt="Sakura 3 decorative layer" />
 
             <div className={`absolute inset-0 bg-[#3a352d]/50 backdrop-grayscale transition-all duration-700 z-40 pointer-events-none ${power ? 'opacity-0' : 'opacity-100'}`} />
 
@@ -1076,7 +1343,7 @@ export default function App() {
       </div>
 
       {/* Sidebar Panel - Sketch Style */}
-      <div className="hidden lg:flex flex-col items-center py-10 gap-6 w-[280px] rounded-[3.5rem] border-[4px] border-white/80 shrink-0">
+      <div className="hidden lg:flex flex-col items-center py-10 gap-6 w-[280px] max-h-[calc(100vh-4rem)] overflow-y-auto rounded-[3.5rem] border-[4px] border-white/80 shrink-0">
         
         {/* Dropdown 1: Frame Style */}
         <div className="w-full px-6 flex flex-col items-center gap-3 relative">
@@ -1161,6 +1428,29 @@ export default function App() {
             </div>
           </div>
           <span className="text-white/90 text-[15px] font-medium tracking-wide">environment</span>
+        </div>
+
+        {/* Sakura Image Controls */}
+        <div className="w-full px-6 flex flex-col items-center gap-4 relative">
+          <span className="text-white/90 text-[15px] font-medium tracking-wide">sakura images</span>
+          <SakuraControlGroup
+            title="Sakura 1"
+            settings={sakuraImageSettings.sakura}
+            onToggle={() => updateSakuraImage('sakura', { enabled: !sakuraImageSettings.sakura.enabled })}
+            onUpdate={patch => updateSakuraImage('sakura', patch)}
+          />
+          <SakuraControlGroup
+            title="Sakura 2"
+            settings={sakuraImageSettings.sakura2}
+            onToggle={() => updateSakuraImage('sakura2', { enabled: !sakuraImageSettings.sakura2.enabled })}
+            onUpdate={patch => updateSakuraImage('sakura2', patch)}
+          />
+          <SakuraControlGroup
+            title="Sakura 3"
+            settings={sakuraImageSettings.sakura3}
+            onToggle={() => updateSakuraImage('sakura3', { enabled: !sakuraImageSettings.sakura3.enabled })}
+            onUpdate={patch => updateSakuraImage('sakura3', patch)}
+          />
         </div>
 
         {/* Dropdown 5: Filter Switch */}
