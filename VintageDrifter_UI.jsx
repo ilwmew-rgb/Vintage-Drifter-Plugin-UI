@@ -24,6 +24,9 @@ const DECORATIVE_CIRCLE_PRESETS = {
 };
 
 const DECORATIVE_CIRCLE_LABELS = {
+  circle1: 'Bottom Coral',
+  circle2: 'Left Ochre',
+  circle3: 'Top Wine',
   leaf1: 'Rate Shape A',
   leaf2: 'Rate Shape B'
 };
