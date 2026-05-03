@@ -18,24 +18,19 @@ const SAKURA_IMAGE_PRESETS = {
 const DECORATIVE_CIRCLE_PRESETS = {
   circle1: { enabled: true, locked: true, x: 595, y: 680, size: 680, rotate: 0, color: '#e66a53', opacity: 0.9 },
   circle2: { enabled: true, locked: true, x: 43, y: 510, size: 340, rotate: 0, color: '#e0a96d', opacity: 0.7 },
-  circle3: { enabled: true, locked: true, x: 638, y: 298, size: 255, rotate: 0, color: '#b04a4a', opacity: 0.5 }
+  circle3: { enabled: true, locked: true, x: 638, y: 298, size: 255, rotate: 0, color: '#b04a4a', opacity: 0.5 },
+  leaf1: { enabled: true, locked: true, x: 120, y: 760, size: 320, rotate: -25, color: '#2c3e35', opacity: 0.9 },
+  leaf2: { enabled: true, locked: true, x: 180, y: 720, size: 280, rotate: 15, color: '#1e2a24', opacity: 0.9 }
 };
 
 const DECORATIVE_CIRCLE_LABELS = {
   circle1: 'Bottom Coral',
   circle2: 'Left Ochre',
-  circle3: 'Top Wine'
+  circle3: 'Top Wine',
+  leaf1: 'Rate Shape A',
+  leaf2: 'Rate Shape B'
 };
 
-const BOTTOM_LEFT_SHAPE_PRESETS = {
-  leaf1: { enabled: true, locked: true, x: 120, y: 730, size: 320, rotate: 0, variant: 'large' },
-  leaf2: { enabled: true, locked: true, x: 120, y: 730, size: 320, rotate: 0, variant: 'small' }
-};
-
-const BOTTOM_LEFT_SHAPE_LABELS = {
-  leaf1: 'Large Leaf',
-  leaf2: 'Small Leaf'
-};
 const ORGANIC_AURORA_VARIANTS = {
   3: {
     type: 'fractalNoise',
@@ -525,15 +520,43 @@ const EditableDecorativeCircles = ({ circles, selectedId, setSelectedId, onUpdat
             }}
           >
             <div
-              className="absolute inset-0 rounded-full pointer-events-none"
+              className={`absolute inset-0 ${id.startsWith('leaf') ? '' : 'rounded-full'} pointer-events-none`}
               style={{
-                backgroundColor: circle.color,
+                backgroundColor: id.startsWith('leaf') ? 'transparent' : circle.color,
                 opacity: circle.opacity,
                 mixBlendMode: 'multiply',
                 transform: `rotate(${circle.rotate}deg)`,
                 transformOrigin: 'center'
               }}
-            />
+            >
+              {id.startsWith('leaf') && (
+                <svg viewBox="0 0 200 200" className="absolute inset-0 h-full w-full overflow-visible" style={{ filter: 'drop-shadow(15px 15px 20px rgba(0,0,0,0.4))' }}>
+                  <defs>
+                    <clipPath id={`monstera-cuts-${id}`}>
+                      <rect width="200" height="200" fill="white" />
+                      <ellipse cx="20" cy="70" rx="35" ry="12" transform="rotate(25 20 70)" fill="black" />
+                      <ellipse cx="10" cy="110" rx="40" ry="15" transform="rotate(10 10 110)" fill="black" />
+                      <ellipse cx="30" cy="160" rx="30" ry="10" transform="rotate(-15 30 160)" fill="black" />
+                      <ellipse cx="160" cy="50" rx="40" ry="15" transform="rotate(-30 160 50)" fill="black" />
+                      <ellipse cx="180" cy="100" rx="45" ry="16" transform="rotate(-10 180 100)" fill="black" />
+                      <ellipse cx="160" cy="150" rx="35" ry="12" transform="rotate(15 160 150)" fill="black" />
+                      <circle cx="110" cy="40" r="8" fill="black" />
+                      <ellipse cx="60" cy="80" rx="12" ry="6" transform="rotate(30 60 80)" fill="black" />
+                      <ellipse cx="140" cy="90" rx="15" ry="7" transform="rotate(-20 140 90)" fill="black" />
+                      <circle cx="120" cy="130" r="9" fill="black" />
+                      <circle cx="70" cy="140" r="7" fill="black" />
+                    </clipPath>
+                  </defs>
+                  <g transform="translate(0, 0) scale(1)">
+                    <path 
+                      d="M 100 10 C 170 10 190 70 180 130 C 170 190 120 190 100 190 C 80 190 30 190 20 130 C 10 70 30 10 100 10 Z" 
+                      fill={circle.color} 
+                      clipPath={`url(#monstera-cuts-${id})`} 
+                    />
+                  </g>
+                </svg>
+              )}
+            </div>
             {selected && (
               <>
                 <div className="absolute -inset-1 rounded-full border border-white/90 border-dashed pointer-events-none shadow-[0_0_12px_rgba(255,255,255,0.45)]" />
@@ -1549,8 +1572,6 @@ export default function App() {
   const [sakuraImages, setSakuraImages] = useState(SAKURA_IMAGE_PRESETS);
   const [decorativeCircles, setDecorativeCircles] = useState(DECORATIVE_CIRCLE_PRESETS);
   const [selectedCircle, setSelectedCircle] = useState(null);
-  const [bottomLeftShapes, setBottomLeftShapes] = useState(BOTTOM_LEFT_SHAPE_PRESETS);
-  const [selectedBottomShape, setSelectedBottomShape] = useState(null);
   const [auraShapes, setAuraShapes] = useState([]);
   const [selectedAuraShape, setSelectedAuraShape] = useState(null);
   const [filterSwitchStyle, setFilterSwitchStyle] = useState(0);
@@ -1562,9 +1583,6 @@ export default function App() {
   };
   const decorativeCircleSettings = Object.fromEntries(
     Object.entries(DECORATIVE_CIRCLE_PRESETS).map(([id, preset]) => [id, { ...preset, ...decorativeCircles[id] }])
-  );
-  const bottomLeftShapeSettings = Object.fromEntries(
-    Object.entries(BOTTOM_LEFT_SHAPE_PRESETS).map(([id, preset]) => [id, { ...preset, ...bottomLeftShapes[id] }])
   );
 
   const updateSakuraImage = (id, patch) => {
@@ -1586,20 +1604,6 @@ export default function App() {
       const merged = { ...DECORATIVE_CIRCLE_PRESETS, ...current };
       return Object.fromEntries(Object.entries(merged).map(([id, circle]) => [id, { ...circle, ...patch }]));
     });
-  };
-  const updateAllBottomLeftShapes = (patch) => {
-    setBottomLeftShapes(current => {
-      const merged = { ...BOTTOM_LEFT_SHAPE_PRESETS, ...current };
-      return Object.fromEntries(Object.entries(merged).map(([id, shape]) => [id, { ...shape, ...patch }]));
-    });
-  };
-
-  const updateBottomLeftShape = (id, patch) => {
-    setBottomLeftShapes(current => ({
-      ...BOTTOM_LEFT_SHAPE_PRESETS,
-      ...current,
-      [id]: { ...BOTTOM_LEFT_SHAPE_PRESETS[id], ...current[id], ...patch }
-    }));
   };
 
   const addAuraShape = () => {
@@ -1708,14 +1712,6 @@ export default function App() {
               stageRef={pluginStageRef}
             />
 
-            <EditableBottomLeftShapes
-              shapes={bottomLeftShapeSettings}
-              selectedId={selectedBottomShape}
-              setSelectedId={setSelectedBottomShape}
-              onUpdate={updateBottomLeftShape}
-              stageRef={pluginStageRef}
-              showStems={showStems}
-            />
             <EditableAuraShapes
               shapes={auraShapes}
               selectedId={selectedAuraShape}
@@ -1866,7 +1862,25 @@ export default function App() {
           </div>
         </CollapsibleSection>
 
-        {/* SECTION 2: HARDWARE STYLE */}
+        {/* SECTION 2: DECORATIVE ELEMENTS */}
+        <CollapsibleSection title="Decor Circles" defaultOpen={true}>
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-2 gap-2">
+               <button onClick={() => updateAllDecorativeCircles({ enabled: true })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All On</button>
+               <button onClick={() => updateAllDecorativeCircles({ enabled: false })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All Off</button>
+            </div>
+            {Object.entries(decorativeCircleSettings).map(([id, settings], index) => (
+              <CircleControlGroup
+                key={id} id={id} title={DECORATIVE_CIRCLE_LABELS[id] || `Circle ${index + 1}`}
+                settings={settings} selected={selectedCircle === id} onSelect={() => setSelectedCircle(id)}
+                onToggle={() => updateDecorativeCircle(id, { enabled: !settings.enabled })}
+                onLockToggle={() => updateDecorativeCircle(id, { locked: !settings.locked })}
+              />
+            ))}
+          </div>
+        </CollapsibleSection>
+
+        {/* SECTION 3: HARDWARE STYLE */}
         <CollapsibleSection title="Hardware Build">
           <div className="grid grid-cols-1 gap-6">
             <div className="flex flex-col gap-2">
@@ -1946,43 +1960,6 @@ export default function App() {
                   </button>
                   <span className="text-[8px] text-white/50 uppercase font-black tracking-widest">Ferns</span>
                </div>
-            </div>
-
-            <div className="flex flex-col gap-6 border-t border-white/5 pt-6">
-              <span className="text-[9px] text-white/40 uppercase font-black tracking-[0.2em]">Bottom Shapes (Rate Area)</span>
-              {Object.entries(bottomLeftShapeSettings).map(([id, settings]) => (
-                <div key={id} className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <button 
-                      onClick={() => setSelectedBottomShape(id)}
-                      className={`px-3 py-1.5 rounded-full border-2 text-[9px] font-black uppercase tracking-widest transition-all ${selectedBottomShape === id ? 'bg-[#e66a53] border-transparent text-white' : 'bg-white/5 border-white/10 text-white/60'}`}
-                    >
-                      {BOTTOM_LEFT_SHAPE_LABELS[id]}
-                    </button>
-                    <SakuraToggle active={settings.enabled} onClick={() => updateBottomLeftShape(id, { enabled: !settings.enabled })} label={settings.enabled ? 'ON' : 'OFF'} />
-                  </div>
-                  {selectedBottomShape === id && !settings.locked && (
-                    <div className="flex flex-col gap-3 px-1">
-                      <SakuraRange label="size" value={settings.size} min={50} max={800} onChange={v => updateBottomLeftShape(id, { size: v })} />
-                      <SakuraRange label="rot" value={settings.rotate} min={0} max={360} onChange={v => updateBottomLeftShape(id, { rotate: v })} />
-                      <button 
-                        onClick={() => updateBottomLeftShape(id, { locked: !settings.locked })}
-                        className="w-full py-2 rounded-lg bg-white/10 text-[8px] font-bold text-white/60 uppercase tracking-widest border border-white/10"
-                      >
-                        {settings.locked ? 'Unlock for Edit' : 'Lock Position'}
-                      </button>
-                    </div>
-                  )}
-                  {settings.locked && selectedBottomShape === id && (
-                    <button 
-                      onClick={() => updateBottomLeftShape(id, { locked: false })}
-                      className="w-full py-2 rounded-lg bg-[#d4af37]/20 text-[8px] font-bold text-[#edd39a] uppercase tracking-widest border border-[#d4af37]/30"
-                    >
-                      Unlock Position
-                    </button>
-                  )}
-                </div>
-              ))}
             </div>
           </div>
         </CollapsibleSection>
@@ -2076,23 +2053,6 @@ export default function App() {
           </div>
         </CollapsibleSection>
 
-        {/* SECTION 5: DECOR CIRCLES */}
-        <CollapsibleSection title="Decor Circles">
-          <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-2 gap-2">
-               <button onClick={() => updateAllDecorativeCircles({ enabled: true })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All On</button>
-               <button onClick={() => updateAllDecorativeCircles({ enabled: false })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All Off</button>
-            </div>
-            {Object.entries(decorativeCircleSettings).map(([id, settings], index) => (
-              <CircleControlGroup
-                key={id} id={id} title={DECORATIVE_CIRCLE_LABELS[id] || `Circle ${index + 1}`}
-                settings={settings} selected={selectedCircle === id} onSelect={() => setSelectedCircle(id)}
-                onToggle={() => updateDecorativeCircle(id, { enabled: !settings.enabled })}
-                onLockToggle={() => updateDecorativeCircle(id, { locked: !settings.locked })}
-              />
-            ))}
-          </div>
-        </CollapsibleSection>
 
         {/* SECTION 6: GLOBAL TOGGLES */}
         <CollapsibleSection title="Workspace">
