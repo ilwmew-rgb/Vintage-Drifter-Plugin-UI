@@ -1,7 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+const DRIFT_ANIMATION_STYLES = [
+  'Original Drift',
+  'Aurora Veil',
+  'Aurora Flutter'
+];
+
+const ORGANIC_AURORA_VARIANTS = {
+  2: {
+    type: 'fractalNoise',
+    numOctaves: 2,
+    seedValues: '17;17;52;23;23',
+    keyTimes: '0;0.66;0.75;0.88;1',
+    channels: ['R', 'G'],
+    axis: 'horizontal',
+    cycle: (intensity, rate) => Math.max(1.02, 1.62 - intensity * 0.2 - rate / 270),
+    frequency: (intensity) => `${(0.018 + intensity * 0.01).toFixed(3)} ${(0.082 + intensity * 0.032).toFixed(3)}`,
+    restScale: (intensity) => 0.22 + intensity * 0.62,
+    burstScale: (intensity) => 8 + intensity * 20,
+    blur: (intensity) => 0.06 + intensity * 0.11
+  }
+};
+
 // --- Procedural Drift Animation Engine ---
-const WobblyAura = ({ drift, spread, active, rate }) => {
+const OriginalWobblyAura = ({ drift, spread, active, rate }) => {
   const ring1Ref = useRef(null);
   const ring2Ref = useRef(null);
   const requestRef = useRef();
@@ -65,6 +87,128 @@ const WobblyAura = ({ drift, spread, active, rate }) => {
     </div>
   );
 };
+
+const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle }) => {
+  const organicVariant = ORGANIC_AURORA_VARIANTS[animationStyle];
+  const isOrganic = Boolean(organicVariant);
+  const intensity = Math.max(0.08, drift / 100);
+  const visualSpread = spread * 0.5;
+  const spreadScaleX = 1 + (visualSpread / 135);
+  const spreadScaleY = 1 + (visualSpread / 520);
+  const spreadShift = visualSpread * 1.25;
+  const baseSpeed = Math.max(1.6, 10 - (rate / 9));
+  const glowOpacity = active ? 0.2 + intensity * 0.26 + (spread / 100) * 0.12 : 0;
+  const organicRestScale = organicVariant ? organicVariant.restScale(intensity) : 0;
+  const organicBurstScale = organicVariant ? organicVariant.burstScale(intensity) : 0;
+  const organicBlur = organicVariant ? organicVariant.blur(intensity) : 0;
+  const organicCycle = organicVariant ? organicVariant.cycle(intensity, rate) : 2;
+  const organicFrequency = organicVariant ? organicVariant.frequency(intensity) : '0.014 0.032';
+  const stageStyle = {
+    '--drift-speed': `${baseSpeed}s`,
+    '--drift-speed-fast': `${Math.max(0.85, baseSpeed * 0.58)}s`,
+    '--drift-speed-slow': `${baseSpeed * 1.7}s`,
+    '--liquid-cycle': `${organicCycle}s`
+  };
+  const chromaGlow = (
+    <>
+      <div
+        className="absolute w-[95%] h-[95%] rounded-full blur-[72px] transition-all duration-300"
+        style={{
+          background: 'radial-gradient(circle, rgba(230,106,83,0.95), rgba(230,106,83,0.16) 52%, transparent 72%)',
+          opacity: glowOpacity,
+          transform: `translateX(-${spreadShift}px) scaleX(${1 + visualSpread / 180})`
+        }}
+      />
+      <div
+        className="absolute w-[95%] h-[95%] rounded-full blur-[72px] transition-all duration-300"
+        style={{
+          background: 'radial-gradient(circle, rgba(237,211,154,0.95), rgba(237,211,154,0.14) 52%, transparent 72%)',
+          opacity: glowOpacity,
+          transform: `translateX(${spreadShift}px) scaleX(${1 + visualSpread / 180})`
+        }}
+      />
+    </>
+  );
+
+  return (
+    <div
+      className={`absolute inset-0 pointer-events-none transition-all duration-700 ease-out flex justify-center items-center ${active ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}
+      style={stageStyle}
+    >
+      {isOrganic && (
+        <svg className="absolute w-0 h-0" aria-hidden="true" focusable="false">
+          <defs>
+            <filter id="driftAuroraLiquid" x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
+              <feTurbulence type={organicVariant.type} baseFrequency={organicFrequency} numOctaves={organicVariant.numOctaves} seed="7" result="liquidNoise">
+                <animate attributeName="seed" values={organicVariant.seedValues} keyTimes={organicVariant.keyTimes} dur={`${organicCycle}s`} repeatCount="indefinite" />
+              </feTurbulence>
+              <feGaussianBlur in="liquidNoise" stdDeviation={organicBlur} result="softLiquidNoise" />
+              {organicVariant.axis === 'horizontal' && (
+                <feColorMatrix
+                  in="softLiquidNoise"
+                  type="matrix"
+                  values="1 0 0 0 0  0 0 0 0 0.5  0 0 1 0 0  0 0 0 1 0"
+                  result="horizontalLiquidNoise"
+                />
+              )}
+              <feDisplacementMap
+                in="SourceGraphic"
+                in2={organicVariant.axis === 'horizontal' ? 'horizontalLiquidNoise' : 'softLiquidNoise'}
+                scale={organicRestScale}
+                xChannelSelector={organicVariant.channels[0]}
+                yChannelSelector={organicVariant.channels[1]}
+              >
+                <animate
+                  attributeName="scale"
+                  values={organicVariant.scaleValues
+                    ? organicVariant.scaleValues(organicRestScale, organicBurstScale)
+                    : `${organicRestScale};${organicRestScale};${organicBurstScale};${organicRestScale};${organicRestScale}`}
+                  keyTimes={organicVariant.keyTimes}
+                  dur={`${organicCycle}s`}
+                  repeatCount="indefinite"
+                />
+              </feDisplacementMap>
+            </filter>
+          </defs>
+        </svg>
+      )}
+      {chromaGlow}
+      <div
+        className={`absolute w-[168%] h-[168%] ${isOrganic ? 'drift-aurora-liquid-field' : ''}`}
+        style={{
+          transform: `scaleX(${spreadScaleX}) scaleY(${spreadScaleY})`,
+          filter: isOrganic ? 'url(#driftAuroraLiquid)' : undefined
+        }}
+      >
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="drift-aurora-sheet absolute left-1/2 top-1/2 mix-blend-screen"
+            style={{
+              width: `${74 - i * 8}%`,
+              height: `${86 - i * 6}%`,
+              borderRadius: `${44 + i * 6}% ${56 - i * 2}% ${42 + i * 4}% ${58 - i * 3}% / ${60 - i * 3}% ${40 + i * 5}% ${56 - i * 2}% ${44 + i * 4}%`,
+              background: i % 2
+                ? 'linear-gradient(130deg, transparent 8%, rgba(237,211,154,0.08), rgba(237,211,154,0.62), transparent 74%)'
+                : 'linear-gradient(50deg, transparent 7%, rgba(230,106,83,0.1), rgba(230,106,83,0.55), transparent 78%)',
+              filter: `blur(${2 + i * 0.7}px) saturate(1.25)`,
+              opacity: 0.38 + intensity * 0.42,
+              animationDuration: `${baseSpeed * (1.06 + i * 0.14)}s`,
+              animationDelay: `${i * -0.9}s`
+            }}
+          />
+        ))}
+        <div className="drift-aurora-core absolute left-1/2 top-1/2 w-[28%] h-[28%] rounded-full bg-[#edd39a]/35 blur-[12px] mix-blend-screen" style={{ animationDuration: `${baseSpeed * 0.8}s` }} />
+      </div>
+    </div>
+  );
+};
+
+const WobblyAura = (props) => (
+  (props.animationStyle ?? 0) === 0
+    ? <OriginalWobblyAura {...props} />
+    : <CreativeDriftAura {...props} />
+);
 
 // --- Botanical SVGs ---
 const DetailedMonstera = ({ showStems = true }) => (
@@ -253,7 +397,7 @@ const CENTER_DIAL_SHADOWS = [
   { name: 'Crisp Hover', shadow: '2px 2px 6px rgba(0,0,0,0.3), 20px 20px 30px rgba(0,0,0,0.45), inset 1px 1px 2px rgba(255,255,255,0.2), inset -2px -2px 6px rgba(0,0,0,0.9)' }
 ];
 
-const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowStyle, onDoubleClickDrift, onDoubleClickSpread }) => {
+const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowStyle, animationStyle = 0, onDoubleClickDrift, onDoubleClickSpread }) => {
   const [isDraggingDrift, setIsDraggingDrift] = useState(false);
   const [isDraggingSpread, setIsDraggingSpread] = useState(false);
   const driftY = useRef(0), driftStart = useRef(0), spreadY = useRef(0), spreadStart = useRef(0);
@@ -265,10 +409,11 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
   const handleSpreadUp = (e) => { setIsDraggingSpread(false); e.target.releasePointerCapture(e.pointerId); };
   const driftRot = (drift / 100 * 270) - 135;
   const spreadRot = (spread / 100 * 270) - 135;
+  const auraActive = isDraggingDrift || isDraggingSpread || drift > 0.25;
 
   return (
     <div className="relative flex justify-center items-center z-20" style={{ width: 340, height: 340 }}>
-      <WobblyAura drift={drift} spread={spread} active={isDraggingDrift || isDraggingSpread} rate={rate} />
+      <WobblyAura drift={drift} spread={spread} active={auraActive} rate={rate} animationStyle={animationStyle} />
       <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center group z-10" style={{ width: 320, height: 320, backgroundColor: '#1f1e1d', backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, transparent, transparent 2px, rgba(0,0,0,0.4) 3px, rgba(0,0,0,0.4) 4px), conic-gradient(from 0deg at 50% 50%, #111, #333, #111, #333, #111)', boxShadow: shadowStyle || '2px 2px 8px rgba(0,0,0,0.7), 18px 18px 40px rgba(0,0,0,0.4), inset 1px 1px 3px rgba(255,255,255,0.15), inset -4px -4px 10px rgba(0,0,0,0.9)' }}
         onPointerDown={handleSpreadDown} onPointerMove={handleSpreadMove} onPointerUp={handleSpreadUp} onPointerCancel={handleSpreadUp} onDoubleClick={onDoubleClickSpread}>
         <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40">
@@ -756,6 +901,7 @@ export default function App() {
   const [modeStyle, setModeStyle] = useState(0);
   const [knobStyle, setKnobStyle] = useState(0);
   const [centerDialStyle, setCenterDialStyle] = useState(1);
+  const [driftAnimation, setDriftAnimation] = useState(0);
   const [bgIndex, setBgIndex] = useState(0);
   const [showOutputs, setShowOutputs] = useState(true);
   const [parallelCables, setParallelCables] = useState(true);
@@ -847,7 +993,7 @@ export default function App() {
               <BotanicalCenterDial 
                 drift={drift} setDrift={setDrift} onDoubleClickDrift={() => setDrift(0)}
                 spread={spread} setSpread={setSpread} onDoubleClickSpread={() => setSpread(0)}
-                rate={rate} shadowStyle={CENTER_DIAL_SHADOWS[centerDialStyle].shadow} 
+                rate={rate} shadowStyle={CENTER_DIAL_SHADOWS[centerDialStyle].shadow} animationStyle={driftAnimation}
               />
             </div>
 
@@ -868,6 +1014,23 @@ export default function App() {
                 <MatteKnob label="Sat" value={biasHF} onChange={setBiasHF} onDoubleClick={() => setBiasHF(0)} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
               </div>
               <MatteKnob label="Noise" value={noise} onChange={setNoise} onDoubleClick={() => setNoise(0)} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
+            </div>
+
+            <div className="absolute bottom-[28%] right-[7%] z-30 flex flex-col items-center gap-2">
+              <div className="relative w-[148px] h-9 rounded-lg bg-[#2d2c2b]/78 border border-white/15 shadow-[8px_10px_18px_rgba(0,0,0,0.28),inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-md">
+                <select
+                  value={driftAnimation}
+                  onChange={e => setDriftAnimation(Number(e.target.value))}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                >
+                  {DRIFT_ANIMATION_STYLES.map((name, i) => <option key={i} value={i} className="bg-[#2d2c2b] text-[#edd39a]">{name}</option>)}
+                </select>
+                <div className="absolute inset-0 flex items-center justify-center px-6 pointer-events-none">
+                  <span className="text-[#edd39a] text-[9px] font-black tracking-[0.12em] uppercase text-center leading-tight">{DRIFT_ANIMATION_STYLES[driftAnimation]}</span>
+                </div>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[#e66a53] text-[9px] pointer-events-none">▼</div>
+              </div>
+              <span className="text-[9px] font-bold tracking-[0.22em] uppercase text-white/90 drop-shadow-md">drift visual</span>
             </div>
 
             <div className="absolute bottom-[10%] left-[12%] z-10 flex gap-6 items-end">
@@ -1087,6 +1250,37 @@ export default function App() {
 
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .drift-aurora-sheet {
+          transform: translate(-50%, -50%);
+          transform-origin: center;
+          animation-name: drift-aurora-fold;
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+        }
+        @keyframes drift-aurora-fold {
+          0%, 100% { transform: translate(-50%, -50%) rotate(-14deg) scale(0.92, 1.04); border-radius: 44% 56% 42% 58% / 62% 38% 58% 42%; }
+          45% { transform: translate(calc(-50% + 16px), calc(-50% - 10px)) rotate(12deg) scale(1.08, 0.96); border-radius: 60% 40% 58% 42% / 38% 62% 44% 56%; }
+          72% { transform: translate(calc(-50% - 10px), calc(-50% + 8px)) rotate(4deg) scale(1.02, 1.08); border-radius: 52% 48% 38% 62% / 54% 46% 64% 36%; }
+        }
+        .drift-aurora-liquid-field {
+          will-change: filter, transform;
+          animation: drift-aurora-liquid-breathe var(--drift-speed-slow) ease-in-out infinite;
+        }
+        @keyframes drift-aurora-liquid-breathe {
+          0%, 100% { opacity: 1; }
+          45% { opacity: 0.92; }
+          72% { opacity: 0.98; }
+        }
+        .drift-aurora-core {
+          transform: translate(-50%, -50%);
+          animation-name: drift-core-pulse;
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+        }
+        @keyframes drift-core-pulse {
+          0%, 100% { transform: translate(-50%, -50%) scale(0.82); opacity: 0.18; }
+          50% { transform: translate(-50%, -50%) scale(1.22); opacity: 0.42; }
+        }
         * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         body { overflow: hidden; touch-action: none; }
         input[type="range"] { -webkit-user-select: auto; user-select: auto; }
