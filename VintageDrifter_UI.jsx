@@ -16,9 +16,9 @@ const SAKURA_IMAGE_PRESETS = {
 };
 
 const DECORATIVE_CIRCLE_PRESETS = {
-  circle1: { enabled: true, locked: true, x: 595, y: 680, size: 680, rotate: 0, color: '#e66a53', opacity: 0.9 },
-  circle2: { enabled: true, locked: true, x: 43, y: 510, size: 340, rotate: 0, color: '#e0a96d', opacity: 0.7 },
-  circle3: { enabled: true, locked: true, x: 638, y: 298, size: 255, rotate: 0, color: '#b04a4a', opacity: 0.5 },
+  circle1: { enabled: true, locked: true, x: 400, y: 780, size: 780, rotate: 0, color: '#e66a53', opacity: 0.9 },
+  circle2: { enabled: true, locked: true, x: 100, y: 500, size: 420, rotate: 0, color: '#e0a96d', opacity: 0.7 },
+  circle3: { enabled: true, locked: true, x: 480, y: 280, size: 320, rotate: 0, color: '#b04a4a', opacity: 0.5 },
   leaf1: { enabled: true, locked: true, x: 120, y: 760, size: 320, rotate: -25, color: '#2c3e35', opacity: 0.9 },
   leaf2: { enabled: true, locked: true, x: 180, y: 720, size: 280, rotate: 15, color: '#1e2a24', opacity: 0.6 }
 };
@@ -32,12 +32,12 @@ const DECORATIVE_CIRCLE_LABELS = {
 };
 
 const CONTROL_SECTION_PRESETS = {
-  io: { x: 220, y: 180, locked: true },
-  mode: { x: 80, y: 400, locked: true },
-  driftVisual: { x: 760, y: 640, locked: true },
-  rate: { x: 100, y: 760, locked: true },
-  lfo: { x: 280, y: 780, locked: true },
-  autoGain: { x: 720, y: 750, locked: true }
+  io: { x: 340, y: 320, locked: true },
+  mode: { x: 150, y: 500, locked: true },
+  driftVisual: { x: 530, y: 580, locked: true },
+  rate: { x: 150, y: 720, locked: true },
+  lfo: { x: 230, y: 650, locked: true },
+  autoGain: { x: 530, y: 710, locked: true }
 };
 
 const ORGANIC_AURORA_VARIANTS = {
@@ -1641,44 +1641,51 @@ const KnobScaleRing = ({ styleIndex, size = 55 }) => {
 export default function App() {
   const pluginStageRef = useRef(null);
   const [power, setPower] = useState(true);
-  const [input, setInput] = useState(50);
-  const [output, setOutput] = useState(50);
-  const [drift, setDrift] = useState(0);
+  const [input, setInput] = useState(35);
+  const [output, setOutput] = useState(35);
+  const [drift, setDrift] = useState(50);
   const [spread, setSpread] = useState(50);
-  const [character, setCharacter] = useState(80);
-  const [charFilter, setCharFilter] = useState(0);
-  const [sweeten, setSweeten] = useState(60);
-  const [biasHF, setBiasHF] = useState(40);
+  const [character, setCharacter] = useState(20);
+  const [charFilter, setCharFilter] = useState(1);
+  const [sweeten, setSweeten] = useState(25);
+  const [biasHF, setBiasHF] = useState(30);
   const [noise, setNoise] = useState(30);
-  const [rate, setRate] = useState(30);
-  const [depth, setDepth] = useState(0);
-  const [stereoPhase, setStereoPhase] = useState(0);
+  const [rate, setRate] = useState(15);
+  const [depth, setDepth] = useState(30);
+  const [stereoPhase, setStereoPhase] = useState(75);
   const [mode, setMode] = useState('vintage');
   const [autoGain, setAutoGain] = useState(true);
-  const [lfoEnabled, setLfoEnabled] = useState(false);
+  const [lfoEnabled, setLfoEnabled] = useState(true);
   const [lfoSync, setLfoSync] = useState(false);
   const [lfoShape, setLfoShape] = useState(0);
   const [lfoSyncDiv, setLfoSyncDiv] = useState(4);
-  const [currentPreset, setCurrentPreset] = useState(-1);
-  const [frameStyle, setFrameStyle] = useState(0);
+  const [currentPreset, setCurrentPreset] = useState(0);
+  const [frameStyle, setFrameStyle] = useState(2);
   const [modeStyle, setModeStyle] = useState(0);
   const [knobStyle, setKnobStyle] = useState(0);
   const [centerDialStyle, setCenterDialStyle] = useState(1);
   const [driftAnimation, setDriftAnimation] = useState(3);
-  const [bgIndex, setBgIndex] = useState(7);
+  const [bgIndex, setBgIndex] = useState(3);
   const [showOutputs, setShowOutputs] = useState(true);
   const [parallelCables, setParallelCables] = useState(true);
   const [showStems, setShowStems] = useState(false);
-  const [showFerns, setShowFerns] = useState(false);
-  const [sakuraImages, setSakuraImages] = useState(SAKURA_IMAGE_PRESETS);
+  const [showFerns, setShowFerns] = useState(true);
+  const [sakuraImages, setSakuraImages] = useState({
+    sakura: { ...SAKURA_IMAGE_PRESETS.sakura, enabled: false },
+    sakura2: { ...SAKURA_IMAGE_PRESETS.sakura2, enabled: true },
+    sakura3: { ...SAKURA_IMAGE_PRESETS.sakura3, enabled: true }
+  });
   const [decorativeCircles, setDecorativeCircles] = useState(DECORATIVE_CIRCLE_PRESETS);
   const [hardwarePositions, setHardwarePositions] = useState(CONTROL_SECTION_PRESETS);
   const [selectedHardwareSection, setSelectedHardwareSection] = useState(null);
   const [selectedCircle, setSelectedCircle] = useState(null);
-  const [auraShapes, setAuraShapes] = useState([]);
+  const [auraShapes, setAuraShapes] = useState([
+    { id: 'aura-1', x: 425, y: 425, size: 295, blur: 60, opac: 8, angle: 135, color1: '#a34433', color2: '#e66a53', animated: true, locked: true },
+    { id: 'aura-2', x: 425, y: 425, size: 634, blur: 58, opac: 5, angle: 0, color1: '#e66a53', color2: '#a34433', animated: true, locked: true }
+  ]);
   const [selectedAuraShape, setSelectedAuraShape] = useState(null);
   const [filterSwitchStyle, setFilterSwitchStyle] = useState(0);
-  const [ioScaleStyle, setIoScaleStyle] = useState(5);
+  const [ioScaleStyle, setIoScaleStyle] = useState(6);
   const sakuraImageSettings = {
     sakura: { ...SAKURA_IMAGE_PRESETS.sakura, ...sakuraImages.sakura },
     sakura2: { ...SAKURA_IMAGE_PRESETS.sakura2, ...sakuraImages.sakura2 },
