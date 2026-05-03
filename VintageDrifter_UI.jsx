@@ -158,7 +158,7 @@ const CollapsibleSection = ({ title, children, defaultOpen = false }) => {
         <span className="text-[13px] font-black tracking-[0.2em] uppercase">{title}</span>
         <span className={`text-[10px] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
       </button>
-      <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100 py-6' : 'max-h-0 opacity-0 py-0'}`}>
+      <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[60vh] opacity-100 py-6 overflow-y-auto custom-scrollbar' : 'max-h-0 opacity-0 py-0 overflow-hidden'}`}>
         <div className="px-6 flex flex-col gap-8">
           {children}
         </div>
