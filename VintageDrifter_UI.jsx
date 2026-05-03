@@ -640,23 +640,60 @@ const EditableDecorativeCircles = ({ circles, selectedId, setSelectedId, onUpdat
   );
 };
 
-const CircleControlGroup = ({ id, title, settings, selected, onSelect, onToggle, onLockToggle }) => (
-  <div className="w-full flex flex-col gap-2">
+const CircleControlGroup = ({ id, title, settings, selected, onSelect, onToggle, onLockToggle, onUpdate }) => (
+  <div className={`w-full flex flex-col gap-3 p-3 rounded-2xl transition-all ${selected ? 'bg-white/10 ring-1 ring-white/20 shadow-lg' : 'bg-white/5'}`}>
     <div className="flex items-center justify-between gap-2">
       <button
         onClick={onSelect}
-        className={`flex-1 rounded-full border-[3px] px-3 py-1.5 text-[10px] font-medium tracking-wide transition-colors ${selected ? 'bg-white/20 border-white text-white' : 'border-white/70 text-white/85'}`}
+        className={`flex-1 rounded-full border-[2px] px-3 py-1.5 text-[10px] font-black tracking-widest transition-all uppercase ${selected ? 'bg-[#edd39a] border-[#edd39a] text-black' : 'border-white/20 text-white/70 hover:border-white/40'}`}
       >
         {title}
       </button>
       <SakuraToggle active={settings.enabled} onClick={onToggle} label={settings.enabled ? 'on' : 'off'} />
     </div>
-    <button
-      onClick={onLockToggle}
-      className={`w-full rounded-full border-[3px] px-3 py-1.5 text-[10px] font-medium tracking-wide transition-colors ${settings.locked ? 'border-white/70 text-white/85' : 'bg-white/20 border-white text-white'}`}
-    >
-      {settings.locked ? 'locked' : 'unlocked'}
-    </button>
+    
+    {selected && (
+      <div className="flex flex-col gap-4 mt-2 pt-2 border-t border-white/5">
+        <div className="flex items-center justify-between">
+          <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Movement</span>
+          <button
+            onClick={onLockToggle}
+            className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border transition-all ${settings.locked ? 'bg-white/5 border-white/10 text-white/30' : 'bg-white/20 border-white/40 text-white'}`}
+          >
+            {settings.locked ? 'Locked' : 'Unlocked'}
+          </button>
+        </div>
+        
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Color</span>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full border border-white/20 shadow-inner" style={{ backgroundColor: settings.color }} />
+              <input 
+                type="color" 
+                value={settings.color} 
+                onChange={e => onUpdate({ color: e.target.value })}
+                className="w-8 h-8 opacity-0 absolute cursor-pointer"
+              />
+              <span className="text-[10px] font-mono text-white/60 uppercase">{settings.color}</span>
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-1">
+            <div className="flex justify-between text-[9px] font-bold text-white/40 uppercase tracking-widest">
+              <span>Opacity</span>
+              <span className="text-white/60">{(settings.opacity * 100).toFixed(0)}%</span>
+            </div>
+            <input 
+              type="range" min="0" max="1" step="0.01" 
+              value={settings.opacity} 
+              onChange={e => onUpdate({ opacity: Number(e.target.value) })}
+              className="w-full accent-[#edd39a]"
+            />
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 );
 
@@ -1992,20 +2029,29 @@ export default function App() {
         </CollapsibleSection>
 
         {/* SECTION 3: DECORATIVE ELEMENTS */}
-        <CollapsibleSection title="Decor Circles" defaultOpen={true}>
-          <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-2 gap-2">
-               <button onClick={() => updateAllDecorativeCircles({ enabled: true })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All On</button>
-               <button onClick={() => updateAllDecorativeCircles({ enabled: false })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All Off</button>
+        <CollapsibleSection key="decor-circles-v2" title="Decor Circles" defaultOpen={true}>
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-2 mb-2">
+               <button onClick={() => updateAllDecorativeCircles({ enabled: true })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black tracking-widest text-white/40 uppercase hover:text-white/70 transition-colors">All On</button>
+               <button onClick={() => updateAllDecorativeCircles({ enabled: false })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black tracking-widest text-white/40 uppercase hover:text-white/70 transition-colors">All Off</button>
             </div>
-            {Object.entries(decorativeCircleSettings).map(([id, settings], index) => (
-              <CircleControlGroup
-                key={id} id={id} title={DECORATIVE_CIRCLE_LABELS[id] || `Circle ${index + 1}`}
-                settings={settings} selected={selectedCircle === id} onSelect={() => setSelectedCircle(id)}
-                onToggle={() => updateDecorativeCircle(id, { enabled: !settings.enabled })}
-                onLockToggle={() => updateDecorativeCircle(id, { locked: !settings.locked })}
-              />
-            ))}
+            {Object.keys(DECORATIVE_CIRCLE_LABELS).map((id, index) => {
+              const settings = decorativeCircleSettings[id];
+              if (!settings) return null;
+              return (
+                <CircleControlGroup
+                  key={id} 
+                  id={id} 
+                  title={DECORATIVE_CIRCLE_LABELS[id]}
+                  settings={settings} 
+                  selected={selectedCircle === id} 
+                  onSelect={() => setSelectedCircle(id)}
+                  onToggle={() => updateDecorativeCircle(id, { enabled: !settings.enabled })}
+                  onLockToggle={() => updateDecorativeCircle(id, { locked: !settings.locked })}
+                  onUpdate={(patch) => updateDecorativeCircle(id, patch)}
+                />
+              );
+            })}
           </div>
         </CollapsibleSection>
 
