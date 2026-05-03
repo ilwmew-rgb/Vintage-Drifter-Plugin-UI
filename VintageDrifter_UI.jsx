@@ -15,6 +15,27 @@ const SAKURA_IMAGE_PRESETS = {
   sakura3: { enabled: true, x: 872, y: 774, size: 338, rotate: 34 }
 };
 
+const DECORATIVE_CIRCLE_PRESETS = {
+  circle1: { enabled: true, locked: true, x: 595, y: 680, size: 680, rotate: 0, color: '#e66a53', opacity: 0.9 },
+  circle2: { enabled: true, locked: true, x: 43, y: 510, size: 340, rotate: 0, color: '#e0a96d', opacity: 0.7 },
+  circle3: { enabled: true, locked: true, x: 638, y: 298, size: 255, rotate: 0, color: '#b04a4a', opacity: 0.5 }
+};
+
+const DECORATIVE_CIRCLE_LABELS = {
+  circle1: 'Bottom Coral',
+  circle2: 'Left Ochre',
+  circle3: 'Top Wine'
+};
+
+const BOTTOM_LEFT_SHAPE_PRESETS = {
+  leaf1: { enabled: true, locked: true, x: 120, y: 730, size: 320, rotate: 0, variant: 'large' },
+  leaf2: { enabled: true, locked: true, x: 120, y: 730, size: 320, rotate: 0, variant: 'small' }
+};
+
+const BOTTOM_LEFT_SHAPE_LABELS = {
+  leaf1: 'Large Leaf',
+  leaf2: 'Small Leaf'
+};
 const ORGANIC_AURORA_VARIANTS = {
   3: {
     type: 'fractalNoise',
@@ -29,6 +50,126 @@ const ORGANIC_AURORA_VARIANTS = {
     burstScale: (intensity) => 8 + intensity * 20,
     blur: (intensity) => 0.06 + intensity * 0.11
   }
+};
+
+const generateRandomBlob = () => {
+  const r = () => Math.floor(Math.random() * 50) + 25; // 25% to 75%
+  return `${r()}% ${100-r()}% ${r()}% ${100-r()}% / ${r()}% ${r()}% ${100-r()}% ${100-r()}%`;
+};
+
+const EditableAuraShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stageRef }) => {
+  const getScale = () => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    return rect ? rect.width / 850 : 1;
+  };
+  const getLocalPoint = (event) => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    const scale = getScale();
+    return {
+      x: rect ? (event.clientX - rect.left) / scale : event.clientX,
+      y: rect ? (event.clientY - rect.top) / scale : event.clientY
+    };
+  };
+  const startEdit = (event, id, mode) => {
+    const shape = shapes.find(s => s.id === id);
+    if (!shape || shape.locked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedId(id);
+    const startClient = { x: event.clientX, y: event.clientY };
+    const start = { ...shape };
+    const handleMove = (moveEvent) => {
+      const scale = getScale();
+      if (mode === 'move') {
+        onUpdate(id, {
+          x: Math.round(start.x + (moveEvent.clientX - startClient.x) / scale),
+          y: Math.round(start.y + (moveEvent.clientY - startClient.y) / scale)
+        });
+      }
+      if (mode === 'resize') {
+        const delta = ((moveEvent.clientX - startClient.x) + (moveEvent.clientY - startClient.y)) / scale;
+        onUpdate(id, { size: Math.round(Math.max(24, Math.min(1200, start.size + delta))) });
+      }
+      if (mode === 'rotate') {
+        const point = getLocalPoint(moveEvent);
+        onUpdate(id, { rotate: Math.round(Math.atan2(point.y - start.y, point.x - start.x) * 180 / Math.PI + 90) });
+      }
+    };
+    const handleUp = () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  };
+
+  return (
+    <>
+      {shapes.map((shape) => {
+        if (!shape.enabled) return null;
+        const selected = selectedId === shape.id && !shape.locked;
+        return (
+          <div
+            key={shape.id}
+            onPointerDown={event => startEdit(event, shape.id, 'move')}
+            className={`absolute select-none ${shape.locked ? 'pointer-events-none' : 'cursor-move touch-none'}`}
+            style={{
+              left: shape.x - shape.size / 2,
+              top: shape.y - shape.size / 2,
+              width: shape.size,
+              height: shape.size,
+              zIndex: selected ? 37 : 5
+            }}
+          >
+            <div
+              className="absolute inset-0 pointer-events-none transition-all duration-300"
+              style={{
+                backgroundColor: shape.color,
+                opacity: shape.opacity,
+                filter: `blur(${shape.blur}px)`,
+                borderRadius: shape.blobRadius,
+                transform: `rotate(${shape.rotate}deg)`,
+                transformOrigin: 'center'
+              }}
+            />
+            {selected && (
+              <>
+                <div className="absolute -inset-4 rounded-full border border-white/40 border-dashed pointer-events-none" />
+                <button
+                  onPointerDown={event => startEdit(event, shape.id, 'resize')}
+                  className="absolute -right-3 -bottom-3 h-6 w-6 rounded-full border-2 border-white bg-[#e66a53] shadow-lg cursor-nwse-resize z-50"
+                />
+                <button
+                  onPointerDown={event => startEdit(event, shape.id, 'rotate')}
+                  className="absolute left-1/2 -top-11 h-6 w-6 -translate-x-1/2 rounded-full border-2 border-white bg-[#d4af37] shadow-lg cursor-grab z-50"
+                />
+              </>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
+const CollapsibleSection = ({ title, children, defaultOpen = false }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+    <div className="w-full border-b border-white/10 overflow-hidden">
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-6 py-4 flex items-center justify-between text-white/90 hover:bg-white/5 transition-colors"
+      >
+        <span className="text-[13px] font-black tracking-[0.2em] uppercase">{title}</span>
+        <span className={`text-[10px] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+      </button>
+      <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[2000px] opacity-100 py-6' : 'max-h-0 opacity-0 py-0'}`}>
+        <div className="px-6 flex flex-col gap-8">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // --- Procedural Drift Animation Engine ---
@@ -315,6 +456,253 @@ const SakuraControlGroup = ({ title, settings, onToggle, onUpdate }) => (
       <SakuraRange label="size" value={settings.size} min={40} max={520} onChange={value => onUpdate({ size: value })} />
       <SakuraRange label="rot" value={settings.rotate} min={-180} max={180} onChange={value => onUpdate({ rotate: value })} />
     </div>
+  </div>
+);
+
+const EditableDecorativeCircles = ({ circles, selectedId, setSelectedId, onUpdate, stageRef }) => {
+  const circleEntries = Object.entries(circles);
+  const getScale = () => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    return rect ? rect.width / 850 : 1;
+  };
+  const getLocalPoint = (event) => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    const scale = getScale();
+    return {
+      x: rect ? (event.clientX - rect.left) / scale : event.clientX,
+      y: rect ? (event.clientY - rect.top) / scale : event.clientY
+    };
+  };
+  const startCircleEdit = (event, id, mode) => {
+    const circle = circles[id];
+    if (!circle || circle.locked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedId(id);
+    const startClient = { x: event.clientX, y: event.clientY };
+    const start = { ...circle };
+    const handleMove = (moveEvent) => {
+      const scale = getScale();
+      if (mode === 'move') {
+        onUpdate(id, {
+          x: Math.round(start.x + (moveEvent.clientX - startClient.x) / scale),
+          y: Math.round(start.y + (moveEvent.clientY - startClient.y) / scale)
+        });
+      }
+      if (mode === 'resize') {
+        const delta = ((moveEvent.clientX - startClient.x) + (moveEvent.clientY - startClient.y)) / scale;
+        onUpdate(id, { size: Math.round(Math.max(24, Math.min(1200, start.size + delta))) });
+      }
+      if (mode === 'rotate') {
+        const point = getLocalPoint(moveEvent);
+        onUpdate(id, { rotate: Math.round(Math.atan2(point.y - start.y, point.x - start.x) * 180 / Math.PI + 90) });
+      }
+    };
+    const handleUp = () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  };
+
+  return (
+    <>
+      {circleEntries.map(([id, circle]) => {
+        if (!circle.enabled) return null;
+        const selected = selectedId === id && !circle.locked;
+        return (
+          <div
+            key={id}
+            onPointerDown={event => startCircleEdit(event, id, 'move')}
+            className={`absolute select-none ${circle.locked ? 'pointer-events-none' : 'cursor-move touch-none'}`}
+            style={{
+              left: circle.x - circle.size / 2,
+              top: circle.y - circle.size / 2,
+              width: circle.size,
+              height: circle.size,
+              zIndex: selected ? 38 : 'auto'
+            }}
+          >
+            <div
+              className="absolute inset-0 rounded-full pointer-events-none"
+              style={{
+                backgroundColor: circle.color,
+                opacity: circle.opacity,
+                mixBlendMode: 'multiply',
+                transform: `rotate(${circle.rotate}deg)`,
+                transformOrigin: 'center'
+              }}
+            />
+            {selected && (
+              <>
+                <div className="absolute -inset-1 rounded-full border border-white/90 border-dashed pointer-events-none shadow-[0_0_12px_rgba(255,255,255,0.45)]" />
+                <button
+                  aria-label="Resize circle"
+                  onPointerDown={event => startCircleEdit(event, id, 'resize')}
+                  className="absolute -right-3 -bottom-3 h-6 w-6 rounded-full border-2 border-white bg-[#e66a53] shadow-lg cursor-nwse-resize"
+                />
+                <button
+                  aria-label="Rotate circle"
+                  onPointerDown={event => startCircleEdit(event, id, 'rotate')}
+                  className="absolute left-1/2 -top-11 h-6 w-6 -translate-x-1/2 rounded-full border-2 border-white bg-[#d4af37] shadow-lg cursor-grab"
+                />
+                <div className="absolute left-1/2 -top-5 h-5 w-px -translate-x-1/2 bg-white/80 pointer-events-none" />
+              </>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
+const CircleControlGroup = ({ id, title, settings, selected, onSelect, onToggle, onLockToggle }) => (
+  <div className="w-full flex flex-col gap-2">
+    <div className="flex items-center justify-between gap-2">
+      <button
+        onClick={onSelect}
+        className={`flex-1 rounded-full border-[3px] px-3 py-1.5 text-[10px] font-medium tracking-wide transition-colors ${selected ? 'bg-white/20 border-white text-white' : 'border-white/70 text-white/85'}`}
+      >
+        {title}
+      </button>
+      <SakuraToggle active={settings.enabled} onClick={onToggle} label={settings.enabled ? 'on' : 'off'} />
+    </div>
+    <button
+      onClick={onLockToggle}
+      className={`w-full rounded-full border-[3px] px-3 py-1.5 text-[10px] font-medium tracking-wide transition-colors ${settings.locked ? 'border-white/70 text-white/85' : 'bg-white/20 border-white text-white'}`}
+    >
+      {settings.locked ? 'locked' : 'unlocked'}
+    </button>
+  </div>
+);
+
+const EditableBottomLeftShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stageRef, showStems }) => {
+  const getScale = () => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    return rect ? rect.width / 850 : 1;
+  };
+  const getLocalPoint = (event) => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    const scale = getScale();
+    return {
+      x: rect ? (event.clientX - rect.left) / scale : event.clientX,
+      y: rect ? (event.clientY - rect.top) / scale : event.clientY
+    };
+  };
+  const startShapeEdit = (event, id, mode) => {
+    const shape = shapes[id];
+    if (!shape || shape.locked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedId(id);
+    const startClient = { x: event.clientX, y: event.clientY };
+    const start = { ...shape };
+    const handleMove = (moveEvent) => {
+      const scale = getScale();
+      if (mode === 'move') {
+        onUpdate(id, {
+          x: Math.round(start.x + (moveEvent.clientX - startClient.x) / scale),
+          y: Math.round(start.y + (moveEvent.clientY - startClient.y) / scale)
+        });
+      }
+      if (mode === 'resize') {
+        const delta = ((moveEvent.clientX - startClient.x) + (moveEvent.clientY - startClient.y)) / scale;
+        onUpdate(id, { size: Math.round(Math.max(60, Math.min(460, start.size + delta))) });
+      }
+      if (mode === 'rotate') {
+        const point = getLocalPoint(moveEvent);
+        onUpdate(id, { rotate: Math.round(Math.atan2(point.y - start.y, point.x - start.x) * 180 / Math.PI + 90) });
+      }
+    };
+    const handleUp = () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  };
+  const leafPath = 'M 100 10 C 170 10 190 70 180 130 C 170 190 120 190 100 190 C 80 190 30 190 20 130 C 10 70 30 10 100 10 Z';
+
+  return (
+    <>
+      {Object.entries(shapes).map(([id, shape]) => {
+        if (!shape.enabled) return null;
+        const selected = selectedId === id && !shape.locked;
+        const isLarge = shape.variant === 'large';
+        const clipId = `monstera-cuts-${id}`;
+        const groupTransform = isLarge
+          ? 'translate(10, 10) rotate(15) scale(0.9)'
+          : 'translate(-20, 80) rotate(-20) scale(0.6)';
+        return (
+          <div
+            key={id}
+            onPointerDown={event => startShapeEdit(event, id, 'move')}
+            className={`absolute select-none ${shape.locked ? 'pointer-events-none' : 'cursor-move touch-none'}`}
+            style={{
+              left: shape.x - shape.size / 2,
+              top: shape.y - shape.size / 2,
+              width: shape.size,
+              height: shape.size,
+              transform: `rotate(${shape.rotate}deg)`,
+              transformOrigin: 'center',
+              zIndex: selected ? 38 : 1
+            }}
+          >
+            <svg viewBox="0 0 200 200" className="absolute inset-0 h-full w-full overflow-visible opacity-[0.9] mix-blend-multiply pointer-events-none" style={{ filter: 'drop-shadow(15px 15px 20px rgba(0,0,0,0.4))' }}>
+              <defs>
+                <clipPath id={clipId}>
+                  <rect width="200" height="200" fill="white" />
+                  <ellipse cx="20" cy="70" rx="35" ry="12" transform="rotate(25 20 70)" fill="black" />
+                  <ellipse cx="10" cy="110" rx="40" ry="15" transform="rotate(10 10 110)" fill="black" />
+                  <ellipse cx="30" cy="160" rx="30" ry="10" transform="rotate(-15 30 160)" fill="black" />
+                  <ellipse cx="160" cy="50" rx="40" ry="15" transform="rotate(-30 160 50)" fill="black" />
+                  <ellipse cx="180" cy="100" rx="45" ry="16" transform="rotate(-10 180 100)" fill="black" />
+                  <ellipse cx="160" cy="150" rx="35" ry="12" transform="rotate(15 160 150)" fill="black" />
+                  <circle cx="110" cy="40" r="8" fill="black" />
+                  <ellipse cx="60" cy="80" rx="12" ry="6" transform="rotate(30 60 80)" fill="black" />
+                  <ellipse cx="140" cy="90" rx="15" ry="7" transform="rotate(-20 140 90)" fill="black" />
+                  <circle cx="120" cy="130" r="9" fill="black" />
+                  <circle cx="70" cy="140" r="7" fill="black" />
+                </clipPath>
+              </defs>
+              <g transform={groupTransform}>
+                <path d={leafPath} fill={isLarge ? '#2c3e35' : '#1e2a24'} clipPath={`url(#${clipId})`} />
+                {showStems && <path d="M 100 10 C 100 10 95 190 95 190" stroke={isLarge ? '#1e2a24' : '#111'} strokeWidth={isLarge ? 3 : 4} fill="none" />}
+              </g>
+            </svg>
+            {selected && (
+              <>
+                <div className="absolute -inset-1 rounded-[2rem] border border-white/90 border-dashed pointer-events-none shadow-[0_0_12px_rgba(255,255,255,0.45)]" />
+                <button aria-label="Resize shape" onPointerDown={event => startShapeEdit(event, id, 'resize')} className="absolute -right-3 -bottom-3 h-6 w-6 rounded-full border-2 border-white bg-[#e66a53] shadow-lg cursor-nwse-resize" />
+                <button aria-label="Rotate shape" onPointerDown={event => startShapeEdit(event, id, 'rotate')} className="absolute left-1/2 -top-11 h-6 w-6 -translate-x-1/2 rounded-full border-2 border-white bg-[#d4af37] shadow-lg cursor-grab" />
+                <div className="absolute left-1/2 -top-5 h-5 w-px -translate-x-1/2 bg-white/80 pointer-events-none" />
+              </>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+};
+
+const BottomShapeControlGroup = ({ title, settings, selected, onSelect, onToggle, onLockToggle }) => (
+  <div className="w-full flex flex-col gap-2">
+    <div className="flex items-center justify-between gap-2">
+      <button
+        onClick={onSelect}
+        className={`flex-1 rounded-full border-[3px] px-3 py-1.5 text-[10px] font-medium tracking-wide transition-colors ${selected ? 'bg-white/20 border-white text-white' : 'border-white/70 text-white/85'}`}
+      >
+        {title}
+      </button>
+      <SakuraToggle active={settings.enabled} onClick={onToggle} label={settings.enabled ? 'on' : 'off'} />
+    </div>
+    <button
+      onClick={onLockToggle}
+      className={`w-full rounded-full border-[3px] px-3 py-1.5 text-[10px] font-medium tracking-wide transition-colors ${settings.locked ? 'border-white/70 text-white/85' : 'bg-white/20 border-white text-white'}`}
+    >
+      {settings.locked ? 'locked' : 'unlocked'}
+    </button>
   </div>
 );
 
@@ -1127,6 +1515,7 @@ const KnobScaleRing = ({ styleIndex, size = 55 }) => {
 };
 
 export default function App() {
+  const pluginStageRef = useRef(null);
   const [power, setPower] = useState(true);
   const [input, setInput] = useState(50);
   const [output, setOutput] = useState(50);
@@ -1158,6 +1547,12 @@ export default function App() {
   const [showStems, setShowStems] = useState(false);
   const [showFerns, setShowFerns] = useState(false);
   const [sakuraImages, setSakuraImages] = useState(SAKURA_IMAGE_PRESETS);
+  const [decorativeCircles, setDecorativeCircles] = useState(DECORATIVE_CIRCLE_PRESETS);
+  const [selectedCircle, setSelectedCircle] = useState(null);
+  const [bottomLeftShapes, setBottomLeftShapes] = useState(BOTTOM_LEFT_SHAPE_PRESETS);
+  const [selectedBottomShape, setSelectedBottomShape] = useState(null);
+  const [auraShapes, setAuraShapes] = useState([]);
+  const [selectedAuraShape, setSelectedAuraShape] = useState(null);
   const [filterSwitchStyle, setFilterSwitchStyle] = useState(0);
   const [ioScaleStyle, setIoScaleStyle] = useState(5);
   const sakuraImageSettings = {
@@ -1165,6 +1560,12 @@ export default function App() {
     sakura2: { ...SAKURA_IMAGE_PRESETS.sakura2, ...sakuraImages.sakura2 },
     sakura3: { ...SAKURA_IMAGE_PRESETS.sakura3, ...sakuraImages.sakura3 }
   };
+  const decorativeCircleSettings = Object.fromEntries(
+    Object.entries(DECORATIVE_CIRCLE_PRESETS).map(([id, preset]) => [id, { ...preset, ...decorativeCircles[id] }])
+  );
+  const bottomLeftShapeSettings = Object.fromEntries(
+    Object.entries(BOTTOM_LEFT_SHAPE_PRESETS).map(([id, preset]) => [id, { ...preset, ...bottomLeftShapes[id] }])
+  );
 
   const updateSakuraImage = (id, patch) => {
     setSakuraImages(current => ({
@@ -1173,6 +1574,72 @@ export default function App() {
       [id]: { ...SAKURA_IMAGE_PRESETS[id], ...current[id], ...patch }
     }));
   };
+  const updateDecorativeCircle = (id, patch) => {
+    setDecorativeCircles(current => ({
+      ...DECORATIVE_CIRCLE_PRESETS,
+      ...current,
+      [id]: { ...DECORATIVE_CIRCLE_PRESETS[id], ...current[id], ...patch }
+    }));
+  };
+  const updateAllDecorativeCircles = (patch) => {
+    setDecorativeCircles(current => {
+      const merged = { ...DECORATIVE_CIRCLE_PRESETS, ...current };
+      return Object.fromEntries(Object.entries(merged).map(([id, circle]) => [id, { ...circle, ...patch }]));
+    });
+  };
+  const updateAllBottomLeftShapes = (patch) => {
+    setBottomLeftShapes(current => {
+      const merged = { ...BOTTOM_LEFT_SHAPE_PRESETS, ...current };
+      return Object.fromEntries(Object.entries(merged).map(([id, shape]) => [id, { ...shape, ...patch }]));
+    });
+  };
+
+  const updateBottomLeftShape = (id, patch) => {
+    setBottomLeftShapes(current => ({
+      ...BOTTOM_LEFT_SHAPE_PRESETS,
+      ...current,
+      [id]: { ...BOTTOM_LEFT_SHAPE_PRESETS[id], ...current[id], ...patch }
+    }));
+  };
+
+  const addAuraShape = () => {
+    const newShape = {
+      id: `aura-${Date.now()}`,
+      enabled: true,
+      locked: false,
+      x: 425,
+      y: 425,
+      size: 350,
+      rotate: Math.random() * 360,
+      opacity: 0.45,
+      blur: 60,
+      color: ['#e66a53', '#edd39a', '#b04a4a', '#a63c3c', '#d4af37'][Math.floor(Math.random() * 5)],
+      blobRadius: generateRandomBlob()
+    };
+    setAuraShapes(prev => [...prev, newShape]);
+    setSelectedAuraShape(newShape.id);
+  };
+
+  const updateAuraShape = (id, patch) => {
+    setAuraShapes(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
+  };
+
+  const removeAuraShape = (id) => {
+    setAuraShapes(prev => prev.filter(s => s.id !== id));
+    if (selectedAuraShape === id) setSelectedAuraShape(null);
+  };
+
+  useEffect(() => {
+    setBottomLeftShapes(current => {
+      const hasGeneratedPositions = current.leaf1?.size !== 320 || current.leaf2?.size !== 320;
+      if (!hasGeneratedPositions) return current;
+      return {
+        ...current,
+        leaf1: { ...BOTTOM_LEFT_SHAPE_PRESETS.leaf1 },
+        leaf2: { ...BOTTOM_LEFT_SHAPE_PRESETS.leaf2 }
+      };
+    });
+  }, []);
 
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -1189,7 +1656,7 @@ export default function App() {
       
       {/* Plugin Area */}
       <div ref={containerRef} className="relative w-full max-w-[680px] aspect-square flex items-center justify-center flex-shrink-0">
-        <div className="absolute" style={{ width: 850, height: 850, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
+        <div ref={pluginStageRef} className="absolute" style={{ width: 850, height: 850, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
           
           {/* Frame Wrapper */}
           <div 
@@ -1221,11 +1688,29 @@ export default function App() {
           <div className="relative w-full h-full rounded-[4rem] shadow-[0_40px_80px_rgba(0,0,0,0.4),0_20px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500 bg-[#f4ead6] z-10">
 
             <div className="absolute inset-0 pointer-events-none z-0 mix-blend-multiply" style={{ opacity: 0.28, backgroundImage: "url('data:image/svg+xml,%3Csvg viewBox=%220 0 400 400%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%222.0%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E')" }} />
-            <div className="absolute -bottom-[20%] -right-[10%] w-[80%] h-[80%] bg-[#e66a53] rounded-full mix-blend-multiply opacity-90" />
-            <div className="absolute top-[40%] -left-[15%] w-[40%] h-[40%] bg-[#e0a96d] rounded-full mix-blend-multiply opacity-70" />
-            <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-[#b04a4a] rounded-full mix-blend-multiply opacity-50" />
+            <EditableDecorativeCircles
+              circles={decorativeCircleSettings}
+              selectedId={selectedCircle}
+              setSelectedId={setSelectedCircle}
+              onUpdate={updateDecorativeCircle}
+              stageRef={pluginStageRef}
+            />
 
-            <DetailedMonstera showStems={showStems} />
+            <EditableBottomLeftShapes
+              shapes={bottomLeftShapeSettings}
+              selectedId={selectedBottomShape}
+              setSelectedId={setSelectedBottomShape}
+              onUpdate={updateBottomLeftShape}
+              stageRef={pluginStageRef}
+              showStems={showStems}
+            />
+            <EditableAuraShapes
+              shapes={auraShapes}
+              selectedId={selectedAuraShape}
+              setSelectedId={setSelectedAuraShape}
+              onUpdate={updateAuraShape}
+              stageRef={pluginStageRef}
+            />
             <DetailedFernsRight showFerns={showFerns} />
             <SakuraImageLayer src={sakuraSrc} settings={sakuraImageSettings.sakura} alt="Sakura decorative layer" />
             <SakuraImageLayer src={sakura2Src} settings={sakuraImageSettings.sakura2} alt="Sakura 2 decorative layer" />
@@ -1302,7 +1787,6 @@ export default function App() {
 
             <div className="absolute bottom-[10%] left-[12%] z-10 flex gap-6 items-end">
               <div className="flex flex-col items-center gap-3">
-                <HardwareLED active={power && lfoEnabled} color="gold" size={6} label="LFO" pulse={true} />
                 <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} labelColorOverride="text-white/90 drop-shadow-md" shadingStyle={KNOB_STYLES[knobStyle]} />
               </div>
             </div>
@@ -1342,199 +1826,199 @@ export default function App() {
         </div>
       </div>
 
-      {/* Sidebar Panel - Sketch Style */}
-      <div className="hidden lg:flex flex-col items-center py-10 gap-6 w-[280px] max-h-[calc(100vh-4rem)] overflow-y-auto rounded-[3.5rem] border-[4px] border-white/80 shrink-0">
+      {/* Sidebar Panel - Redesigned Sidebar */}
+      <div className="hidden lg:flex flex-col items-center gap-0 w-[300px] max-h-[calc(100vh-4rem)] overflow-y-auto rounded-[3rem] bg-black/30 backdrop-blur-3xl border border-white/10 shrink-0 shadow-2xl custom-scrollbar">
         
-        {/* Dropdown 1: Frame Style */}
-        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
-          <div className="relative w-full h-14">
-            <select 
-              value={frameStyle} 
-              onChange={e => setFrameStyle(Number(e.target.value))}
-              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
-            >
-              {FRAMES.map((f, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{f.name}</option>)}
-            </select>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-              <span className="text-white font-medium text-[15px] tracking-wide">{FRAMES[frameStyle].name}</span>
+        {/* SECTION 1: GLOBAL STYLE */}
+        <CollapsibleSection title="Master Design" defaultOpen={true}>
+          <div className="grid grid-cols-1 gap-6">
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Frame Surface</span>
+              <div className="relative w-full h-11">
+                <select value={frameStyle} onChange={e => setFrameStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[12px] font-bold outline-none cursor-pointer appearance-none">
+                  {FRAMES.map((f, i) => <option key={i} value={i}>{f.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Environment</span>
+              <div className="relative w-full h-11">
+                <select value={bgIndex} onChange={e => setBgIndex(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[12px] font-bold outline-none cursor-pointer appearance-none">
+                  {BACKGROUNDS.map((bg, i) => <option key={i} value={i}>{bg.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
             </div>
           </div>
-          <span className="text-white/90 text-[15px] font-medium tracking-wide">frame style</span>
-        </div>
+        </CollapsibleSection>
 
-        {/* Dropdown 2: Mode Selector Style */}
-        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
-          <div className="relative w-full h-14">
-            <select 
-              value={modeStyle} 
-              onChange={e => setModeStyle(Number(e.target.value))}
-              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
-            >
-              {MODE_STYLE_NAMES.map((name, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{name}</option>)}
-            </select>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{MODE_STYLE_NAMES[modeStyle]}</span>
+        {/* SECTION 2: HARDWARE STYLE */}
+        <CollapsibleSection title="Hardware Build">
+          <div className="grid grid-cols-1 gap-6">
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Mode Switch Style</span>
+              <div className="relative w-full h-11">
+                <select value={modeStyle} onChange={e => setModeStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {MODE_STYLE_NAMES.map((name, i) => <option key={i} value={i}>{name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Knob Texture</span>
+              <div className="relative w-full h-11">
+                <select value={knobStyle} onChange={e => setKnobStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {KNOB_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Center Dial Shadow</span>
+              <div className="relative w-full h-11">
+                <select value={centerDialStyle} onChange={e => setCenterDialStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {CENTER_DIAL_SHADOWS.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">I/O Meter Scale</span>
+              <div className="relative w-full h-11">
+                <select value={ioScaleStyle} onChange={e => setIoScaleStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {IO_SCALE_NAMES.map((name, i) => <option key={i} value={i}>{name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
             </div>
           </div>
-          <span className="text-white/90 text-[15px] font-medium tracking-wide">mode style</span>
-        </div>
+        </CollapsibleSection>
 
-        {/* Dropdown 3: Knob Shading Style */}
-        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
-          <div className="relative w-full h-14">
-            <select 
-              value={knobStyle} 
-              onChange={e => setKnobStyle(Number(e.target.value))}
-              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
-            >
-              {KNOB_STYLES.map((style, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{style.name}</option>)}
-            </select>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{KNOB_STYLES[knobStyle].name}</span>
+        {/* SECTION 3: BOTANICAL ASSETS */}
+        <CollapsibleSection title="Botanical Layers">
+          <div className="flex flex-col gap-8">
+            <SakuraControlGroup
+              title="Sakura Top"
+              settings={sakuraImageSettings.sakura}
+              onToggle={() => updateSakuraImage('sakura', { enabled: !sakuraImageSettings.sakura.enabled })}
+              onUpdate={patch => updateSakuraImage('sakura', patch)}
+            />
+            <SakuraControlGroup
+              title="Sakura Left"
+              settings={sakuraImageSettings.sakura2}
+              onToggle={() => updateSakuraImage('sakura2', { enabled: !sakuraImageSettings.sakura2.enabled })}
+              onUpdate={patch => updateSakuraImage('sakura2', patch)}
+            />
+            <SakuraControlGroup
+              title="Sakura Bottom"
+              settings={sakuraImageSettings.sakura3}
+              onToggle={() => updateSakuraImage('sakura3', { enabled: !sakuraImageSettings.sakura3.enabled })}
+              onUpdate={patch => updateSakuraImage('sakura3', patch)}
+            />
+            
+            <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-6">
+               <div className="flex flex-col items-center gap-2">
+                  <button onClick={() => setShowStems(!showStems)} className={`w-10 h-6 rounded-full border-2 border-white/20 flex items-center px-1 transition-colors ${showStems ? 'bg-[#d4af37]/40' : 'bg-black/20'}`}>
+                    <div className={`w-3 h-3 rounded-full bg-white transition-transform ${showStems ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </button>
+                  <span className="text-[8px] text-white/50 uppercase font-black tracking-widest">Stems</span>
+               </div>
+               <div className="flex flex-col items-center gap-2">
+                  <button onClick={() => setShowFerns(!showFerns)} className={`w-10 h-6 rounded-full border-2 border-white/20 flex items-center px-1 transition-colors ${showFerns ? 'bg-[#e66a53]/40' : 'bg-black/20'}`}>
+                    <div className={`w-3 h-3 rounded-full bg-white transition-transform ${showFerns ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </button>
+                  <span className="text-[8px] text-white/50 uppercase font-black tracking-widest">Ferns</span>
+               </div>
             </div>
           </div>
-          <span className="text-white/90 text-[15px] font-medium tracking-wide">knob shading</span>
-        </div>
+        </CollapsibleSection>
 
-        {/* Dropdown 4: Center Dial Shading */}
-        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
-          <div className="relative w-full h-14">
-            <select 
-              value={centerDialStyle} 
-              onChange={e => setCenterDialStyle(Number(e.target.value))}
-              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
-            >
-              {CENTER_DIAL_SHADOWS.map((style, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{style.name}</option>)}
-            </select>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{CENTER_DIAL_SHADOWS[centerDialStyle].name}</span>
-            </div>
-          </div>
-          <span className="text-white/90 text-[15px] font-medium tracking-wide">center dial</span>
-        </div>
-
-        {/* Dropdown 3: Background */}
-        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
-          <div className="relative w-full h-14">
-            <select 
-              value={bgIndex} 
-              onChange={e => setBgIndex(Number(e.target.value))}
-              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
-            >
-              {BACKGROUNDS.map((bg, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{bg.name}</option>)}
-            </select>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{BACKGROUNDS[bgIndex].name}</span>
-            </div>
-          </div>
-          <span className="text-white/90 text-[15px] font-medium tracking-wide">environment</span>
-        </div>
-
-        {/* Sakura Image Controls */}
-        <div className="w-full px-6 flex flex-col items-center gap-4 relative">
-          <span className="text-white/90 text-[15px] font-medium tracking-wide">sakura images</span>
-          <SakuraControlGroup
-            title="Sakura 1"
-            settings={sakuraImageSettings.sakura}
-            onToggle={() => updateSakuraImage('sakura', { enabled: !sakuraImageSettings.sakura.enabled })}
-            onUpdate={patch => updateSakuraImage('sakura', patch)}
-          />
-          <SakuraControlGroup
-            title="Sakura 2"
-            settings={sakuraImageSettings.sakura2}
-            onToggle={() => updateSakuraImage('sakura2', { enabled: !sakuraImageSettings.sakura2.enabled })}
-            onUpdate={patch => updateSakuraImage('sakura2', patch)}
-          />
-          <SakuraControlGroup
-            title="Sakura 3"
-            settings={sakuraImageSettings.sakura3}
-            onToggle={() => updateSakuraImage('sakura3', { enabled: !sakuraImageSettings.sakura3.enabled })}
-            onUpdate={patch => updateSakuraImage('sakura3', patch)}
-          />
-        </div>
-
-        {/* Dropdown 5: Filter Switch */}
-        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
-          <div className="relative w-full h-14">
-            <select 
-              value={filterSwitchStyle} 
-              onChange={e => setFilterSwitchStyle(Number(e.target.value))}
-              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
-            >
-              {FILTER_SWITCH_NAMES.map((name, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{name}</option>)}
-            </select>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{FILTER_SWITCH_NAMES[filterSwitchStyle]}</span>
-            </div>
-          </div>
-          <span className="text-white/90 text-[15px] font-medium tracking-wide">filter switch</span>
-        </div>
-
-        {/* Dropdown 6: I/O Scale */}
-        <div className="w-full px-6 flex flex-col items-center gap-3 relative">
-          <div className="relative w-full h-14">
-            <select 
-              value={ioScaleStyle} 
-              onChange={e => setIoScaleStyle(Number(e.target.value))}
-              className="absolute inset-0 w-full h-full bg-transparent text-transparent rounded-[2rem] border-[4px] border-white/80 outline-none cursor-pointer appearance-none z-10"
-            >
-              {IO_SCALE_NAMES.map((name, i) => <option key={i} value={i} className="bg-[#c8bba6] text-[#5a5549]">{name}</option>)}
-            </select>
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-              <span className="text-white font-medium text-[15px] tracking-wide text-center leading-tight px-4">{IO_SCALE_NAMES[ioScaleStyle]}</span>
-            </div>
-          </div>
-          <span className="text-white/90 text-[15px] font-medium tracking-wide">i/o scales</span>
-        </div>
-
-        {/* Toggles Grid */}
-        <div className="w-full px-4 grid grid-cols-2 gap-x-2 gap-y-5 mt-2">
-          
-          {/* Toggle Outputs */}
-          <div className="flex flex-col items-center gap-2">
+        {/* SECTION 4: AURA SHAPES (NEW) */}
+        <CollapsibleSection title="Aura Sculptor">
+          <div className="flex flex-col gap-6">
             <button 
-              onClick={() => setShowOutputs(!showOutputs)}
-              className={`w-12 h-7 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${showOutputs ? 'bg-white/20' : 'bg-transparent'}`}
+              onClick={addAuraShape}
+              className="w-full py-3 rounded-xl bg-[#e66a53] text-white text-[11px] font-black tracking-[0.2em] uppercase hover:brightness-110 shadow-lg active:scale-95 transition-all"
             >
-              <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${showOutputs ? 'translate-x-6' : 'translate-x-0'}`} />
+              Generate New Shape
             </button>
-            <span className="text-white/90 text-[12px] font-medium tracking-wide text-center leading-tight">cables</span>
-          </div>
 
-          {/* Toggle Cable Routing */}
-          <div className="flex flex-col items-center gap-2">
-            <button 
-              onClick={() => setParallelCables(!parallelCables)}
-              className={`w-12 h-7 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${parallelCables ? 'bg-white/20' : 'bg-transparent'}`}
-            >
-              <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${parallelCables ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
-            <span className="text-white/90 text-[12px] font-medium tracking-wide text-center leading-tight">parallel</span>
+            {auraShapes.length > 0 && (
+              <div className="flex flex-col gap-4 border-t border-white/5 pt-4">
+                {auraShapes.map((shape) => (
+                  <div key={shape.id} className={`p-4 rounded-2xl border transition-all ${selectedAuraShape === shape.id ? 'bg-white/10 border-white/30' : 'bg-white/5 border-transparent'}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <button onClick={() => setSelectedAuraShape(shape.id)} className="text-[10px] font-bold text-white uppercase tracking-widest truncate max-w-[120px]">
+                        {shape.id.split('-')[0]} Shape
+                      </button>
+                      <div className="flex gap-2">
+                        <button onClick={() => updateAuraShape(shape.id, { locked: !shape.locked })} className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] ${shape.locked ? 'bg-red-500/30 text-red-200' : 'bg-white/10 text-white'}`}>
+                          {shape.locked ? '🔒' : '🔓'}
+                        </button>
+                        <button onClick={() => removeAuraShape(shape.id)} className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-[10px] text-white/60 hover:bg-red-500/20 hover:text-red-300">✕</button>
+                      </div>
+                    </div>
+                    
+                    {!shape.locked && (
+                      <div className="flex flex-col gap-3">
+                        <SakuraRange label="size" value={shape.size} min={50} max={1000} onChange={v => updateAuraShape(shape.id, { size: v })} />
+                        <SakuraRange label="blur" value={shape.blur} min={0} max={150} onChange={v => updateAuraShape(shape.id, { blur: v })} />
+                        <SakuraRange label="opac" value={Math.round(shape.opacity * 100)} min={0} max={100} onChange={v => updateAuraShape(shape.id, { opacity: v/100 })} />
+                        <button 
+                          onClick={() => updateAuraShape(shape.id, { blobRadius: generateRandomBlob() })}
+                          className="w-full py-2 rounded-lg bg-white/10 text-[8px] font-bold text-white/80 uppercase tracking-widest border border-white/10 hover:bg-white/20 transition-all"
+                        >
+                          Morph Shape
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+        </CollapsibleSection>
 
-          {/* Toggle Monstera Stems */}
-          <div className="flex flex-col items-center gap-2">
-            <button 
-              onClick={() => setShowStems(!showStems)}
-              className={`w-12 h-7 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${showStems ? 'bg-white/20' : 'bg-transparent'}`}
-            >
-              <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${showStems ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
-            <span className="text-white/90 text-[12px] font-medium tracking-wide text-center leading-tight">stems</span>
+        {/* SECTION 5: DECOR CIRCLES */}
+        <CollapsibleSection title="Decor Circles">
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-2 gap-2">
+               <button onClick={() => updateAllDecorativeCircles({ enabled: true })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All On</button>
+               <button onClick={() => updateAllDecorativeCircles({ enabled: false })} className="py-2 rounded-lg bg-white/5 border border-white/10 text-[9px] font-bold text-white/60 uppercase">All Off</button>
+            </div>
+            {Object.entries(decorativeCircleSettings).map(([id, settings], index) => (
+              <CircleControlGroup
+                key={id} id={id} title={DECORATIVE_CIRCLE_LABELS[id] || `Circle ${index + 1}`}
+                settings={settings} selected={selectedCircle === id} onSelect={() => setSelectedCircle(id)}
+                onToggle={() => updateDecorativeCircle(id, { enabled: !settings.enabled })}
+                onLockToggle={() => updateDecorativeCircle(id, { locked: !settings.locked })}
+              />
+            ))}
           </div>
+        </CollapsibleSection>
 
-          {/* Toggle Right Ferns */}
-          <div className="flex flex-col items-center gap-2">
-            <button 
-              onClick={() => setShowFerns(!showFerns)}
-              className={`w-12 h-7 rounded-full border-[3px] border-white/80 flex items-center px-0.5 transition-colors duration-300 ${showFerns ? 'bg-white/20' : 'bg-transparent'}`}
-            >
-              <div className={`w-4 h-4 rounded-full bg-white transition-transform duration-300 ${showFerns ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
-            <span className="text-white/90 text-[12px] font-medium tracking-wide text-center leading-tight">ferns</span>
+        {/* SECTION 6: GLOBAL TOGGLES */}
+        <CollapsibleSection title="Workspace">
+          <div className="grid grid-cols-2 gap-y-6">
+             <div className="flex flex-col items-center gap-2">
+                <button onClick={() => setShowOutputs(!showOutputs)} className={`w-11 h-6 rounded-full border-2 border-white/20 flex items-center px-1 transition-colors ${showOutputs ? 'bg-white/20' : 'bg-transparent'}`}>
+                  <div className={`w-3 h-3 rounded-full bg-white transition-transform ${showOutputs ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+                <span className="text-[9px] text-white/50 uppercase font-bold tracking-widest">Cables</span>
+             </div>
+             <div className="flex flex-col items-center gap-2">
+                <button onClick={() => setParallelCables(!parallelCables)} className={`w-11 h-6 rounded-full border-2 border-white/20 flex items-center px-1 transition-colors ${parallelCables ? 'bg-white/20' : 'bg-transparent'}`}>
+                  <div className={`w-3 h-3 rounded-full bg-white transition-transform ${parallelCables ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+                <span className="text-[9px] text-white/50 uppercase font-bold tracking-widest">Parallel</span>
+             </div>
           </div>
-
-        </div>
+        </CollapsibleSection>
 
       </div>
 
@@ -1574,6 +2058,10 @@ export default function App() {
         * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         body { overflow: hidden; touch-action: none; }
         input[type="range"] { -webkit-user-select: auto; user-select: auto; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
       `}} />
     </div>
   );
