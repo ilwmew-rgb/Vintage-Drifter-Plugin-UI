@@ -158,8 +158,8 @@ const CollapsibleSection = ({ title, children, defaultOpen = false }) => {
         <span className="text-[13px] font-black tracking-[0.2em] uppercase">{title}</span>
         <span className={`text-[10px] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
       </button>
-      <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[60vh] opacity-100 py-6 overflow-y-auto custom-scrollbar' : 'max-h-0 opacity-0 py-0 overflow-hidden'}`}>
-        <div className="px-6 flex flex-col gap-8">
+      <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        <div className="px-6 py-6 flex flex-col gap-8 overflow-y-auto max-h-[500px] custom-scrollbar">
           {children}
         </div>
       </div>
@@ -2101,7 +2101,7 @@ export default function App() {
         input[type="range"] { -webkit-user-select: auto; user-select: auto; }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.35); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
       `}} />
     </div>
