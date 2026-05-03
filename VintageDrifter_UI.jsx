@@ -24,11 +24,15 @@ const DECORATIVE_CIRCLE_PRESETS = {
 };
 
 const DECORATIVE_CIRCLE_LABELS = {
-  circle1: 'Bottom Coral',
-  circle2: 'Left Ochre',
-  circle3: 'Top Wine',
   leaf1: 'Rate Shape A',
   leaf2: 'Rate Shape B'
+};
+
+const CONTROL_SECTION_PRESETS = {
+  io: { x: 220, y: 180, locked: true },
+  mode: { x: 80, y: 400, locked: true },
+  lfo: { x: 280, y: 780, locked: true },
+  autoGain: { x: 720, y: 750, locked: true }
 };
 
 const ORGANIC_AURORA_VARIANTS = {
@@ -144,6 +148,59 @@ const EditableAuraShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stage
         );
       })}
     </>
+  );
+};
+
+const EditableHardwareWrapper = ({ id, x, y, locked, selected, onSelect, onUpdate, stageRef, children }) => {
+  const getScale = () => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    return rect ? rect.width / 850 : 1;
+  };
+
+  const startMove = (event) => {
+    if (locked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onSelect(id);
+    
+    const scale = getScale();
+    const startX = x;
+    const startY = y;
+    const startClientX = event.clientX;
+    const startClientY = event.clientY;
+
+    const handleMove = (moveEvent) => {
+      onUpdate(id, {
+        x: Math.round(startX + (moveEvent.clientX - startClientX) / scale),
+        y: Math.round(startY + (moveEvent.clientY - startClientY) / scale)
+      });
+    };
+
+    const handleUp = () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  };
+
+  return (
+    <div
+      onPointerDown={startMove}
+      className={`absolute select-none transition-shadow ${locked ? '' : 'cursor-move touch-none hover:ring-2 hover:ring-white/30 rounded-xl'}`}
+      style={{
+        left: x,
+        top: y,
+        transform: 'translate(-50%, -50%)',
+        zIndex: selected ? 100 : 30,
+      }}
+    >
+      {children}
+      {!locked && selected && (
+        <div className="absolute -inset-4 border-2 border-white/50 border-dashed rounded-2xl pointer-events-none" />
+      )}
+    </div>
   );
 };
 
@@ -1047,7 +1104,7 @@ const BACKGROUNDS = [
   { name: 'Midnight Ash', color: '#1c1c1a' }
 ];
 
-const ModeSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
+const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = false }) => {
   const modes = ['calm', 'vintage', 'unstable'];
   const tone = {
     calm: { color: '#7aa678', glow: 'rgba(122,166,120,0.38)', bg: '#dce8d0' },
@@ -1057,11 +1114,13 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
   const label = (m, active, extra = '') => (
     <span className={`text-[8px] font-black tracking-[0.18em] uppercase transition-colors ${extra}`} style={{ color: active ? tone[m].color : '#8a7e6b' }}>{m}</span>
   );
+
+  const baseClass = isMovable ? "flex flex-col z-10" : "absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col z-10";
   
   switch (styleIndex) {
     case 0: // Glassmorphism (Original)
       return (
-        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-4 p-4 rounded-[2rem] bg-white/20 backdrop-blur-md border border-white/40 shadow-xl z-10">
+        <div className={`${baseClass} gap-4 p-4 rounded-[2rem] bg-white/20 backdrop-blur-md border border-white/40 shadow-xl`}>
           {modes.map(m => (
             <div key={m} className="flex flex-col items-center gap-2 z-10">
               <button onClick={() => setMode(m)} className="relative w-8 h-8 rounded-full outline-none flex items-center justify-center transition-transform active:scale-95" style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: power && mode === m ? '5px 5px 15px rgba(0,0,0,0.15), 0 0 12px rgba(212,175,55,0.3), inset 0 0 8px rgba(255,255,255,0.5)' : '5px 5px 15px rgba(0,0,0,0.1)' }}>
@@ -1075,7 +1134,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
 
     case 1: // Flush Walnut (Gold)
       return (
-        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-full z-10" style={{ 
+        <div className={`${baseClass} gap-5 p-4 rounded-full`} style={{ 
           backgroundImage: 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.4)), url("/textures/walnut.png")', 
           backgroundSize: 'cover',
           boxShadow: 'inset 2px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1)',
@@ -1096,7 +1155,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
 
     case 2: // Flush Walnut (Ivory)
       return (
-        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-full z-10" style={{ 
+        <div className={`${baseClass} gap-5 p-4 rounded-full`} style={{ 
           backgroundImage: 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.4)), url("/textures/walnut.png")', 
           backgroundSize: 'cover',
           boxShadow: 'inset 2px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1)',
@@ -1571,6 +1630,8 @@ export default function App() {
   const [showFerns, setShowFerns] = useState(false);
   const [sakuraImages, setSakuraImages] = useState(SAKURA_IMAGE_PRESETS);
   const [decorativeCircles, setDecorativeCircles] = useState(DECORATIVE_CIRCLE_PRESETS);
+  const [hardwarePositions, setHardwarePositions] = useState(CONTROL_SECTION_PRESETS);
+  const [selectedHardwareSection, setSelectedHardwareSection] = useState(null);
   const [selectedCircle, setSelectedCircle] = useState(null);
   const [auraShapes, setAuraShapes] = useState([]);
   const [selectedAuraShape, setSelectedAuraShape] = useState(null);
@@ -1597,6 +1658,13 @@ export default function App() {
       ...DECORATIVE_CIRCLE_PRESETS,
       ...current,
       [id]: { ...DECORATIVE_CIRCLE_PRESETS[id], ...current[id], ...patch }
+    }));
+  };
+
+  const updateHardwarePosition = (id, patch) => {
+    setHardwarePositions(current => ({
+      ...current,
+      [id]: { ...current[id], ...patch }
     }));
   };
   const updateAllDecorativeCircles = (patch) => {
@@ -1727,16 +1795,27 @@ export default function App() {
               </button>
             </div>
 
-            <div className="absolute top-[calc(16%+20px)] left-[calc(30%-40px)] z-10 flex gap-[68px]">
-              <div className="relative">
-                <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
-                <MatteKnob label="Input" value={input} onChange={setInput} onDoubleClick={() => setInput(50)} size={55} />
+            <EditableHardwareWrapper 
+              id="io" 
+              x={hardwarePositions.io.x} 
+              y={hardwarePositions.io.y} 
+              locked={hardwarePositions.io.locked}
+              selected={selectedHardwareSection === 'io'}
+              onSelect={setSelectedHardwareSection}
+              onUpdate={updateHardwarePosition}
+              stageRef={pluginStageRef}
+            >
+              <div className="flex gap-[68px]">
+                <div className="relative">
+                  <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
+                  <MatteKnob label="Input" value={input} onChange={setInput} onDoubleClick={() => setInput(50)} size={55} />
+                </div>
+                <div className="relative">
+                  <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
+                  <MatteKnob label="Output" value={output} onChange={setOutput} onDoubleClick={() => setOutput(50)} size={55} />
+                </div>
               </div>
-              <div className="relative">
-                <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
-                <MatteKnob label="Output" value={output} onChange={setOutput} onDoubleClick={() => setOutput(50)} size={55} />
-              </div>
-            </div>
+            </EditableHardwareWrapper>
 
             <div className="absolute top-[52%] left-[50%] -translate-x-1/2 -translate-y-1/2">
               <BotanicalCenterDial 
@@ -1746,7 +1825,18 @@ export default function App() {
               />
             </div>
 
-            <ModeSelectorEngine mode={mode} setMode={setMode} styleIndex={modeStyle} power={power} />
+            <EditableHardwareWrapper 
+              id="mode" 
+              x={hardwarePositions.mode.x} 
+              y={hardwarePositions.mode.y} 
+              locked={hardwarePositions.io.locked}
+              selected={selectedHardwareSection === 'mode'}
+              onSelect={setSelectedHardwareSection}
+              onUpdate={updateHardwarePosition}
+              stageRef={pluginStageRef}
+            >
+              <ModeSelectorEngine mode={mode} setMode={setMode} styleIndex={modeStyle} power={power} isMovable={true} />
+            </EditableHardwareWrapper>
 
             <div className="absolute top-[38%] right-[10%] z-30 grid grid-cols-2 gap-x-6 gap-y-10 justify-items-center">
               <div className="relative">
@@ -1788,18 +1878,29 @@ export default function App() {
               </div>
             </div>
 
-            <div className="absolute bottom-[6%] left-[26%] z-10 flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <MiniToggle label="LFO" active={lfoEnabled} onClick={() => setLfoEnabled(!lfoEnabled)} />
-                {lfoEnabled && <MiniToggle label="Sync" active={lfoSync} onClick={() => setLfoSync(!lfoSync)} />}
-              </div>
-              {lfoEnabled && (
+            <EditableHardwareWrapper 
+              id="lfo" 
+              x={hardwarePositions.lfo.x} 
+              y={hardwarePositions.lfo.y} 
+              locked={hardwarePositions.lfo.locked}
+              selected={selectedHardwareSection === 'lfo'}
+              onSelect={setSelectedHardwareSection}
+              onUpdate={updateHardwarePosition}
+              stageRef={pluginStageRef}
+            >
+              <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <DropdownSelect options={SHAPES} value={lfoShape} onChange={setLfoShape} width={70} />
-                  {lfoSync && <DropdownSelect options={SYNC_DIVS} value={lfoSyncDiv} onChange={setLfoSyncDiv} width={60} />}
+                  <MiniToggle label="LFO" active={lfoEnabled} onClick={() => setLfoEnabled(!lfoEnabled)} />
+                  {lfoEnabled && <MiniToggle label="Sync" active={lfoSync} onClick={() => setLfoSync(!lfoSync)} />}
                 </div>
-              )}
-            </div>
+                {lfoEnabled && (
+                  <div className="flex items-center gap-2">
+                    <DropdownSelect options={SHAPES} value={lfoShape} onChange={setLfoShape} width={70} />
+                    {lfoSync && <DropdownSelect options={SYNC_DIVS} value={lfoSyncDiv} onChange={setLfoSyncDiv} width={60} />}
+                  </div>
+                )}
+              </div>
+            </EditableHardwareWrapper>
 
             <div className="absolute bottom-[12%] left-[50%] -translate-x-1/2 z-10 flex gap-8 p-3 rounded-full bg-[#2d2c2b] shadow-2xl border border-white/10" style={{ boxShadow: '12px 12px 20px rgba(0,0,0,0.45)' }}>
               <div className="flex flex-col items-center">
@@ -1812,12 +1913,23 @@ export default function App() {
               </div>
             </div>
 
-            <div className="absolute bottom-[12%] right-[15%] z-10">
-              <button onClick={() => setAutoGain(!autoGain)} className="w-16 h-16 rounded-full flex justify-center items-center active:scale-95 transition-transform border-2 border-white/20" style={{ backgroundColor: '#e66a53', boxShadow: '12px 12px 20px rgba(180,60,40,0.5), inset 2px 2px 5px rgba(255,255,255,0.5), inset -2px -2px 5px rgba(0,0,0,0.3)' }}>
-                <div className={`w-6 h-6 rounded-full ${autoGain && power ? 'bg-white shadow-[0_0_15px_white]' : 'bg-[#a34433] shadow-inner'} transition-all`} />
-              </button>
-              <div className="text-center text-[9px] tracking-[0.2em] font-bold text-[#fff] drop-shadow-md mt-3 uppercase">Auto Gain</div>
-            </div>
+            <EditableHardwareWrapper 
+              id="autoGain" 
+              x={hardwarePositions.autoGain.x} 
+              y={hardwarePositions.autoGain.y} 
+              locked={hardwarePositions.autoGain.locked}
+              selected={selectedHardwareSection === 'autoGain'}
+              onSelect={setSelectedHardwareSection}
+              onUpdate={updateHardwarePosition}
+              stageRef={pluginStageRef}
+            >
+              <div className="flex flex-col items-center">
+                <button onClick={() => setAutoGain(!autoGain)} className="w-16 h-16 rounded-full flex justify-center items-center active:scale-95 transition-transform border-2 border-white/20" style={{ backgroundColor: '#e66a53', boxShadow: '12px 12px 20px rgba(180,60,40,0.5), inset 2px 2px 5px rgba(255,255,255,0.5), inset -2px -2px 5px rgba(0,0,0,0.3)' }}>
+                  <div className={`w-6 h-6 rounded-full ${autoGain && power ? 'bg-white shadow-[0_0_15px_white]' : 'bg-[#a34433] shadow-inner'} transition-all`} />
+                </button>
+                <div className="text-center text-[9px] tracking-[0.2em] font-bold text-[#fff] drop-shadow-md mt-3 uppercase">Auto Gain</div>
+              </div>
+            </EditableHardwareWrapper>
 
           </div>
         </div>
@@ -1851,7 +1963,32 @@ export default function App() {
           </div>
         </CollapsibleSection>
 
-        {/* SECTION 2: DECORATIVE ELEMENTS */}
+        {/* SECTION 2: HARDWARE LAYOUT */}
+        <CollapsibleSection title="Hardware Layout">
+          <div className="flex flex-col gap-6">
+            {Object.entries(hardwarePositions).map(([id, pos]) => (
+              <div key={id} className="flex flex-col gap-3 p-4 rounded-2xl bg-white/5 border border-white/10">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black tracking-widest text-[#edd39a] uppercase">{id === 'io' ? 'I/O Knobs' : id === 'mode' ? 'Drift Modes' : id === 'lfo' ? 'LFO Controls' : 'Auto Gain'}</span>
+                  <button 
+                    onClick={() => updateHardwarePosition(id, { locked: !pos.locked })}
+                    className={`px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border transition-all ${pos.locked ? 'bg-white/5 border-white/20 text-white/50' : 'bg-[#e66a53]/20 border-[#e66a53]/40 text-[#e66a53]'}`}
+                  >
+                    {pos.locked ? 'Locked' : 'Unlocked'}
+                  </button>
+                </div>
+                {!pos.locked && (
+                  <div className="flex flex-col gap-2">
+                    <SakuraRange label="X Pos" value={pos.x} min={0} max={850} onChange={v => updateHardwarePosition(id, { x: v })} />
+                    <SakuraRange label="Y Pos" value={pos.y} min={0} max={1000} onChange={v => updateHardwarePosition(id, { y: v })} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+
+        {/* SECTION 3: DECORATIVE ELEMENTS */}
         <CollapsibleSection title="Decor Circles" defaultOpen={true}>
           <div className="flex flex-col gap-6">
             <div className="grid grid-cols-2 gap-2">
