@@ -10,17 +10,17 @@ const DRIFT_ANIMATION_STYLES = [
 ];
 
 const SAKURA_IMAGE_PRESETS = {
-  sakura: { enabled: true, x: 845, y: 286, size: 305, rotate: 6 },
+  sakura: { enabled: true, x: 845, y: 286, size: 300, rotate: 6 },
   sakura2: { enabled: true, x: 0, y: 266, size: 335, rotate: 1 },
   sakura3: { enabled: true, x: 872, y: 774, size: 338, rotate: 34 }
 };
 
 const DECORATIVE_CIRCLE_PRESETS = {
-  circle1: { enabled: true, locked: true, x: 400, y: 780, size: 780, rotate: 0, color: '#e66a53', opacity: 0.9 },
-  circle2: { enabled: true, locked: true, x: 100, y: 500, size: 420, rotate: 0, color: '#e0a96d', opacity: 0.7 },
-  circle3: { enabled: true, locked: true, x: 480, y: 280, size: 320, rotate: 0, color: '#b04a4a', opacity: 0.5 },
-  leaf1: { enabled: true, locked: true, x: 120, y: 760, size: 320, rotate: -25, color: '#2c3e35', opacity: 0.9 },
-  leaf2: { enabled: true, locked: true, x: 180, y: 720, size: 280, rotate: 15, color: '#1e2a24', opacity: 0.6 }
+  circle1: { enabled: true, locked: true, x: 619, y: 676, size: 655, rotate: 0, color: '#e66a53', opacity: 0.9 },
+  circle2: { enabled: true, locked: true, x: 59, y: 504, size: 334, rotate: 0, color: '#e0a96d', opacity: 0.7 },
+  circle3: { enabled: false, locked: true, x: 639, y: 303, size: 245, rotate: 0, color: '#b04a4a', opacity: 0.5 },
+  leaf1: { enabled: true, locked: true, x: 105, y: 757, size: 320, rotate: -3, color: '#2c3e35', opacity: 0.8 },
+  leaf2: { enabled: false, locked: true, x: 180, y: 720, size: 280, rotate: 15, color: '#1e2a24', opacity: 0.6 }
 };
 
 const DECORATIVE_CIRCLE_LABELS = {
@@ -32,12 +32,54 @@ const DECORATIVE_CIRCLE_LABELS = {
 };
 
 const CONTROL_SECTION_PRESETS = {
-  io: { x: 340, y: 320, locked: true },
-  mode: { x: 150, y: 500, locked: true },
-  driftVisual: { x: 530, y: 580, locked: true },
+  io: { x: 424, y: 207, locked: true },
+  mode: { x: 143, y: 421, locked: true },
+  driftVisual: { x: 705, y: 564, locked: true },
   rate: { x: 150, y: 720, locked: true },
-  lfo: { x: 230, y: 650, locked: true },
-  autoGain: { x: 530, y: 710, locked: true }
+  lfo: { x: 250, y: 636, locked: true },
+  autoGain: { x: 694, y: 710, locked: true }
+};
+
+const CODE_DEFAULT_DESIGN = {
+  power: true,
+  input: 50,
+  output: 35,
+  drift: 24.709375,
+  spread: 33.474999999999994,
+  character: 25.728125,
+  charFilter: 0,
+  sweeten: 35.284375,
+  biasHF: 30,
+  noise: 30,
+  rate: 34.49375,
+  depth: 63,
+  stereoPhase: 75,
+  mode: 'vintage',
+  autoGain: true,
+  lfoEnabled: false,
+  lfoSync: false,
+  lfoShape: 0,
+  lfoSyncDiv: 4,
+  currentPreset: 0,
+  frameStyle: 1,
+  modeStyle: 0,
+  knobStyle: 0,
+  centerDialStyle: 1,
+  driftAnimation: 3,
+  bgIndex: 3,
+  showOutputs: true,
+  parallelCables: true,
+  showStems: false,
+  showFerns: false,
+  sakuraImageState: SAKURA_IMAGE_PRESETS,
+  decorativeCircles: DECORATIVE_CIRCLE_PRESETS,
+  hardwarePositions: CONTROL_SECTION_PRESETS,
+  auraShapes: [
+    { id: 'aura-1', enabled: true, x: 425, y: 425, size: 295, blur: 60, opacity: 0, gradientAngle: 135, color1: '#a34433', color2: '#e66a53', isAnimated: true, locked: true, rotate: 0, blobRadius: '68% 37% 35% 65% / 60% 72% 66% 36%' },
+    { id: 'aura-2', enabled: true, x: 425, y: 425, size: 634, blur: 58, opacity: 0, gradientAngle: 0, color1: '#e66a53', color2: '#a34433', isAnimated: true, locked: true, rotate: 0, blobRadius: '36% 74% 70% 48% / 60% 43% 33% 32%' }
+  ],
+  filterSwitchStyle: 0,
+  ioScaleStyle: 6
 };
 
 const ORGANIC_AURORA_VARIANTS = {
@@ -59,6 +101,29 @@ const ORGANIC_AURORA_VARIANTS = {
 const generateRandomBlob = () => {
   const r = () => Math.floor(Math.random() * 50) + 25; // 25% to 75%
   return `${r()}% ${100-r()}% ${r()}% ${100-r()}% / ${r()}% ${r()}% ${100-r()}% ${100-r()}%`;
+};
+
+const DESIGN_DEFAULTS_KEY = 'vintage-drifter-current-default-v1';
+
+const createDefaultAuraShapes = () => CODE_DEFAULT_DESIGN.auraShapes.map(shape => ({ ...shape }));
+
+const loadSavedDesignDefaults = () => {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(DESIGN_DEFAULTS_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+};
+
+const saveDesignDefaults = (state) => {
+  if (typeof window === 'undefined') return false;
+  try {
+    window.localStorage.setItem(DESIGN_DEFAULTS_KEY, JSON.stringify(state));
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 const EditableAuraShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stageRef }) => {
@@ -1383,6 +1448,51 @@ const FRAMES = [
       boxShadow: 'inset 2px 2px 6px rgba(255,255,255,0.1), inset -2px -2px 8px rgba(0,0,0,0.8), 10px 15px 35px rgba(0,0,0,0.6)',
       border: '1px solid #111'
     } },
+
+  { name: 'Industrial Hammered Copper', inset: '-inset-6', radius: '4rem',
+    style: {
+      backgroundImage: 'url("/textures/polished_copper_hammer_frame_1777670608231.png")',
+      backgroundSize: 'cover',
+      boxShadow: 'inset 2px 2px 10px rgba(255,255,255,0.2), inset -4px -4px 15px rgba(0,0,0,0.8), 0 30px 60px rgba(0,0,0,0.5)',
+      border: '2px solid #3d2a20'
+    },
+    innerStyle: {
+      inset: 'inset-2',
+      radius: '3.8rem',
+      backgroundColor: 'rgba(0,0,0,0.2)',
+      boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)'
+    }
+  },
+
+  { name: 'Studio Tolex (Charcoal)', inset: '-inset-5', radius: '2.5rem',
+    style: {
+      backgroundImage: 'url("/textures/studio_tolex_amplifier_frame_1777670497625.png")',
+      backgroundSize: '400px',
+      boxShadow: 'inset 1px 1px 4px rgba(255,255,255,0.1), inset -2px -2px 6px rgba(0,0,0,0.9), 10px 20px 40px rgba(0,0,0,0.7)',
+      border: '3px solid #1a1a1a'
+    }
+  },
+
+  { name: 'Rosewood Console', inset: '-inset-7', radius: '3.5rem',
+    style: {
+      backgroundImage: 'url("/textures/rosewood_console_frame_1777670401797.png")',
+      backgroundSize: 'cover',
+      boxShadow: 'inset 3px 3px 8px rgba(255,255,255,0.15), inset -5px -5px 12px rgba(0,0,0,0.9), 15px 25px 50px rgba(0,0,0,0.6)',
+      border: '1px solid #2a1a1a'
+    },
+    overlayStyle: {
+      background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.2) 100%)'
+    }
+  },
+
+  { name: 'Oiled Walnut Burl', inset: '-inset-6', radius: '4.5rem',
+    style: {
+      backgroundImage: 'url("/textures/oiled_walnut_burl_frame_1777670349016.png")',
+      backgroundSize: 'cover',
+      boxShadow: 'inset 2px 2px 6px rgba(255,255,255,0.1), inset -3px -3px 10px rgba(0,0,0,0.85), 12px 20px 45px rgba(0,0,0,0.55)',
+      border: '1.5px solid #2a1d15'
+    }
+  }
 ];
 
 const FILTER_SWITCH_NAMES = [
@@ -1640,52 +1750,48 @@ const KnobScaleRing = ({ styleIndex, size = 55 }) => {
 
 export default function App() {
   const pluginStageRef = useRef(null);
-  const [power, setPower] = useState(true);
-  const [input, setInput] = useState(35);
-  const [output, setOutput] = useState(35);
-  const [drift, setDrift] = useState(50);
-  const [spread, setSpread] = useState(50);
-  const [character, setCharacter] = useState(20);
-  const [charFilter, setCharFilter] = useState(1);
-  const [sweeten, setSweeten] = useState(25);
-  const [biasHF, setBiasHF] = useState(30);
-  const [noise, setNoise] = useState(30);
-  const [rate, setRate] = useState(15);
-  const [depth, setDepth] = useState(30);
-  const [stereoPhase, setStereoPhase] = useState(75);
-  const [mode, setMode] = useState('vintage');
-  const [autoGain, setAutoGain] = useState(true);
-  const [lfoEnabled, setLfoEnabled] = useState(true);
-  const [lfoSync, setLfoSync] = useState(false);
-  const [lfoShape, setLfoShape] = useState(0);
-  const [lfoSyncDiv, setLfoSyncDiv] = useState(4);
-  const [currentPreset, setCurrentPreset] = useState(0);
-  const [frameStyle, setFrameStyle] = useState(2);
-  const [modeStyle, setModeStyle] = useState(0);
-  const [knobStyle, setKnobStyle] = useState(0);
-  const [centerDialStyle, setCenterDialStyle] = useState(1);
-  const [driftAnimation, setDriftAnimation] = useState(3);
-  const [bgIndex, setBgIndex] = useState(3);
-  const [showOutputs, setShowOutputs] = useState(true);
-  const [parallelCables, setParallelCables] = useState(true);
-  const [showStems, setShowStems] = useState(false);
-  const [showFerns, setShowFerns] = useState(true);
-  const [sakuraImageState, setSakuraImageState] = useState({
-    sakura: { ...SAKURA_IMAGE_PRESETS.sakura, enabled: false },
-    sakura2: { ...SAKURA_IMAGE_PRESETS.sakura2, enabled: true },
-    sakura3: { ...SAKURA_IMAGE_PRESETS.sakura3, enabled: true }
-  });
-  const [decorativeCircles, setDecorativeCircles] = useState(DECORATIVE_CIRCLE_PRESETS);
-  const [hardwarePositions, setHardwarePositions] = useState(CONTROL_SECTION_PRESETS);
+  const savedDesignDefaults = useRef(loadSavedDesignDefaults()).current;
+  const initial = (key, fallback) => savedDesignDefaults[key] ?? fallback;
+  const [power, setPower] = useState(() => initial('power', CODE_DEFAULT_DESIGN.power));
+  const [input, setInput] = useState(() => initial('input', CODE_DEFAULT_DESIGN.input));
+  const [output, setOutput] = useState(() => initial('output', CODE_DEFAULT_DESIGN.output));
+  const [drift, setDrift] = useState(() => initial('drift', CODE_DEFAULT_DESIGN.drift));
+  const [spread, setSpread] = useState(() => initial('spread', CODE_DEFAULT_DESIGN.spread));
+  const [character, setCharacter] = useState(() => initial('character', CODE_DEFAULT_DESIGN.character));
+  const [charFilter, setCharFilter] = useState(() => initial('charFilter', CODE_DEFAULT_DESIGN.charFilter));
+  const [sweeten, setSweeten] = useState(() => initial('sweeten', CODE_DEFAULT_DESIGN.sweeten));
+  const [biasHF, setBiasHF] = useState(() => initial('biasHF', CODE_DEFAULT_DESIGN.biasHF));
+  const [noise, setNoise] = useState(() => initial('noise', CODE_DEFAULT_DESIGN.noise));
+  const [rate, setRate] = useState(() => initial('rate', CODE_DEFAULT_DESIGN.rate));
+  const [depth, setDepth] = useState(() => initial('depth', CODE_DEFAULT_DESIGN.depth));
+  const [stereoPhase, setStereoPhase] = useState(() => initial('stereoPhase', CODE_DEFAULT_DESIGN.stereoPhase));
+  const [mode, setMode] = useState(() => initial('mode', CODE_DEFAULT_DESIGN.mode));
+  const [autoGain, setAutoGain] = useState(() => initial('autoGain', CODE_DEFAULT_DESIGN.autoGain));
+  const [lfoEnabled, setLfoEnabled] = useState(() => initial('lfoEnabled', CODE_DEFAULT_DESIGN.lfoEnabled));
+  const [lfoSync, setLfoSync] = useState(() => initial('lfoSync', CODE_DEFAULT_DESIGN.lfoSync));
+  const [lfoShape, setLfoShape] = useState(() => initial('lfoShape', CODE_DEFAULT_DESIGN.lfoShape));
+  const [lfoSyncDiv, setLfoSyncDiv] = useState(() => initial('lfoSyncDiv', CODE_DEFAULT_DESIGN.lfoSyncDiv));
+  const [currentPreset, setCurrentPreset] = useState(() => initial('currentPreset', CODE_DEFAULT_DESIGN.currentPreset));
+  const [frameStyle, setFrameStyle] = useState(() => initial('frameStyle', CODE_DEFAULT_DESIGN.frameStyle));
+  const [modeStyle, setModeStyle] = useState(() => initial('modeStyle', CODE_DEFAULT_DESIGN.modeStyle));
+  const [knobStyle, setKnobStyle] = useState(() => initial('knobStyle', CODE_DEFAULT_DESIGN.knobStyle));
+  const [centerDialStyle, setCenterDialStyle] = useState(() => initial('centerDialStyle', CODE_DEFAULT_DESIGN.centerDialStyle));
+  const [driftAnimation, setDriftAnimation] = useState(() => initial('driftAnimation', CODE_DEFAULT_DESIGN.driftAnimation));
+  const [bgIndex, setBgIndex] = useState(() => initial('bgIndex', CODE_DEFAULT_DESIGN.bgIndex));
+  const [showOutputs, setShowOutputs] = useState(() => initial('showOutputs', CODE_DEFAULT_DESIGN.showOutputs));
+  const [parallelCables, setParallelCables] = useState(() => initial('parallelCables', CODE_DEFAULT_DESIGN.parallelCables));
+  const [showStems, setShowStems] = useState(() => initial('showStems', CODE_DEFAULT_DESIGN.showStems));
+  const [showFerns, setShowFerns] = useState(() => initial('showFerns', CODE_DEFAULT_DESIGN.showFerns));
+  const [sakuraImageState, setSakuraImageState] = useState(() => initial('sakuraImageState', CODE_DEFAULT_DESIGN.sakuraImageState));
+  const [decorativeCircles, setDecorativeCircles] = useState(() => initial('decorativeCircles', CODE_DEFAULT_DESIGN.decorativeCircles));
+  const [hardwarePositions, setHardwarePositions] = useState(() => initial('hardwarePositions', CODE_DEFAULT_DESIGN.hardwarePositions));
   const [selectedHardwareSection, setSelectedHardwareSection] = useState(null);
   const [selectedCircle, setSelectedCircle] = useState(null);
-  const [auraShapes, setAuraShapes] = useState([
-    { id: 'aura-1', enabled: true, x: 425, y: 425, size: 295, blur: 60, opacity: 0.08, gradientAngle: 135, color1: '#a34433', color2: '#e66a53', isAnimated: true, locked: true, rotate: 0, blobRadius: generateRandomBlob() },
-    { id: 'aura-2', enabled: true, x: 425, y: 425, size: 634, blur: 58, opacity: 0.05, gradientAngle: 0, color1: '#e66a53', color2: '#a34433', isAnimated: true, locked: true, rotate: 0, blobRadius: generateRandomBlob() }
-  ]);
+  const [auraShapes, setAuraShapes] = useState(() => initial('auraShapes', createDefaultAuraShapes()));
   const [selectedAuraShape, setSelectedAuraShape] = useState(null);
-  const [filterSwitchStyle, setFilterSwitchStyle] = useState(0);
-  const [ioScaleStyle, setIoScaleStyle] = useState(6);
+  const [filterSwitchStyle, setFilterSwitchStyle] = useState(() => initial('filterSwitchStyle', CODE_DEFAULT_DESIGN.filterSwitchStyle));
+  const [ioScaleStyle, setIoScaleStyle] = useState(() => initial('ioScaleStyle', CODE_DEFAULT_DESIGN.ioScaleStyle));
+  const [defaultSaveMessage, setDefaultSaveMessage] = useState('');
   const sakuraImageSettings = {
     sakura: { ...SAKURA_IMAGE_PRESETS.sakura, ...sakuraImageState.sakura },
     sakura2: { ...SAKURA_IMAGE_PRESETS.sakura2, ...sakuraImageState.sakura2 },
@@ -1762,6 +1868,49 @@ export default function App() {
     if (selectedAuraShape === id) setSelectedAuraShape(null);
   };
 
+  const handleSaveCurrentAsDefault = () => {
+    const saved = saveDesignDefaults({
+      power,
+      input,
+      output,
+      drift,
+      spread,
+      character,
+      charFilter,
+      sweeten,
+      biasHF,
+      noise,
+      rate,
+      depth,
+      stereoPhase,
+      mode,
+      autoGain,
+      lfoEnabled,
+      lfoSync,
+      lfoShape,
+      lfoSyncDiv,
+      currentPreset,
+      frameStyle,
+      modeStyle,
+      knobStyle,
+      centerDialStyle,
+      driftAnimation,
+      bgIndex,
+      showOutputs,
+      parallelCables,
+      showStems,
+      showFerns,
+      sakuraImageState,
+      decorativeCircles,
+      hardwarePositions,
+      auraShapes,
+      filterSwitchStyle,
+      ioScaleStyle
+    });
+    setDefaultSaveMessage(saved ? 'Saved as default' : 'Could not save');
+    window.setTimeout(() => setDefaultSaveMessage(''), 2200);
+  };
+
 
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -1782,16 +1931,16 @@ export default function App() {
           
           {/* Frame Wrapper */}
           <div 
-            className={`absolute ${FRAMES[frameStyle].inset || '-inset-6'} transition-all duration-500 pointer-events-none`} 
-            style={{ borderRadius: FRAMES[frameStyle].radius || '4.5rem', zIndex: -1, ...FRAMES[frameStyle].style }}
+            className={`absolute ${FRAMES[frameStyle]?.inset || '-inset-6'} transition-all duration-500 pointer-events-none`} 
+            style={{ borderRadius: FRAMES[frameStyle]?.radius || '4.5rem', zIndex: -1, ...FRAMES[frameStyle]?.style }}
           >
-            {FRAMES[frameStyle].innerStyle && (
+            {FRAMES[frameStyle]?.innerStyle && (
               <div 
                 className={`absolute ${FRAMES[frameStyle].innerStyle.inset || 'inset-2'} transition-all duration-500`} 
                 style={{ borderRadius: FRAMES[frameStyle].innerStyle.radius || '4rem', ...FRAMES[frameStyle].innerStyle }} 
               />
             )}
-            {FRAMES[frameStyle].overlayStyle && (
+            {FRAMES[frameStyle]?.overlayStyle && (
               <div 
                 className="absolute inset-0 opacity-50 mix-blend-overlay pointer-events-none transition-all duration-500" 
                 style={{ borderRadius: 'inherit', ...FRAMES[frameStyle].overlayStyle }} 
@@ -2028,6 +2177,18 @@ export default function App() {
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
               </div>
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-white/10 pt-5">
+              <button
+                onClick={handleSaveCurrentAsDefault}
+                className="w-full rounded-xl bg-[#e66a53] px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(230,106,83,0.22)] transition-all active:scale-[0.98] hover:brightness-110"
+              >
+                Save Current As Default
+              </button>
+              <span className="min-h-[14px] text-center text-[9px] font-bold uppercase tracking-[0.16em] text-[#edd39a]/80">
+                {defaultSaveMessage}
+              </span>
             </div>
           </div>
         </CollapsibleSection>
