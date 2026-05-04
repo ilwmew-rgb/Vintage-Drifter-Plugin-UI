@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import sakuraSrc from './Images/Sakura.png';
 import sakura2Src from './Images/Sakura2.png';
+import lfoSrc from './Images/LFO.png';
 
 const DRIFT_ANIMATION_STYLES = [
   'Original Drift',
@@ -14,6 +15,8 @@ const SAKURA_IMAGE_PRESETS = {
   sakura2: { enabled: true, x: 0, y: 266, size: 335, rotate: 1 },
   sakura3: { enabled: true, x: 872, y: 774, size: 338, rotate: 34 }
 };
+
+const LFO_IMAGE_PRESET = { enabled: true, locked: true, x: 250, y: 636, size: 72, rotate: 0 };
 
 const DECORATIVE_CIRCLE_PRESETS = {
   circle1: { enabled: true, locked: true, x: 619, y: 676, size: 655, rotate: 0, color: '#e66a53', opacity: 0.9 },
@@ -71,6 +74,12 @@ const CODE_DEFAULT_DESIGN = {
   parallelCables: true,
   showStems: false,
   showFerns: false,
+  faceTextureEnabled: true,
+  faceTextureStyle: 0,
+  faceTextureOpacity: 28,
+  screwsEnabled: true,
+  screwStyle: 0,
+  lfoImageState: LFO_IMAGE_PRESET,
   sakuraImageState: SAKURA_IMAGE_PRESETS,
   decorativeCircles: DECORATIVE_CIRCLE_PRESETS,
   hardwarePositions: CONTROL_SECTION_PRESETS,
@@ -81,6 +90,140 @@ const CODE_DEFAULT_DESIGN = {
   filterSwitchStyle: 0,
   ioScaleStyle: 6
 };
+
+const textureDataUrl = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+
+const FACE_TEXTURES = [
+  {
+    name: 'Studio Grain',
+    backgroundImage: textureDataUrl('<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="2.0" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#noise)"/></svg>'),
+    backgroundSize: '400px 400px',
+    mixBlendMode: 'multiply'
+  },
+  {
+    name: 'Paper Fiber',
+    backgroundImage: `${textureDataUrl('<svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg"><filter id="paper"><feTurbulence type="fractalNoise" baseFrequency="0.75 0.16" numOctaves="5" seed="12" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#paper)" opacity="0.82"/></svg>')}, repeating-linear-gradient(18deg, rgba(91,68,44,0.06) 0px, rgba(91,68,44,0.06) 1px, transparent 1px, transparent 9px)`,
+    backgroundSize: '320px 320px, 120px 120px',
+    mixBlendMode: 'multiply'
+  },
+  {
+    name: 'Linen Weave',
+    backgroundImage: 'repeating-linear-gradient(0deg, rgba(76,58,40,0.09) 0px, rgba(76,58,40,0.09) 1px, transparent 1px, transparent 6px), repeating-linear-gradient(90deg, rgba(255,255,255,0.2) 0px, rgba(255,255,255,0.2) 1px, transparent 1px, transparent 7px)',
+    backgroundSize: '42px 42px',
+    mixBlendMode: 'multiply'
+  },
+  {
+    name: 'Warm Pulp',
+    backgroundImage: `${textureDataUrl('<svg viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg"><filter id="pulp"><feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="5" seed="31"/><feComponentTransfer><feFuncA type="table" tableValues="0 0.22"/></feComponentTransfer></filter><rect width="100%" height="100%" filter="url(#pulp)"/></svg>')}, radial-gradient(circle at 30% 18%, rgba(230,106,83,0.22), transparent 34%), radial-gradient(circle at 70% 82%, rgba(212,175,55,0.18), transparent 38%)`,
+    backgroundSize: '360px 360px, 850px 850px, 850px 850px',
+    mixBlendMode: 'multiply'
+  },
+  {
+    name: 'Brushed Plate',
+    backgroundImage: `${textureDataUrl('<svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg"><filter id="brush"><feTurbulence type="fractalNoise" baseFrequency="0.9 0.035" numOctaves="3" seed="6" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#brush)" opacity="0.72"/></svg>')}, repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0px, rgba(0,0,0,0.07) 1px, transparent 1px, transparent 4px)`,
+    backgroundSize: '240px 240px, 90px 90px',
+    mixBlendMode: 'multiply'
+  },
+  {
+    name: 'Dust Speckle',
+    backgroundImage: textureDataUrl('<svg viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg"><filter id="speckle"><feTurbulence type="fractalNoise" baseFrequency="1.35" numOctaves="2" seed="44"/><feColorMatrix type="matrix" values="0 0 0 0 0.22 0 0 0 0 0.18 0 0 0 0 0.12 0 0 0 1 0"/><feComponentTransfer><feFuncA type="discrete" tableValues="0 0 0 0.42"/></feComponentTransfer></filter><rect width="100%" height="100%" filter="url(#speckle)"/></svg>'),
+    backgroundSize: '260px 260px',
+    mixBlendMode: 'multiply'
+  },
+  {
+    name: 'Mottled Wash',
+    backgroundImage: textureDataUrl('<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg"><filter id="mottle"><feTurbulence type="fractalNoise" baseFrequency="0.026" numOctaves="6" seed="19"/><feGaussianBlur stdDeviation="1.2"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#mottle)" opacity="0.9"/></svg>'),
+    backgroundSize: '420px 420px',
+    mixBlendMode: 'soft-light'
+  },
+  {
+    name: 'Fine Canvas',
+    backgroundImage: 'repeating-linear-gradient(45deg, rgba(58,44,31,0.08) 0px, rgba(58,44,31,0.08) 1px, transparent 1px, transparent 5px), repeating-linear-gradient(-45deg, rgba(255,255,255,0.18) 0px, rgba(255,255,255,0.18) 1px, transparent 1px, transparent 6px)',
+    backgroundSize: '38px 38px',
+    mixBlendMode: 'multiply'
+  },
+  {
+    name: 'Plate Patina',
+    backgroundImage: `${textureDataUrl('<svg viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg"><filter id="patina"><feTurbulence type="fractalNoise" baseFrequency="0.11" numOctaves="4" seed="28"/><feColorMatrix type="saturate" values="0.25"/></filter><rect width="100%" height="100%" filter="url(#patina)" opacity="0.68"/></svg>')}, radial-gradient(circle at 18% 24%, rgba(122,166,120,0.2), transparent 28%), radial-gradient(circle at 78% 62%, rgba(176,74,74,0.14), transparent 32%)`,
+    backgroundSize: '380px 380px, 850px 850px, 850px 850px',
+    mixBlendMode: 'multiply'
+  }
+];
+
+const SCREW_STYLES = [
+  {
+    name: 'Reference Grey',
+    size: 12,
+    bg: '#4a4a4a',
+    border: '#222',
+    slot: '#111',
+    slotRotate: 45,
+    slotWidth: '70%',
+    slotHeight: 1.5,
+    opacity: 1,
+    shadow: 'inset 0 2px 4px rgba(0,0,0,0.9), 0 1px 1px rgba(255,255,255,0.3)'
+  },
+  {
+    name: 'Deep Graphite',
+    size: 14,
+    bg: '#333331',
+    border: '#171615',
+    slot: '#090909',
+    slotRotate: -32,
+    slotWidth: '68%',
+    slotHeight: 1.7,
+    opacity: 0.96,
+    shadow: 'inset 0 2px 5px rgba(0,0,0,0.88), inset 0 -1px 1px rgba(255,255,255,0.08), 0 2px 2px rgba(0,0,0,0.22)'
+  },
+  {
+    name: 'Warm Gunmetal',
+    size: 14,
+    bg: '#514b42',
+    border: '#28231d',
+    slot: '#17120e',
+    slotRotate: 18,
+    slotWidth: '66%',
+    slotHeight: 1.6,
+    opacity: 0.86,
+    shadow: 'inset 0 2px 4px rgba(0,0,0,0.82), inset 0 -1px 2px rgba(255,230,190,0.1), 0 1px 1px rgba(255,255,255,0.18)'
+  },
+  {
+    name: 'Aged Brass',
+    size: 13,
+    bg: '#8a6a32',
+    border: '#3b2a10',
+    slot: '#211708',
+    slotRotate: 52,
+    slotWidth: '64%',
+    slotHeight: 1.5,
+    opacity: 0.78,
+    shadow: 'inset 0 2px 4px rgba(42,25,8,0.86), inset 0 -1px 2px rgba(255,235,170,0.18), 0 1px 1px rgba(255,255,255,0.22)'
+  },
+  {
+    name: 'Black Oxide',
+    size: 13,
+    bg: '#1c1c1b',
+    border: '#080808',
+    slot: '#030303',
+    slotRotate: -8,
+    slotWidth: '72%',
+    slotHeight: 1.6,
+    opacity: 0.98,
+    shadow: 'inset 0 2px 5px rgba(0,0,0,0.95), inset 0 -1px 1px rgba(255,255,255,0.06), 0 1px 1px rgba(255,255,255,0.12)'
+  },
+  {
+    name: 'Soft Nickel',
+    size: 13,
+    bg: '#6a675e',
+    border: '#2d2b27',
+    slot: '#201f1c',
+    slotRotate: 35,
+    slotWidth: '62%',
+    slotHeight: 1.4,
+    opacity: 0.68,
+    shadow: 'inset 0 2px 4px rgba(0,0,0,0.72), inset 0 -1px 2px rgba(255,255,255,0.16), 0 1px 1px rgba(255,255,255,0.2)'
+  }
+];
 
 const ORGANIC_AURORA_VARIANTS = {
   3: {
@@ -538,6 +681,63 @@ const SakuraImageLayer = ({ src, settings, alt }) => {
   );
 };
 
+const EditableImageAsset = ({ src, settings, selected, onSelect, onUpdate, stageRef, alt, zIndex = 32 }) => {
+  if (!settings.enabled) return null;
+
+  const getScale = () => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    return rect ? rect.width / 850 : 1;
+  };
+
+  const startMove = (event) => {
+    if (settings.locked) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onSelect();
+
+    const scale = getScale();
+    const startX = settings.x;
+    const startY = settings.y;
+    const startClientX = event.clientX;
+    const startClientY = event.clientY;
+
+    const handleMove = (moveEvent) => {
+      onUpdate({
+        x: Math.round(startX + (moveEvent.clientX - startClientX) / scale),
+        y: Math.round(startY + (moveEvent.clientY - startClientY) / scale)
+      });
+    };
+
+    const handleUp = () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  };
+
+  return (
+    <div
+      onPointerDown={startMove}
+      className={`absolute select-none ${settings.locked ? 'pointer-events-none' : 'cursor-move touch-none hover:ring-2 hover:ring-white/30 rounded-xl'}`}
+      style={{
+        left: settings.x,
+        top: settings.y,
+        width: settings.size,
+        transform: `translate(-50%, -50%) rotate(${settings.rotate}deg)`,
+        transformOrigin: 'center',
+        zIndex: selected ? 38 : zIndex
+      }}
+    >
+      <img src={src} alt={alt} draggable={false} className="block w-full pointer-events-none select-none" />
+      {!settings.locked && selected && (
+        <div className="absolute -inset-3 border-2 border-white/50 border-dashed rounded-xl pointer-events-none" />
+      )}
+    </div>
+  );
+};
+
 const SakuraToggle = ({ active, onClick, label }) => (
   <div className="flex flex-col items-center gap-1.5">
     <button
@@ -565,6 +765,61 @@ const SakuraRange = ({ label, value, min, max, step = 1, onChange }) => (
     <span className="text-white/80 text-[9px] font-bold tabular-nums text-right">{value}</span>
   </label>
 );
+
+const ScrewHead = ({ styleIndex = 0, size: sizeOverride }) => {
+  const style = SCREW_STYLES[styleIndex] || SCREW_STYLES[0];
+  const size = sizeOverride || style.size;
+  const scale = size / style.size;
+
+  return (
+    <div
+      className="relative flex items-center justify-center rounded-full"
+      style={{
+        width: size,
+        height: size,
+        opacity: style.opacity,
+        backgroundColor: style.bg,
+        border: `${Math.max(1, scale)}px solid ${style.border}`,
+        boxShadow: style.shadow
+      }}
+    >
+      <div
+        className="rounded-full"
+        style={{
+          width: style.slotWidth,
+          height: Math.max(1, style.slotHeight * scale),
+          backgroundColor: style.slot,
+          opacity: 0.9,
+          transform: `rotate(${style.slotRotate}deg)`,
+          boxShadow: '0 1px 0 rgba(255,255,255,0.15)'
+        }}
+      />
+    </div>
+  );
+};
+
+const CornerScrews = ({ enabled, styleIndex }) => {
+  if (!enabled) return null;
+  const corners = [
+    { id: 'top-left', x: 38, y: 38 },
+    { id: 'top-right', x: 812, y: 38 },
+    { id: 'bottom-left', x: 38, y: 812 },
+    { id: 'bottom-right', x: 812, y: 812 }
+  ];
+  return (
+    <div className="absolute inset-0 pointer-events-none z-[39]">
+      {corners.map(corner => (
+        <div
+          key={corner.id}
+          className="absolute"
+          style={{ left: corner.x, top: corner.y, transform: 'translate(-50%, -50%)' }}
+        >
+          <ScrewHead styleIndex={styleIndex} corner={corner.id} />
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const SakuraControlGroup = ({ title, settings, onToggle, onUpdate }) => (
   <div className="w-full flex flex-col gap-2">
@@ -1449,6 +1704,78 @@ const FRAMES = [
       border: '1px solid #111'
     } },
 
+  { name: 'Oiled Walnut - Soft Gasket', inset: '-inset-5', radius: '3rem',
+    style: {
+      backgroundImage: 'url("/textures/walnut.png")',
+      backgroundSize: '200px',
+      boxShadow: 'inset 0 6px 12px rgba(255,255,255,0.18), inset 0 -8px 20px rgba(0,0,0,0.38), 10px 15px 35px rgba(0,0,0,0.6)',
+      border: '1px solid #111'
+    },
+    panelStyle: {
+      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1.5px #6b4524'
+    }
+  },
+
+  { name: 'Oiled Walnut - Thin Brown Seat', inset: '-inset-5', radius: '3rem',
+    style: {
+      backgroundImage: 'url("/textures/walnut.png")',
+      backgroundSize: '200px',
+      boxShadow: 'inset 0 5px 10px rgba(255,255,255,0.14), inset 0 -7px 18px rgba(0,0,0,0.42), 10px 15px 35px rgba(0,0,0,0.6)',
+      border: '1px solid #111'
+    },
+    panelStyle: {
+      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1px #4a2d17'
+    }
+  },
+
+  { name: 'Oiled Walnut - Dark Console Seat', inset: '-inset-5', radius: '3rem',
+    style: {
+      backgroundImage: 'url("/textures/walnut.png")',
+      backgroundSize: '200px',
+      boxShadow: 'inset 0 5px 11px rgba(255,255,255,0.12), inset 0 -9px 22px rgba(0,0,0,0.48), 10px 15px 35px rgba(0,0,0,0.6)',
+      border: '1px solid #0b0704'
+    },
+    panelStyle: {
+      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1.5px #241309'
+    }
+  },
+
+  { name: 'Oiled Walnut - Amber Join Line', inset: '-inset-5', radius: '3rem',
+    style: {
+      backgroundImage: 'url("/textures/walnut.png")',
+      backgroundSize: '200px',
+      boxShadow: 'inset 0 6px 12px rgba(255,255,255,0.2), inset 0 -8px 20px rgba(0,0,0,0.36), 10px 15px 35px rgba(0,0,0,0.6)',
+      border: '1px solid #111'
+    },
+    panelStyle: {
+      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1.5px #8a5a2b'
+    }
+  },
+
+  { name: 'Oiled Walnut - Fine Black Seat', inset: '-inset-5', radius: '3rem',
+    style: {
+      backgroundImage: 'url("/textures/walnut.png")',
+      backgroundSize: '200px',
+      boxShadow: 'inset 0 4px 9px rgba(255,255,255,0.1), inset 0 -8px 20px rgba(0,0,0,0.5), 10px 15px 35px rgba(0,0,0,0.6)',
+      border: '1px solid #090604'
+    },
+    panelStyle: {
+      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1px #130b06'
+    }
+  },
+
+  { name: 'Oiled Walnut - Double Join Seat', inset: '-inset-5', radius: '3rem',
+    style: {
+      backgroundImage: 'url("/textures/walnut.png")',
+      backgroundSize: '200px',
+      boxShadow: 'inset 0 4px 9px rgba(255,255,255,0.1), inset 0 -8px 20px rgba(0,0,0,0.5), 10px 15px 35px rgba(0,0,0,0.6)',
+      border: '1px solid #111'
+    },
+    panelStyle: {
+      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1px #2b170b, 0 0 0 2px #78502a'
+    }
+  },
+
   { name: 'Industrial Hammered Copper', inset: '-inset-6', radius: '4rem',
     style: {
       backgroundImage: 'url("/textures/polished_copper_hammer_frame_1777670608231.png")',
@@ -1782,6 +2109,12 @@ export default function App() {
   const [parallelCables, setParallelCables] = useState(() => initial('parallelCables', CODE_DEFAULT_DESIGN.parallelCables));
   const [showStems, setShowStems] = useState(() => initial('showStems', CODE_DEFAULT_DESIGN.showStems));
   const [showFerns, setShowFerns] = useState(() => initial('showFerns', CODE_DEFAULT_DESIGN.showFerns));
+  const [faceTextureEnabled, setFaceTextureEnabled] = useState(() => initial('faceTextureEnabled', CODE_DEFAULT_DESIGN.faceTextureEnabled));
+  const [faceTextureStyle, setFaceTextureStyle] = useState(() => initial('faceTextureStyle', CODE_DEFAULT_DESIGN.faceTextureStyle));
+  const [faceTextureOpacity, setFaceTextureOpacity] = useState(() => initial('faceTextureOpacity', CODE_DEFAULT_DESIGN.faceTextureOpacity));
+  const [screwsEnabled, setScrewsEnabled] = useState(() => initial('screwsEnabled', CODE_DEFAULT_DESIGN.screwsEnabled));
+  const [screwStyle, setScrewStyle] = useState(() => initial('screwStyle', CODE_DEFAULT_DESIGN.screwStyle));
+  const [lfoImageState, setLfoImageState] = useState(() => initial('lfoImageState', CODE_DEFAULT_DESIGN.lfoImageState));
   const [sakuraImageState, setSakuraImageState] = useState(() => initial('sakuraImageState', CODE_DEFAULT_DESIGN.sakuraImageState));
   const [decorativeCircles, setDecorativeCircles] = useState(() => initial('decorativeCircles', CODE_DEFAULT_DESIGN.decorativeCircles));
   const [hardwarePositions, setHardwarePositions] = useState(() => initial('hardwarePositions', CODE_DEFAULT_DESIGN.hardwarePositions));
@@ -1800,6 +2133,8 @@ export default function App() {
   const decorativeCircleSettings = Object.fromEntries(
     Object.entries(DECORATIVE_CIRCLE_PRESETS).map(([id, preset]) => [id, { ...preset, ...decorativeCircles[id] }])
   );
+  const selectedFaceTexture = FACE_TEXTURES[faceTextureStyle] || FACE_TEXTURES[0];
+  const lfoImageSettings = { ...LFO_IMAGE_PRESET, ...lfoImageState };
 
   const updateSakuraImage = (id, patch) => {
     setSakuraImageState(current => ({
@@ -1807,6 +2142,9 @@ export default function App() {
       ...current,
       [id]: { ...SAKURA_IMAGE_PRESETS[id], ...current[id], ...patch }
     }));
+  };
+  const updateLfoImage = (patch) => {
+    setLfoImageState(current => ({ ...LFO_IMAGE_PRESET, ...current, ...patch }));
   };
   const updateDecorativeCircle = (id, patch) => {
     setDecorativeCircles(current => ({
@@ -1900,6 +2238,12 @@ export default function App() {
       parallelCables,
       showStems,
       showFerns,
+      faceTextureEnabled,
+      faceTextureStyle,
+      faceTextureOpacity,
+      screwsEnabled,
+      screwStyle,
+      lfoImageState,
       sakuraImageState,
       decorativeCircles,
       hardwarePositions,
@@ -1956,9 +2300,11 @@ export default function App() {
             onNext={() => setCurrentPreset(p => (p + 1) % DEMO_PRESETS.length)}
             onLoad={setCurrentPreset} onSave={(name) => console.log('Save preset:', name)} />
 
-          <div className="relative w-full h-full rounded-[4rem] shadow-[0_40px_80px_rgba(0,0,0,0.4),0_20px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500 bg-[#f4ead6] z-10">
+          <div
+            className="relative w-full h-full rounded-[4rem] shadow-[0_40px_80px_rgba(0,0,0,0.4),0_20px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500 bg-[#f4ead6] z-10"
+            style={FRAMES[frameStyle]?.panelStyle}
+          >
 
-            <div className="absolute inset-0 pointer-events-none z-0 mix-blend-multiply" style={{ opacity: 0.28, backgroundImage: "url('data:image/svg+xml,%3Csvg viewBox=%220 0 400 400%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%222.0%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22/%3E%3C/svg%3E')" }} />
             <EditableDecorativeCircles
               circles={decorativeCircleSettings}
               selectedId={selectedCircle}
@@ -1978,6 +2324,38 @@ export default function App() {
             <SakuraImageLayer src={sakuraSrc} settings={sakuraImageSettings.sakura} alt="Sakura decorative layer" />
             <SakuraImageLayer src={sakura2Src} settings={sakuraImageSettings.sakura2} alt="Sakura 2 decorative layer" />
             <SakuraImageLayer src={sakura2Src} settings={sakuraImageSettings.sakura3} alt="Sakura 3 decorative layer" />
+            <EditableImageAsset
+              src={lfoSrc}
+              settings={lfoImageSettings}
+              selected={selectedHardwareSection === 'lfoImage'}
+              onSelect={() => setSelectedHardwareSection('lfoImage')}
+              onUpdate={updateLfoImage}
+              stageRef={pluginStageRef}
+              alt="LFO image layer"
+            />
+
+            <div
+              className="absolute inset-0 pointer-events-none z-[5] transition-all duration-300"
+              style={{
+                opacity: faceTextureEnabled ? faceTextureOpacity / 100 : 0,
+                backgroundImage: selectedFaceTexture.backgroundImage,
+                backgroundSize: selectedFaceTexture.backgroundSize,
+                backgroundRepeat: 'repeat',
+                mixBlendMode: selectedFaceTexture.mixBlendMode
+              }}
+            />
+
+            {FRAMES[frameStyle]?.panelEdgeStyle && (
+              <div
+                className="absolute inset-0 rounded-[4rem] pointer-events-none z-[6] transition-all duration-500"
+                style={{
+                  ...FRAMES[frameStyle].panelEdgeStyle,
+                  mixBlendMode: 'multiply'
+                }}
+              />
+            )}
+
+            <CornerScrews enabled={screwsEnabled} styleIndex={screwStyle} />
 
             <div className={`absolute inset-0 bg-[#3a352d]/50 backdrop-grayscale transition-all duration-700 z-40 pointer-events-none ${power ? 'opacity-0' : 'opacity-100'}`} />
 
@@ -2015,7 +2393,7 @@ export default function App() {
               </div>
             </EditableHardwareWrapper>
 
-            <div className="absolute top-[52%] left-[50%] -translate-x-1/2 -translate-y-1/2">
+            <div className="absolute top-[52%] left-[50%] z-30 -translate-x-1/2 -translate-y-1/2">
               <BotanicalCenterDial 
                 drift={drift} setDrift={setDrift} onDoubleClickDrift={() => setDrift(0)}
                 spread={spread} setSpread={setSpread} onDoubleClickSpread={() => setSpread(0)}
@@ -2179,6 +2557,73 @@ export default function App() {
               </div>
             </div>
 
+            <div className="flex flex-col gap-4 border-t border-white/10 pt-5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Face Texture</span>
+                  <span className="text-white/35 text-[9px] font-bold uppercase tracking-[0.12em]">{faceTextureEnabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <button onClick={() => setFaceTextureEnabled(!faceTextureEnabled)} className={`w-11 h-6 rounded-full border-2 border-white/20 flex items-center px-1 transition-colors ${faceTextureEnabled ? 'bg-[#d4af37]/40' : 'bg-black/20'}`}>
+                  <div className={`w-3 h-3 rounded-full bg-white transition-transform ${faceTextureEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="relative h-14 overflow-hidden rounded-xl border border-white/10 bg-[#f4ead6]">
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      opacity: faceTextureOpacity / 100,
+                      backgroundImage: selectedFaceTexture.backgroundImage,
+                      backgroundSize: selectedFaceTexture.backgroundSize,
+                      backgroundRepeat: 'repeat',
+                      mixBlendMode: selectedFaceTexture.mixBlendMode
+                    }}
+                  />
+                </div>
+                <div className="relative w-full h-11">
+                  <select value={faceTextureStyle} onChange={e => setFaceTextureStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                    {FACE_TEXTURES.map((texture, i) => <option key={i} value={i}>{texture.name}</option>)}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+                </div>
+              </div>
+
+              <SakuraRange label="opac" value={faceTextureOpacity} min={0} max={70} onChange={setFaceTextureOpacity} />
+            </div>
+
+            <div className="flex flex-col gap-4 border-t border-white/10 pt-5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Corner Screws</span>
+                  <span className="text-white/35 text-[9px] font-bold uppercase tracking-[0.12em]">{screwsEnabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <button onClick={() => setScrewsEnabled(!screwsEnabled)} className={`w-11 h-6 rounded-full border-2 border-white/20 flex items-center px-1 transition-colors ${screwsEnabled ? 'bg-[#d4af37]/40' : 'bg-black/20'}`}>
+                  <div className={`w-3 h-3 rounded-full bg-white transition-transform ${screwsEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-5 gap-2">
+                {SCREW_STYLES.map((style, i) => (
+                  <button
+                    key={style.name}
+                    onClick={() => setScrewStyle(i)}
+                    className={`flex h-11 items-center justify-center rounded-xl border transition-all ${screwStyle === i ? 'border-[#d4af37]/70 bg-[#d4af37]/15' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                    title={style.name}
+                  >
+                    <ScrewHead styleIndex={i} corner={`picker-${i}`} size={20} />
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative w-full h-11">
+                <select value={screwStyle} onChange={e => setScrewStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {SCREW_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
             <div className="flex flex-col gap-2 border-t border-white/10 pt-5">
               <button
                 onClick={handleSaveCurrentAsDefault}
@@ -2196,6 +2641,35 @@ export default function App() {
         {/* SECTION 2: HARDWARE LAYOUT */}
         <CollapsibleSection title="Hardware Layout">
           <div className="flex flex-col gap-6">
+            <div className={`flex flex-col gap-3 p-4 rounded-2xl border transition-all ${selectedHardwareSection === 'lfoImage' ? 'bg-white/10 border-white/30' : 'bg-white/5 border-white/10'}`}>
+              <div className="flex items-center justify-between">
+                <button onClick={() => setSelectedHardwareSection('lfoImage')} className="text-[10px] font-black tracking-widest text-[#edd39a] uppercase">
+                  LFO Image
+                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => updateLfoImage({ enabled: !lfoImageSettings.enabled })}
+                    className={`px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border transition-all ${lfoImageSettings.enabled ? 'bg-[#d4af37]/20 border-[#d4af37]/40 text-[#edd39a]' : 'bg-white/5 border-white/20 text-white/50'}`}
+                  >
+                    {lfoImageSettings.enabled ? 'On' : 'Off'}
+                  </button>
+                  <button 
+                    onClick={() => updateLfoImage({ locked: !lfoImageSettings.locked })}
+                    className={`px-3 py-1 rounded-full text-[8px] font-bold uppercase tracking-widest border transition-all ${lfoImageSettings.locked ? 'bg-white/5 border-white/20 text-white/50' : 'bg-[#e66a53]/20 border-[#e66a53]/40 text-[#e66a53]'}`}
+                  >
+                    {lfoImageSettings.locked ? 'Locked' : 'Unlocked'}
+                  </button>
+                </div>
+              </div>
+              {lfoImageSettings.enabled && !lfoImageSettings.locked && (
+                <div className="flex flex-col gap-2">
+                  <SakuraRange label="X Pos" value={lfoImageSettings.x} min={0} max={850} onChange={v => updateLfoImage({ x: v })} />
+                  <SakuraRange label="Y Pos" value={lfoImageSettings.y} min={0} max={850} onChange={v => updateLfoImage({ y: v })} />
+                  <SakuraRange label="size" value={lfoImageSettings.size} min={16} max={260} onChange={v => updateLfoImage({ size: v })} />
+                  <SakuraRange label="rot" value={lfoImageSettings.rotate} min={-180} max={180} onChange={v => updateLfoImage({ rotate: v })} />
+                </div>
+              )}
+            </div>
             {Object.entries(hardwarePositions).map(([id, pos]) => (
               <div key={id} className="flex flex-col gap-3 p-4 rounded-2xl bg-white/5 border border-white/10">
                 <div className="flex items-center justify-between">
