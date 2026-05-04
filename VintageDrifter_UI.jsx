@@ -1205,21 +1205,21 @@ const HardwareLED = ({ active, color = 'red', size = 8, label, pulse = false }) 
 
 
 const AnalogCables = ({ position = 'left', parallel = true }) => {
-  const leftCable1Splayed = "M 150,210 C 150,120 90,80 30,-20";
-  const leftCable2Splayed = "M 235,210 C 235,120 295,80 355,-20";
-  const rightCable1Splayed = "M 150,210 C 150,150 70,90 10,-20";
-  const rightCable2Splayed = "M 235,210 C 235,100 320,130 380,-20";
+  const leftCable1Splayed = "M 150,214 C 150,124 90,84 30,-20";
+  const leftCable2Splayed = "M 235,214 C 235,124 295,84 355,-20";
+  const rightCable1Splayed = "M 150,214 C 150,154 70,94 10,-20";
+  const rightCable2Splayed = "M 235,214 C 235,104 320,134 380,-20";
 
-  const leftCable1Parallel = "M 150,210 C 150,120 90,80 30,-20";
-  const leftCable2Parallel = "M 235,210 C 235,120 175,80 115,-20";
-  const rightCable1Parallel = "M 150,210 C 150,120 220,80 280,-20";
-  const rightCable2Parallel = "M 235,210 C 235,100 290,60 350,-20";
+  const leftCable1Parallel = "M 150,214 C 150,124 90,84 30,-20";
+  const leftCable2Parallel = "M 235,214 C 235,124 175,84 115,-20";
+  const rightCable1Parallel = "M 150,214 C 150,124 220,84 280,-20";
+  const rightCable2Parallel = "M 235,214 C 235,104 290,64 350,-20";
 
   const path1 = position === 'left' ? (parallel ? leftCable1Parallel : leftCable1Splayed) : (parallel ? rightCable1Parallel : rightCable1Splayed);
   const path2 = position === 'left' ? (parallel ? leftCable2Parallel : leftCable2Splayed) : (parallel ? rightCable2Parallel : rightCable2Splayed);
 
   return (
-    <div className={`absolute top-0 ${position === 'left' ? 'left-[20%] -translate-x-1/2' : 'right-[20%] translate-x-1/2'} -translate-y-[85%] w-[45%] z-0 pointer-events-none`}>
+    <div className={`absolute top-[-28px] ${position === 'left' ? 'left-[20%] -translate-x-1/2' : 'right-[20%] translate-x-1/2'} -translate-y-[85%] w-[45%] z-[-2] pointer-events-none`}>
       <svg viewBox="0 0 400 300" className="w-full h-auto" style={{ 
         filter: 'drop-shadow(15px 25px 20px rgba(0,0,0,0.6))',
         transform: position === 'right' ? 'scaleX(-1)' : 'none'
@@ -1245,9 +1245,9 @@ const AnalogCables = ({ position = 'left', parallel = true }) => {
         </g>
         
         {/* Jack 1 */}
-        <rect x="134" y="200" width="32" height="100" fill="url(#jackGrad)" rx="4" />
-        <rect x="130" y="270" width="40" height="30" fill="#111" rx="2" />
-        <rect x="134" y="215" width="32" height="4" fill="#d1c5ab" opacity="0.9" />
+        <rect x="134" y="204" width="32" height="100" fill="url(#jackGrad)" rx="4" />
+        <rect x="130" y="256" width="40" height="30" fill="#111" rx="2" />
+        <rect x="134" y="219" width="32" height="4" fill="#d1c5ab" opacity="0.9" />
         
         {/* Cable 2 */}
         <g>
@@ -1258,15 +1258,15 @@ const AnalogCables = ({ position = 'left', parallel = true }) => {
         </g>
 
         {/* Jack 2 */}
-        <rect x="219" y="200" width="32" height="100" fill="url(#jackGrad)" rx="4" />
-        <rect x="215" y="270" width="40" height="30" fill="#111" rx="2" />
-        <rect x="219" y="215" width="32" height="4" fill="#e66a53" opacity="0.9" />
+        <rect x="219" y="204" width="32" height="100" fill="url(#jackGrad)" rx="4" />
+        <rect x="215" y="256" width="40" height="30" fill="#111" rx="2" />
+        <rect x="219" y="219" width="32" height="4" fill="#e66a53" opacity="0.9" />
         
         {/* Ribs */}
         {[...Array(6)].map((_, i) => (
           <g key={`rib-${i}`}>
-            <line x1="134" y1={235 + i*6} x2="166" y2={235 + i*6} stroke="#050505" strokeWidth="2" />
-            <line x1="219" y1={235 + i*6} x2="251" y2={235 + i*6} stroke="#050505" strokeWidth="2" />
+            <line x1="134" y1={239 + i*6} x2="166" y2={239 + i*6} stroke="#050505" strokeWidth="2" />
+            <line x1="219" y1={239 + i*6} x2="251" y2={239 + i*6} stroke="#050505" strokeWidth="2" />
           </g>
         ))}
       </svg>
