@@ -17,6 +17,7 @@ const SAKURA_IMAGE_PRESETS = {
 };
 
 const LFO_IMAGE_PRESET = { enabled: true, locked: true, x: 250, y: 636, size: 72, rotate: 0 };
+const DEFAULT_PANEL_FACE_COLOR = '#f4ead6';
 
 const DECORATIVE_CIRCLE_PRESETS = {
   circle1: { enabled: true, locked: true, x: 619, y: 676, size: 655, rotate: 0, color: '#e66a53', opacity: 0.9 },
@@ -47,14 +48,14 @@ const CODE_DEFAULT_DESIGN = {
   power: true,
   input: 50,
   output: 35,
-  drift: 24.709375,
-  spread: 33.474999999999994,
+  drift: 0,
+  spread: 44.428124999999994,
   character: 25.728125,
   charFilter: 0,
   sweeten: 35.284375,
   biasHF: 30,
   noise: 30,
-  rate: 34.49375,
+  rate: 26.428124999999998,
   depth: 63,
   stereoPhase: 75,
   mode: 'vintage',
@@ -65,7 +66,7 @@ const CODE_DEFAULT_DESIGN = {
   lfoSyncDiv: 4,
   currentPreset: 0,
   frameStyle: 1,
-  modeStyle: 0,
+  modeStyle: 3,
   knobStyle: 0,
   centerDialStyle: 1,
   driftAnimation: 3,
@@ -77,21 +78,31 @@ const CODE_DEFAULT_DESIGN = {
   faceTextureEnabled: true,
   faceTextureStyle: 0,
   faceTextureOpacity: 28,
+  panelFaceColor: DEFAULT_PANEL_FACE_COLOR,
+  useDefaultPanelFaceColor: true,
   screwsEnabled: true,
   screwStyle: 0,
   lfoImageState: LFO_IMAGE_PRESET,
-  sakuraImageState: SAKURA_IMAGE_PRESETS,
+  sakuraImageState: {
+    ...SAKURA_IMAGE_PRESETS,
+    sakura: { ...SAKURA_IMAGE_PRESETS.sakura, enabled: false }
+  },
   decorativeCircles: DECORATIVE_CIRCLE_PRESETS,
-  hardwarePositions: CONTROL_SECTION_PRESETS,
+  hardwarePositions: {
+    ...CONTROL_SECTION_PRESETS,
+    mode: { x: 74, y: 427, locked: true }
+  },
   auraShapes: [
     { id: 'aura-1', enabled: true, x: 425, y: 425, size: 295, blur: 60, opacity: 0, gradientAngle: 135, color1: '#a34433', color2: '#e66a53', isAnimated: true, locked: true, rotate: 0, blobRadius: '68% 37% 35% 65% / 60% 72% 66% 36%' },
     { id: 'aura-2', enabled: true, x: 425, y: 425, size: 634, blur: 58, opacity: 0, gradientAngle: 0, color1: '#e66a53', color2: '#a34433', isAnimated: true, locked: true, rotate: 0, blobRadius: '36% 74% 70% 48% / 60% 43% 33% 32%' }
   ],
   filterSwitchStyle: 0,
-  ioScaleStyle: 6
+  ioScaleStyle: 6,
+  bottomSectionStyle: 0
 };
 
 const textureDataUrl = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+const RUBBER_MATTE_NOISE = textureDataUrl("<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='noise'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%' height='100%' filter='url(#noise)'/></svg>");
 
 const FACE_TEXTURES = [
   {
@@ -406,7 +417,7 @@ const EditableHardwareWrapper = ({ id, x, y, locked, selected, onSelect, onUpdat
         left: x,
         top: y,
         transform: 'translate(-50%, -50%)',
-        zIndex: selected ? 100 : 30,
+        zIndex: selected ? 100 : id === 'io' ? 45 : 30,
       }}
     >
       {children}
@@ -674,6 +685,7 @@ const SakuraImageLayer = ({ src, settings, alt }) => {
         transform: `translate(-50%, -50%) rotate(${settings.rotate}deg)`,
         transformOrigin: 'center',
         zIndex: 39,
+        opacity: 0.9,
         filter: 'brightness(0.95)',
         mixBlendMode: 'luminosity'
       }}
@@ -1309,6 +1321,322 @@ const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, 
   );
 };
 
+const MiniBottomKnob = ({ label, value, onChange, accent = '#d4af37', labelColor = '#d3ba8c', face = '#202020' }) => {
+  const [isDragging, setIsDragging] = useState(false);
+  const startY = useRef(0);
+  const startVal = useRef(0);
+  const rotation = (value / 100 * 270) - 135;
+  const handlePointerDown = (event) => {
+    event.preventDefault();
+    setIsDragging(true);
+    startY.current = event.clientY;
+    startVal.current = value;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const handlePointerMove = (event) => {
+    if (!isDragging) return;
+    event.preventDefault();
+    onChange(Math.max(0, Math.min(100, startVal.current + (startY.current - event.clientY) * 0.8)));
+  };
+  const handlePointerUp = (event) => {
+    setIsDragging(false);
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
+  return (
+    <div className="flex w-[78px] flex-col items-center gap-1.5 select-none">
+      <button
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onDoubleClick={() => onChange(label === 'Depth' ? 63 : 75)}
+        className="relative h-11 w-11 rounded-full border border-black/60 active:scale-95 transition-transform"
+        style={{
+          background: `radial-gradient(circle at 34% 28%, rgba(255,255,255,0.2), transparent 28%), ${face}`,
+          boxShadow: '8px 9px 13px rgba(0,0,0,0.42), inset 1px 1px 2px rgba(255,255,255,0.16), inset -2px -2px 5px rgba(0,0,0,0.72)'
+        }}
+      >
+        <span className="absolute inset-0 transition-transform duration-75" style={{ transform: `rotate(${rotation}deg)` }}>
+          <span
+            className="absolute left-1/2 top-[6px] h-[13px] w-[4px] -translate-x-1/2 rounded-full"
+            style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
+          />
+        </span>
+        <span className="absolute inset-[15px] rounded-full bg-black/35 shadow-inner" />
+      </button>
+      <span className="text-[8px] font-black uppercase tracking-[0.18em]" style={{ color: labelColor }}>{label}</span>
+    </div>
+  );
+};
+
+const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, styleIndex }) => {
+  const HiddenRange = ({ value, onChange }) => (
+    <input
+      type="range"
+      min="0"
+      max="100"
+      value={value}
+      onChange={event => onChange(Number(event.target.value))}
+      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      style={{ WebkitAppearance: 'none' }}
+    />
+  );
+
+  const DragSurface = ({ onChange }) => {
+    const surfaceRef = useRef(null);
+    const updateFromPointer = (event) => {
+      const rect = surfaceRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const next = Math.round(Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * 100);
+      onChange(next);
+    };
+    return (
+      <div
+        ref={surfaceRef}
+        className="absolute inset-0 cursor-pointer touch-none"
+        onPointerDown={event => {
+          event.preventDefault();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          updateFromPointer(event);
+        }}
+        onPointerMove={event => {
+          if (event.buttons !== 1) return;
+          event.preventDefault();
+          updateFromPointer(event);
+        }}
+      />
+    );
+  };
+
+  const ScrewDots = ({ color = '#090807' }) => (
+    <>
+      <span className="absolute left-3 top-3 h-2 w-2 rounded-full border border-white/10" style={{ backgroundColor: color, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.9)' }} />
+      <span className="absolute right-3 top-3 h-2 w-2 rounded-full border border-white/10" style={{ backgroundColor: color, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.9)' }} />
+    </>
+  );
+
+  const HardwareRail = ({
+    label,
+    value,
+    onChange,
+    accent = '#d4af37',
+    labelColor = '#bcb29a',
+    track = '#121212',
+    fill = accent,
+    width = 86,
+    height = 9,
+    thumb = 'round',
+    ticks = false,
+    slotShadow = 'inset 0 2px 4px rgba(0,0,0,0.82), 0 1px 0 rgba(255,255,255,0.08)'
+  }) => {
+    const pct = `${value}%`;
+    return (
+      <div className="flex min-w-[92px] flex-col items-center gap-2 select-none">
+        <div className="relative" style={{ width, height: 28 }}>
+          {ticks && (
+            <div className="absolute left-1 right-1 top-0 flex justify-between">
+              {[0, 1, 2, 3, 4].map(i => <span key={i} className="h-1.5 w-px bg-white/18" />)}
+            </div>
+          )}
+          <div
+            className="absolute left-0 right-0 top-1/2 -translate-y-1/2 overflow-hidden rounded-full border border-black/60"
+            style={{ height, background: track, boxShadow: slotShadow }}
+          >
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: pct,
+                background: `linear-gradient(90deg, ${fill}, ${accent})`,
+                boxShadow: `0 0 10px ${accent}55`
+              }}
+            />
+          </div>
+          <div
+            className={`absolute top-1/2 -translate-y-1/2 ${thumb === 'tab' ? 'h-[20px] w-[12px] rounded-[4px]' : thumb === 'blade' ? 'h-[18px] w-[8px] rounded-sm' : 'h-[22px] w-[22px] rounded-full'} border border-black/60`}
+            style={{
+              left: pct,
+              transform: 'translate(-50%, -50%)',
+              background: thumb === 'blade'
+                ? `linear-gradient(180deg, #f3df9d, ${accent} 48%, #8a6a1c)`
+                : `radial-gradient(circle at 32% 26%, rgba(255,255,255,0.55), transparent 28%), linear-gradient(145deg, ${accent}, #8a6a1c)`,
+              boxShadow: '3px 5px 8px rgba(0,0,0,0.46), inset 1px 1px 2px rgba(255,255,255,0.55), inset -1px -1px 2px rgba(0,0,0,0.38)'
+            }}
+          />
+          <HiddenRange value={value} onChange={onChange} />
+        </div>
+        <span className="text-[8px] font-black uppercase tracking-[0.22em]" style={{ color: labelColor }}>{label}</span>
+      </div>
+    );
+  };
+
+  const MeterSlider = ({ label, value, onChange, accent, labelColor, meterBg = '#17140f' }) => (
+    <div className="flex min-w-[94px] flex-col items-center gap-1.5 select-none">
+      <div className="relative h-8 w-[92px] rounded-[8px] border border-black/60" style={{ background: meterBg, boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.75), 0 1px 0 rgba(255,255,255,0.08)' }}>
+        <div className="absolute inset-x-2 top-2 flex justify-between">
+          {[0, 1, 2, 3, 4, 5].map(i => <span key={i} className="h-2 w-px bg-[#d8c28a]/45" />)}
+        </div>
+        <div className="absolute bottom-2 left-2 right-2 h-[5px] overflow-hidden rounded-full bg-black/65">
+          <div className="h-full rounded-full" style={{ width: `${value}%`, background: accent, boxShadow: `0 0 8px ${accent}` }} />
+        </div>
+        <HiddenRange value={value} onChange={onChange} />
+      </div>
+      <span className="text-[8px] font-black uppercase tracking-[0.2em]" style={{ color: labelColor }}>{label}</span>
+    </div>
+  );
+
+  const KnobPair = ({ shell, accentA = '#d4af37', accentB = '#e66a53', labelColor = '#d3ba8c', face = '#202020', className = '', children }) => (
+    <div className={`absolute bottom-[10.5%] left-[50%] z-10 flex -translate-x-1/2 items-center gap-5 px-5 py-3 ${className}`} style={shell}>
+      {children}
+      <MiniBottomKnob label="Depth" value={depth} onChange={setDepth} accent={accentA} face={face} labelColor={labelColor} />
+      <MiniBottomKnob label="Stereo" value={stereoPhase} onChange={setStereoPhase} accent={accentB} face={face} labelColor={labelColor} />
+    </div>
+  );
+
+  const IlluminatedRubberFader = ({ label, value, onChange }) => (
+    <div className="relative z-10 flex w-[88px] flex-col gap-1">
+      <div className="flex items-center text-[8px] font-black uppercase tracking-[0.18em] text-[#aaa39a] drop-shadow-md">{label}</div>
+      <div className="relative h-8">
+        <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full border-b border-[#333] bg-[#141414] shadow-[inset_0_3px_5px_rgba(0,0,0,0.8)]" />
+        <div
+          className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-[#1a1714]/40"
+          style={{ width: `${value}%` }}
+        />
+        <div
+          className="absolute top-1/2 h-7 w-5 -translate-x-1/2 -translate-y-1/2 rounded-md border border-[#111] bg-[#222] shadow-[0_4px_6px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.05)]"
+          style={{ left: `${value}%` }}
+        >
+          <div className="absolute left-1/2 top-1/2 h-3 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#df6f5a] shadow-[0_0_6px_rgba(223,111,90,0.9),inset_0_1px_1px_rgba(255,255,255,0.3)]" />
+        </div>
+        <DragSurface onChange={onChange} />
+      </div>
+    </div>
+  );
+
+  switch (styleIndex) {
+    case 0:
+      return (
+        <div className="absolute bottom-[12%] left-[50%] z-10 flex -translate-x-1/2 gap-8 overflow-hidden rounded-full border border-[#1a1a1a] bg-[#282828] px-5 py-3 shadow-[0_8px_14px_rgba(0,0,0,0.22),0_2px_4px_rgba(0,0,0,0.18),inset_0_1px_2px_rgba(255,255,255,0.07),inset_0_-1px_2px_rgba(0,0,0,0.22)]">
+          <div className="absolute inset-0 bg-gradient-to-b from-[#ffffff08] to-transparent pointer-events-none" />
+          <div className="absolute inset-0 opacity-30 mix-blend-overlay pointer-events-none" style={{ backgroundImage: RUBBER_MATTE_NOISE }} />
+          <IlluminatedRubberFader label="Depth" value={depth} onChange={setDepth} />
+          <IlluminatedRubberFader label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} />
+        </div>
+      );
+    case 1:
+      return (
+        <div className="absolute bottom-[11.6%] left-[50%] z-10 flex -translate-x-1/2 gap-4 rounded-[1.1rem] border border-black/80 bg-[#181818] px-4 py-3 shadow-[10px_14px_20px_rgba(0,0,0,0.36),inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+          <ScrewDots />
+          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={82} accent="#edd39a" labelColor="#cfc0a0" track="#060606" thumb="tab" ticks />
+          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={82} accent="#e66a53" labelColor="#cfc0a0" track="#060606" thumb="tab" ticks />
+        </div>
+      );
+    case 2:
+      return (
+        <div className="absolute bottom-[11.8%] left-[50%] z-10 flex -translate-x-1/2 gap-5 rounded-[1.8rem] border border-white/15 bg-black/38 px-4 py-3 shadow-[9px_13px_21px_rgba(0,0,0,0.25),inset_0_1px_2px_rgba(255,255,255,0.16)] backdrop-blur-md">
+          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={88} height={7} accent="#edd39a" labelColor="#f0dca8" track="rgba(0,0,0,0.62)" />
+          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={88} height={7} accent="#e66a53" labelColor="#f0dca8" track="rgba(0,0,0,0.62)" />
+        </div>
+      );
+    case 3:
+      return (
+        <div className="absolute bottom-[12%] left-[50%] z-10 flex -translate-x-1/2 gap-5 rounded-[0.8rem] border border-[#050403] bg-[#211d18] px-4 py-3 shadow-[8px_12px_18px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,230,180,0.08)]">
+          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={88} height={11} accent="#d4af37" fill="#6c5418" labelColor="#d3ba8c" track="#080705" thumb="blade" ticks />
+          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={88} height={11} accent="#d4af37" fill="#6c5418" labelColor="#d3ba8c" track="#080705" thumb="blade" ticks />
+        </div>
+      );
+    case 4:
+      return (
+        <KnobPair
+          className="rounded-[1.45rem] border border-black/80"
+          shell={{
+            background: 'linear-gradient(145deg, #171615, #25221d)',
+            boxShadow: '10px 14px 20px rgba(0,0,0,0.36), inset 0 1px 2px rgba(255,255,255,0.08), inset 0 -2px 5px rgba(0,0,0,0.55)'
+          }}
+        />
+      );
+    case 5:
+      return (
+        <div className="absolute bottom-[11.8%] left-[50%] z-10 flex -translate-x-1/2 items-center gap-4 rounded-[0.85rem] border border-black/75 bg-[#201f1c] px-4 py-2.5 shadow-[9px_12px_18px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.1)]">
+          <span className="h-11 w-[3px] rounded-full bg-[#d4af37] shadow-[0_0_10px_rgba(212,175,55,0.4)]" />
+          <MeterSlider label="Depth" value={depth} onChange={setDepth} accent="#e7c44e" labelColor="#cfc3a9" />
+          <MeterSlider label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} accent="#e66a53" labelColor="#cfc3a9" />
+        </div>
+      );
+    case 6:
+      return (
+        <KnobPair
+          className="rounded-[1.2rem] border border-[#070403]"
+          face="linear-gradient(145deg, #26150f, #120a07)"
+          labelColor="#d8bc80"
+          accentA="#d4af37"
+          accentB="#d4af37"
+          shell={{
+            background: 'radial-gradient(circle at 25% 20%, rgba(255,185,90,0.08), transparent 36%), linear-gradient(145deg, #24140e, #150c09)',
+            boxShadow: '10px 13px 20px rgba(0,0,0,0.36), inset 0 1px 2px rgba(255,210,150,0.1), inset 0 -2px 6px rgba(0,0,0,0.55)'
+          }}
+        >
+          <ScrewDots color="#0c0705" />
+        </KnobPair>
+      );
+    case 7:
+      return (
+        <div className="absolute bottom-[12%] left-[50%] z-10 flex -translate-x-1/2 gap-5 rounded-full border border-[#fff9ed]/80 bg-[#f2e4c8]/90 px-4 py-3 shadow-[7px_11px_17px_rgba(91,65,42,0.18),inset_1px_1px_2px_rgba(255,255,255,0.85),inset_0_-2px_5px_rgba(113,78,44,0.12)]">
+          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={84} height={8} accent="#a88842" labelColor="#73583a" track="#d7c4a1" thumb="tab" />
+          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={84} height={8} accent="#a88842" labelColor="#73583a" track="#d7c4a1" thumb="tab" />
+        </div>
+      );
+    case 8:
+      return (
+        <KnobPair
+          className="rounded-[1.35rem] border border-[#fff7e8]/80"
+          face="linear-gradient(145deg, #fff8e8, #d7c7a9)"
+          labelColor="#7f6747"
+          accentA="#b88935"
+          accentB="#b88935"
+          shell={{
+            background: 'linear-gradient(145deg, rgba(255,250,238,0.94), rgba(226,211,184,0.88))',
+            boxShadow: '8px 12px 18px rgba(89,65,42,0.18), inset 1px 1px 2px rgba(255,255,255,0.9), inset 0 -2px 5px rgba(120,84,48,0.16)'
+          }}
+        />
+      );
+    case 9:
+      return (
+        <div className="absolute bottom-[11.9%] left-[50%] z-10 flex -translate-x-1/2 gap-4 rounded-[0.9rem] border border-[#d8c09b]/75 bg-[#ead8b8]/86 px-4 py-3 shadow-[6px_10px_15px_rgba(90,63,39,0.16),inset_0_1px_1px_rgba(255,255,255,0.52)]" style={{ backgroundImage: 'repeating-linear-gradient(90deg, rgba(120,92,62,0.06) 0px, rgba(120,92,62,0.06) 1px, transparent 1px, transparent 7px)' }}>
+          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={90} height={6} accent="#8a6a32" labelColor="#60492f" track="#d3bea0" thumb="blade" ticks />
+          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={90} height={6} accent="#8a6a32" labelColor="#60492f" track="#d3bea0" thumb="blade" ticks />
+        </div>
+      );
+    case 10:
+      return (
+        <div className="absolute bottom-[11.8%] left-[50%] z-10 flex -translate-x-1/2 gap-2 rounded-[1.25rem] border border-white/75 bg-[#efe0c2]/86 p-2 shadow-[7px_11px_16px_rgba(75,53,35,0.16),inset_1px_1px_2px_rgba(255,255,255,0.72)]">
+          <div className="rounded-[0.9rem] bg-white/28 px-2 py-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45)]">
+            <HardwareRail label="Depth" value={depth} onChange={setDepth} width={74} height={8} accent="#b98d3a" labelColor="#755a3a" track="#d8c5a6" thumb="round" />
+          </div>
+          <div className="rounded-[0.9rem] bg-white/18 px-2 py-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.35)]">
+            <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={74} height={8} accent="#b98d3a" labelColor="#755a3a" track="#d8c5a6" thumb="round" />
+          </div>
+        </div>
+      );
+    case 11:
+      return (
+        <div className="absolute bottom-[11.5%] left-[50%] z-10 flex -translate-x-1/2 gap-5 rounded-[1.55rem] border border-black/80 px-4 py-3 shadow-[0_0_0_1px_#2b170b,0_0_0_2px_#78502a,inset_0_1px_2px_rgba(0,0,0,0.6)]" style={{ backgroundImage: 'linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.12)), url("/textures/walnut.png")', backgroundSize: 'cover' }}>
+          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={82} height={8} accent="#edd39a" labelColor="#ead2a3" track="#160d08" thumb="blade" ticks />
+          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={82} height={8} accent="#edd39a" labelColor="#ead2a3" track="#160d08" thumb="blade" ticks />
+        </div>
+      );
+    case 12:
+      return (
+        <div className="absolute bottom-[12%] left-[50%] z-10 flex -translate-x-1/2 gap-5 rounded-[1.2rem] border border-[#1b2520]/80 px-4 py-3 shadow-[8px_12px_17px_rgba(0,0,0,0.22),inset_0_1px_2px_rgba(255,255,255,0.08)]" style={{ background: 'radial-gradient(circle at 18% 18%, rgba(122,166,120,0.24), transparent 32%), radial-gradient(circle at 84% 76%, rgba(230,106,83,0.18), transparent 34%), linear-gradient(135deg, #24312a, #171b18)' }}>
+          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={86} height={7} accent="#9fc08c" labelColor="#c8d8b8" track="#101511" thumb="tab" ticks />
+          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={86} height={7} accent="#e66a53" labelColor="#c8d8b8" track="#101511" thumb="tab" ticks />
+        </div>
+      );
+    default:
+      return null;
+  }
+};
+
 const GlassButton = ({ active, onClick, label, size = 45 }) => (
   <div className="flex flex-col items-center gap-2 z-10">
     <button onClick={onClick} className="relative rounded-full outline-none flex items-center justify-center group transition-transform active:scale-95" style={{ width: size, height: size, background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: active ? '10px 10px 20px rgba(0,0,0,0.2), 0 0 15px rgba(212,175,55,0.4), inset 0 0 10px rgba(255,255,255,0.5)' : '10px 10px 20px rgba(0,0,0,0.15)' }}>
@@ -1320,6 +1648,17 @@ const GlassButton = ({ active, onClick, label, size = 45 }) => (
 
 const MiniToggle = ({ active, onClick, label }) => (
   <button onClick={onClick} className={`px-3 py-1.5 rounded-full text-[9px] font-bold tracking-widest uppercase transition-all ${active ? 'bg-[#d4af37] text-[#111] shadow-[0_0_8px_rgba(212,175,55,0.4)]' : 'bg-black/20 text-[#7a7465] border border-white/10'}`}>{label}</button>
+);
+
+const RetroCircleToggle = ({ active, onClick, label = 'LFO' }) => (
+  <button
+    onClick={onClick}
+    className={`relative flex h-12 w-12 items-center justify-center rounded-full border-t border-l border-[#444] border-b border-r border-[#111] bg-[#2c2c2c] outline-none transition-all duration-150 ${active ? 'translate-y-[2px] shadow-[0_2px_4px_rgba(0,0,0,0.28),inset_0_4px_8px_rgba(0,0,0,0.78)]' : 'shadow-[0_5px_9px_rgba(0,0,0,0.42),0_2px_0_#111]'}`}
+  >
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#222] shadow-[inset_0_0_9px_rgba(0,0,0,0.8)]">
+      <span className={`text-[9px] font-bold tracking-widest transition-colors ${active ? 'text-[#df6f5a] drop-shadow-[0_0_3px_rgba(223,111,90,0.8)]' : 'text-[#666]'}`}>{label}</span>
+    </div>
+  </button>
 );
 
 const DropdownSelect = ({ options, value, onChange, width = 80 }) => (
@@ -1452,7 +1791,26 @@ const MODE_STYLE_NAMES = [
   'Ivory Toggle',
   'Paper Dial',
   'Brass Seeds',
-  'Silk Faders'
+  'Silk Faders',
+  'Flush Walnut (Matte Round)',
+  'Walnut Separated Round',
+  'Walnut Separated Soft'
+];
+
+const BOTTOM_SECTION_STYLE_NAMES = [
+  'Reference Console',
+  'Anodized Rack Rails',
+  'Smoked Glass Rails',
+  'Brass Slot Console',
+  'Twin Recessed Dials',
+  'Amber Meter Bridge',
+  'Bakelite Rotary Deck',
+  'Ivory Inset Rails',
+  'Porcelain Dial Plate',
+  'Paper Ruler Rails',
+  'Cream Split Modules',
+  'Walnut Brass Seat',
+  'Patina Etched Plate'
 ];
 
 const BACKGROUNDS = [
@@ -1499,7 +1857,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
         <div className={`${baseClass} gap-5 p-4 rounded-full`} style={{ 
           backgroundImage: 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.4)), url("/textures/walnut.png")', 
           backgroundSize: 'cover',
-          boxShadow: 'inset 2px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1)',
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08), 0 1px 1px rgba(255,255,255,0.45), 0 -1px 1px rgba(0,0,0,0.08)',
           border: '1px solid rgba(0,0,0,0.8)'
         }}>
           {modes.map(m => (
@@ -1520,7 +1878,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
         <div className={`${baseClass} gap-5 p-4 rounded-full`} style={{ 
           backgroundImage: 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.4)), url("/textures/walnut.png")', 
           backgroundSize: 'cover',
-          boxShadow: 'inset 2px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1)',
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08), 0 1px 1px rgba(255,255,255,0.45), 0 -1px 1px rgba(0,0,0,0.08)',
           border: '1px solid rgba(0,0,0,0.8)'
         }}>
           {modes.map(m => (
@@ -1538,10 +1896,10 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
 
     case 3: // Flush Walnut (Matte)
       return (
-        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 p-4 rounded-[2rem] z-10" style={{ 
-          backgroundImage: 'linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.2)), url("/textures/walnut.png")', 
+        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 px-[13px] py-4 rounded-[2rem] z-10" style={{ 
+          backgroundImage: 'linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.12)), url("/textures/walnut.png")', 
           backgroundSize: 'cover',
-          boxShadow: 'inset 2px 3px 6px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.1), 0 1px 1px rgba(255,255,255,0.8), 0 -1px 1px rgba(0,0,0,0.1)',
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08), 0 1px 1px rgba(255,255,255,0.45), 0 -1px 1px rgba(0,0,0,0.08)',
           border: '1px solid rgba(0,0,0,0.8)'
         }}>
           {modes.map(m => {
@@ -1685,6 +2043,84 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
                   <span className="h-[3px] w-9 rounded-full" style={{ background: active ? tone[m].color : '#d4c4a7', opacity: active ? 0.7 : 0.45 }} />
                 </span>
               </button>
+            );
+          })}
+        </div>
+      );
+    case 12: // Flush Walnut (Matte Round)
+      return (
+        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 px-[13px] pt-5 pb-[22px] rounded-full z-10" style={{ 
+          backgroundImage: 'linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.12)), url("/textures/walnut.png")', 
+          backgroundSize: 'cover',
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08), 0 1px 1px rgba(255,255,255,0.45), 0 -1px 1px rgba(0,0,0,0.08)',
+          border: '1px solid rgba(0,0,0,0.8)'
+        }}>
+          {modes.map(m => {
+            const ledColor = m === 'calm' ? '#4ade80' : m === 'vintage' ? '#fb923c' : '#ef4444';
+            return (
+              <div key={m} className="flex flex-col items-center gap-2">
+                <button onClick={() => setMode(m)} className={`w-9 h-9 rounded-xl transition-all flex items-center justify-center border border-black
+                  ${power && mode === m ? 'bg-[#111] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.9)] scale-95' : 'bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.1)]'}
+                `}>
+                  <div 
+                    className={`w-3 h-[3px] rounded-full ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
+                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
+                  />
+                </button>
+                <span className="text-[9px] font-bold tracking-[0.25em] uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" style={{ color: '#d3ba8c' }}>{m}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    case 13: // Walnut Separated Round
+      return (
+        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 px-[13px] py-4 rounded-[2.4rem] z-10" style={{ 
+          backgroundImage: 'linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.12)), url("/textures/walnut.png")', 
+          backgroundSize: 'cover',
+          boxShadow: '0 0 0 1px #2b170b, 0 0 0 2px #78502a, inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08)',
+          border: '1px solid rgba(0,0,0,0.8)'
+        }}>
+          {modes.map(m => {
+            const ledColor = m === 'calm' ? '#4ade80' : m === 'vintage' ? '#fb923c' : '#ef4444';
+            return (
+              <div key={m} className="flex flex-col items-center gap-2">
+                <button onClick={() => setMode(m)} className={`w-9 h-9 rounded-xl transition-all flex items-center justify-center border border-black
+                  ${power && mode === m ? 'bg-[#111] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.9)] scale-95' : 'bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.1)]'}
+                `}>
+                  <div 
+                    className={`w-3 h-[3px] rounded-full ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
+                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
+                  />
+                </button>
+                <span className="text-[9px] font-bold tracking-[0.25em] uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" style={{ color: '#d3ba8c' }}>{m}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    case 14: // Walnut Separated Soft
+      return (
+        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 px-[13px] py-4 rounded-[1.15rem] z-10" style={{ 
+          backgroundImage: 'linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.12)), url("/textures/walnut.png")', 
+          backgroundSize: 'cover',
+          boxShadow: '0 0 0 1px #2b170b, 0 0 0 2px #78502a, inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08)',
+          border: '1px solid rgba(0,0,0,0.8)'
+        }}>
+          {modes.map(m => {
+            const ledColor = m === 'calm' ? '#4ade80' : m === 'vintage' ? '#fb923c' : '#ef4444';
+            return (
+              <div key={m} className="flex flex-col items-center gap-2">
+                <button onClick={() => setMode(m)} className={`w-9 h-9 rounded-xl transition-all flex items-center justify-center border border-black
+                  ${power && mode === m ? 'bg-[#111] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.9)] scale-95' : 'bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.1)]'}
+                `}>
+                  <div 
+                    className={`w-3 h-[3px] rounded-full ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
+                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
+                  />
+                </button>
+                <span className="text-[9px] font-bold tracking-[0.25em] uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" style={{ color: '#d3ba8c' }}>{m}</span>
+              </div>
             );
           })}
         </div>
@@ -2112,6 +2548,8 @@ export default function App() {
   const [faceTextureEnabled, setFaceTextureEnabled] = useState(() => initial('faceTextureEnabled', CODE_DEFAULT_DESIGN.faceTextureEnabled));
   const [faceTextureStyle, setFaceTextureStyle] = useState(() => initial('faceTextureStyle', CODE_DEFAULT_DESIGN.faceTextureStyle));
   const [faceTextureOpacity, setFaceTextureOpacity] = useState(() => initial('faceTextureOpacity', CODE_DEFAULT_DESIGN.faceTextureOpacity));
+  const [panelFaceColor, setPanelFaceColor] = useState(() => initial('panelFaceColor', CODE_DEFAULT_DESIGN.panelFaceColor));
+  const [useDefaultPanelFaceColor, setUseDefaultPanelFaceColor] = useState(() => initial('useDefaultPanelFaceColor', CODE_DEFAULT_DESIGN.useDefaultPanelFaceColor));
   const [screwsEnabled, setScrewsEnabled] = useState(() => initial('screwsEnabled', CODE_DEFAULT_DESIGN.screwsEnabled));
   const [screwStyle, setScrewStyle] = useState(() => initial('screwStyle', CODE_DEFAULT_DESIGN.screwStyle));
   const [lfoImageState, setLfoImageState] = useState(() => initial('lfoImageState', CODE_DEFAULT_DESIGN.lfoImageState));
@@ -2124,6 +2562,7 @@ export default function App() {
   const [selectedAuraShape, setSelectedAuraShape] = useState(null);
   const [filterSwitchStyle, setFilterSwitchStyle] = useState(() => initial('filterSwitchStyle', CODE_DEFAULT_DESIGN.filterSwitchStyle));
   const [ioScaleStyle, setIoScaleStyle] = useState(() => initial('ioScaleStyle', CODE_DEFAULT_DESIGN.ioScaleStyle));
+  const [bottomSectionStyle, setBottomSectionStyle] = useState(() => initial('bottomSectionStyle', CODE_DEFAULT_DESIGN.bottomSectionStyle));
   const [defaultSaveMessage, setDefaultSaveMessage] = useState('');
   const sakuraImageSettings = {
     sakura: { ...SAKURA_IMAGE_PRESETS.sakura, ...sakuraImageState.sakura },
@@ -2134,6 +2573,7 @@ export default function App() {
     Object.entries(DECORATIVE_CIRCLE_PRESETS).map(([id, preset]) => [id, { ...preset, ...decorativeCircles[id] }])
   );
   const selectedFaceTexture = FACE_TEXTURES[faceTextureStyle] || FACE_TEXTURES[0];
+  const activePanelFaceColor = useDefaultPanelFaceColor ? DEFAULT_PANEL_FACE_COLOR : panelFaceColor;
   const lfoImageSettings = { ...LFO_IMAGE_PRESET, ...lfoImageState };
 
   const updateSakuraImage = (id, patch) => {
@@ -2241,6 +2681,8 @@ export default function App() {
       faceTextureEnabled,
       faceTextureStyle,
       faceTextureOpacity,
+      panelFaceColor,
+      useDefaultPanelFaceColor,
       screwsEnabled,
       screwStyle,
       lfoImageState,
@@ -2249,7 +2691,8 @@ export default function App() {
       hardwarePositions,
       auraShapes,
       filterSwitchStyle,
-      ioScaleStyle
+      ioScaleStyle,
+      bottomSectionStyle
     });
     setDefaultSaveMessage(saved ? 'Saved as default' : 'Could not save');
     window.setTimeout(() => setDefaultSaveMessage(''), 2200);
@@ -2301,8 +2744,8 @@ export default function App() {
             onLoad={setCurrentPreset} onSave={(name) => console.log('Save preset:', name)} />
 
           <div
-            className="relative w-full h-full rounded-[4rem] shadow-[0_40px_80px_rgba(0,0,0,0.4),0_20px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500 bg-[#f4ead6] z-10"
-            style={FRAMES[frameStyle]?.panelStyle}
+            className="relative w-full h-full rounded-[4rem] shadow-[0_40px_80px_rgba(0,0,0,0.4),0_20px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500 z-10"
+            style={{ backgroundColor: activePanelFaceColor, ...FRAMES[frameStyle]?.panelStyle }}
           >
 
             <EditableDecorativeCircles
@@ -2484,13 +2927,11 @@ export default function App() {
               onUpdate={updateHardwarePosition}
               stageRef={pluginStageRef}
             >
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <MiniToggle label="LFO" active={lfoEnabled} onClick={() => setLfoEnabled(!lfoEnabled)} />
-                  {lfoEnabled && <MiniToggle label="Sync" active={lfoSync} onClick={() => setLfoSync(!lfoSync)} />}
-                </div>
+              <div className="relative h-12 w-12">
+                <RetroCircleToggle label="LFO" active={lfoEnabled} onClick={() => setLfoEnabled(!lfoEnabled)} />
                 {lfoEnabled && (
-                  <div className="flex items-center gap-2">
+                  <div className="absolute left-1/2 top-[calc(100%+10px)] flex -translate-x-1/2 flex-col items-center gap-2">
+                    <MiniToggle label="Sync" active={lfoSync} onClick={() => setLfoSync(!lfoSync)} />
                     <DropdownSelect options={SHAPES} value={lfoShape} onChange={setLfoShape} width={70} />
                     {lfoSync && <DropdownSelect options={SYNC_DIVS} value={lfoSyncDiv} onChange={setLfoSyncDiv} width={60} />}
                   </div>
@@ -2498,16 +2939,13 @@ export default function App() {
               </div>
             </EditableHardwareWrapper>
 
-            <div className="absolute bottom-[12%] left-[50%] -translate-x-1/2 z-10 flex gap-8 p-3 rounded-full bg-[#2d2c2b] shadow-2xl border border-white/10" style={{ boxShadow: '12px 12px 20px rgba(0,0,0,0.45)' }}>
-              <div className="flex flex-col items-center">
-                <input type="range" className="w-16 accent-[#d4af37]" min="0" max="100" value={depth} onChange={e => setDepth(Number(e.target.value))} />
-                <span className="text-[9px] text-[#a19e95] tracking-widest mt-1 uppercase">Depth</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <input type="range" className="w-16 accent-[#d4af37]" min="0" max="100" value={stereoPhase} onChange={e => setStereoPhase(Number(e.target.value))} />
-                <span className="text-[9px] text-[#a19e95] tracking-widest mt-1 uppercase">Stereo φ</span>
-              </div>
-            </div>
+            <BottomSectionEngine
+              depth={depth}
+              setDepth={setDepth}
+              stereoPhase={stereoPhase}
+              setStereoPhase={setStereoPhase}
+              styleIndex={bottomSectionStyle}
+            />
 
             <EditableHardwareWrapper 
               id="autoGain" 
@@ -2555,6 +2993,56 @@ export default function App() {
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
               </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Bottom Section</span>
+              <div className="relative w-full h-11">
+                <select value={bottomSectionStyle} onChange={e => setBottomSectionStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {BOTTOM_SECTION_STYLE_NAMES.map((name, i) => <option key={i} value={i}>{name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 border-t border-white/10 pt-5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Panel Face Color</span>
+                  <span className="text-white/35 text-[9px] font-bold uppercase tracking-[0.12em]">{useDefaultPanelFaceColor ? 'Default Cream' : panelFaceColor}</span>
+                </div>
+                <button
+                  onClick={() => setUseDefaultPanelFaceColor(true)}
+                  className={`rounded-full border px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${useDefaultPanelFaceColor ? 'border-[#edd39a]/60 bg-[#edd39a]/20 text-[#edd39a]' : 'border-white/15 bg-white/5 text-white/45 hover:text-white/70'}`}
+                >
+                  Default
+                </button>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                <label className="relative h-10 w-10 shrink-0 cursor-pointer rounded-xl border border-white/20 shadow-[inset_0_1px_2px_rgba(0,0,0,0.35)]" style={{ backgroundColor: panelFaceColor }}>
+                  <input
+                    type="color"
+                    value={panelFaceColor}
+                    onChange={event => {
+                      setPanelFaceColor(event.target.value);
+                      setUseDefaultPanelFaceColor(false);
+                    }}
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    aria-label="Panel face color"
+                  />
+                </label>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/40">Custom Color</span>
+                  <span className="font-mono text-[11px] uppercase text-[#edd39a]">{panelFaceColor}</span>
+                </div>
+                <button
+                  onClick={() => setUseDefaultPanelFaceColor(false)}
+                  className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-[8px] font-black uppercase tracking-widest text-white/50 transition-all hover:text-white/75"
+                >
+                  Apply
+                </button>
+              </div>
+              <div className="h-8 rounded-xl border border-white/10 transition-colors" style={{ backgroundColor: activePanelFaceColor }} />
             </div>
 
             <div className="flex flex-col gap-4 border-t border-white/10 pt-5">
