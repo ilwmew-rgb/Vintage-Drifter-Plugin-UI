@@ -70,6 +70,10 @@ const CODE_DEFAULT_DESIGN = {
   modeStyle: 3,
   knobStyle: 0,
   centerDialStyle: 1,
+  centerDialSurfaceStyle: 0,
+  centerDialGrooveStyle: 1,
+  centerDialCirclesEnabled: true,
+  centerDialNumbersEnabled: true,
   driftAnimation: 3,
   bgIndex: 3,
   showOutputs: true,
@@ -1700,7 +1704,292 @@ const CENTER_DIAL_SHADOWS = [
   { name: 'Crisp Hover', shadow: '2px 2px 6px rgba(0,0,0,0.3), 20px 20px 30px rgba(0,0,0,0.45), inset 1px 1px 2px rgba(255,255,255,0.2), inset -2px -2px 6px rgba(0,0,0,0.9)' }
 ];
 
-const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowStyle, animationStyle = 0, onDoubleClickDrift, onDoubleClickSpread }) => {
+const CENTER_DIAL_SURFACES = [
+  {
+    name: 'Original Ribbed',
+    backgroundColor: '#1f1e1d',
+    backgroundImage: 'conic-gradient(from 0deg at 50% 50%, #111, #333, #111, #333, #111)'
+  },
+  {
+    name: 'Soft Top Lift',
+    backgroundColor: '#242322',
+    backgroundImage: 'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.045) 18%, rgba(0,0,0,0) 36%), conic-gradient(from 0deg at 50% 50%, #202020, #353535, #141414, #303030, #202020)'
+  },
+  {
+    name: 'Soft Top Lift - Medium',
+    backgroundColor: '#222120',
+    backgroundImage: 'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.086) 0%, rgba(255,255,255,0.039) 18%, rgba(0,0,0,0) 36%), conic-gradient(from 0deg at 50% 50%, #1c1c1c, #30302f, #121212, #2b2b2a, #1c1c1c)'
+  },
+  {
+    name: 'Soft Top Lift - Medium Dark',
+    backgroundColor: '#20201f',
+    backgroundImage: 'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.080) 0%, rgba(255,255,255,0.036) 18%, rgba(0,0,0,0) 36%), conic-gradient(from 0deg at 50% 50%, #1a1a1a, #2d2d2c, #111, #292928, #1a1a1a)'
+  },
+  {
+    name: 'Soft Top Lift - Dark',
+    backgroundColor: '#1f1f1e',
+    backgroundImage: 'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.034) 18%, rgba(0,0,0,0) 36%), conic-gradient(from 0deg at 50% 50%, #191919, #2b2b2a, #101010, #262625, #191919)'
+  },
+  {
+    name: 'Concentric Ribs',
+    decoration: 'concentric-ribs',
+    backgroundColor: '#111',
+    backgroundImage: 'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.025) 20%, transparent 38%), conic-gradient(from 0deg at 50% 50%, #101010, #252525, #090909, #202020, #101010)'
+  },
+  {
+    name: 'Anodized Stealth',
+    backgroundColor: '#181818',
+    backgroundImage: `${RUBBER_MATTE_NOISE}, radial-gradient(circle at 50% 18%, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.018) 22%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #151515, #2a2a2a, #0a0a0a, #282828, #151515)`,
+    backgroundBlendMode: 'overlay, normal, normal'
+  },
+  {
+    name: 'Obsidian Aperture',
+    decoration: 'obsidian-aperture',
+    hideGenericGrooves: true,
+    size: 322,
+    backgroundColor: '#11100f',
+    backgroundImage: 'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.11), rgba(255,255,255,0.026) 22%, transparent 42%), conic-gradient(from 20deg at 50% 50%, #070707, #242321, #0b0b0b, #1c1b1a, #070707)',
+    boxShadow: '0 2px 7px rgba(0,0,0,0.62), 18px 21px 42px rgba(0,0,0,0.36), inset 0 2px 4px rgba(255,255,255,0.1), inset 0 -12px 24px rgba(0,0,0,0.62)',
+    indicator: { width: 8, height: 25, top: '7%', background: '#f26b55', boxShadow: '0 0 13px rgba(242,107,85,0.72)' }
+  },
+  {
+    name: 'Nocturne Brass Inlay',
+    decoration: 'nocturne-brass',
+    hideGenericGrooves: true,
+    size: 320,
+    backgroundColor: '#171614',
+    backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
+    boxShadow: '1px 2px 8px rgba(0,0,0,0.64), 18px 20px 40px rgba(0,0,0,0.38), inset 0 1px 3px rgba(255,235,177,0.12), inset 0 -10px 24px rgba(0,0,0,0.78)',
+    indicator: { width: 7, height: 24, top: '8%', background: '#e2bc56', boxShadow: '0 0 11px rgba(226,188,86,0.62)' }
+  },
+  {
+    name: 'Nocturne Brass - Pale Outer Rim',
+    decoration: 'nocturne-brass',
+    outerRim: true,
+    hideGenericGrooves: true,
+    size: 320,
+    backgroundColor: '#171614',
+    backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
+    boxShadow: '1px 2px 8px rgba(0,0,0,0.64), 18px 20px 40px rgba(0,0,0,0.38), inset 0 1px 3px rgba(255,235,177,0.12), inset 0 -10px 24px rgba(0,0,0,0.78)',
+    indicator: { width: 7, height: 24, top: '8%', background: '#e2bc56', boxShadow: '0 0 11px rgba(226,188,86,0.62)' }
+  },
+  {
+    name: 'Nocturne Brass - Red Pointer Soft Rim',
+    decoration: 'nocturne-brass',
+    outerRim: true,
+    reducedRimShadow: true,
+    softNocturneRings: true,
+    hideGenericGrooves: true,
+    size: 313,
+    backgroundColor: '#171614',
+    backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
+    boxShadow: '9px 12px 22px rgba(0,0,0,0.14), inset 0 1px 3px rgba(255,235,177,0.1), inset 0 -8px 18px rgba(0,0,0,0.68)',
+    indicator: { width: 8, height: 25, top: '7%', background: '#f26b55', boxShadow: '0 0 13px rgba(242,107,85,0.72)' }
+  },
+  {
+    name: 'Nocturne Brass - Walnut Rim',
+    decoration: 'nocturne-brass',
+    outerRim: true,
+    outerRimTexture: true,
+    rimWidth: 14,
+    rimBackgroundColor: '#3a2114',
+    rimBackgroundImage: 'linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.12)), url("/textures/walnut.png")',
+    rimBackgroundSize: 'cover',
+    allowOuterShadow: true,
+    reducedRimShadow: true,
+    softNocturneRings: true,
+    hideGenericGrooves: true,
+    size: 313,
+    backgroundColor: '#171614',
+    backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
+    boxShadow: '8px 12px 20px rgba(0,0,0,0.16), inset 0 1px 3px rgba(255,235,177,0.08), inset 0 -8px 18px rgba(0,0,0,0.62)',
+    indicator: { width: 8, height: 25, top: '7%', background: '#f26b55', boxShadow: '0 0 13px rgba(242,107,85,0.72)' }
+  },
+  {
+    name: 'Nocturne Brass - Walnut Rim Inset',
+    decoration: 'nocturne-brass',
+    outerRim: true,
+    outerRimTexture: true,
+    ringOnlyShadow: true,
+    rimWidth: 14,
+    rimBackgroundColor: '#3a2114',
+    rimBackgroundImage: 'linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.12)), url("/textures/walnut.png")',
+    rimBackgroundSize: 'cover',
+    reducedRimShadow: true,
+    softNocturneRings: true,
+    hideGenericGrooves: true,
+    size: 313,
+    backgroundColor: '#171614',
+    backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
+    boxShadow: 'none',
+    indicator: { width: 8, height: 25, top: '7%', background: '#f26b55', boxShadow: '0 0 13px rgba(242,107,85,0.72)' }
+  },
+  {
+    name: 'Nocturne Brass - Walnut Rim Clean',
+    decoration: 'nocturne-brass',
+    outerRim: true,
+    outerRimTexture: true,
+    rimWidth: 14,
+    rimBackgroundColor: '#3a2114',
+    rimBackgroundImage: 'linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.12)), url("/textures/walnut.png")',
+    rimBackgroundSize: 'cover',
+    reducedRimShadow: true,
+    softNocturneRings: true,
+    hideGenericGrooves: true,
+    size: 313,
+    backgroundColor: '#171614',
+    backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
+    boxShadow: 'none',
+    indicator: { width: 8, height: 25, top: '7%', background: '#f26b55', boxShadow: '0 0 13px rgba(242,107,85,0.72)' }
+  },
+  {
+    name: 'Nocturne Brass - Walnut Rim Deep Inset',
+    decoration: 'nocturne-brass',
+    outerRim: true,
+    outerRimTexture: true,
+    ringOnlyShadow: true,
+    ringBottomShadow: true,
+    ringSeatBevel: true,
+    ringFlavorMatch: true,
+    rimWidth: 28,
+    rimBackgroundColor: '#3a2114',
+    rimBackgroundImage: 'linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.12)), url("/textures/walnut.png")',
+    rimBackgroundSize: 'cover',
+    reducedRimShadow: true,
+    softNocturneRings: true,
+    hideGenericGrooves: true,
+    size: 313,
+    backgroundColor: '#171614',
+    backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
+    boxShadow: 'none',
+    indicator: { width: 8, height: 25, top: '7%', background: '#f26b55', boxShadow: '0 0 13px rgba(242,107,85,0.72)' }
+  },
+  {
+    name: 'Nocturne Brass - Walnut Rim Deep Inset Soft Previous',
+    decoration: 'nocturne-brass',
+    outerRim: true,
+    outerRimTexture: true,
+    ringOnlyShadow: true,
+    ringBottomShadow: true,
+    ringSeatBevel: true,
+    ringFlavorMatch: 'soft',
+    rimWidth: 28,
+    rimBackgroundColor: '#3a2114',
+    rimBackgroundImage: 'linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.12)), url("/textures/walnut.png")',
+    rimBackgroundSize: 'cover',
+    reducedRimShadow: true,
+    softNocturneRings: true,
+    hideGenericGrooves: true,
+    size: 313,
+    backgroundColor: '#171614',
+    backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
+    boxShadow: 'none',
+    indicator: { width: 8, height: 25, top: '7%', background: '#f26b55', boxShadow: '0 0 13px rgba(242,107,85,0.72)' }
+  },
+  {
+    name: 'Nocturne Brass - Coral Rim',
+    decoration: 'nocturne-brass',
+    outerRim: true,
+    outerRimColor: 'rgba(220,110,89,0.9)',
+    outerRimHighlight: 'rgba(255,184,160,0.18)',
+    reducedRimShadow: true,
+    softNocturneRings: true,
+    hideGenericGrooves: true,
+    size: 313,
+    backgroundColor: '#171614',
+    backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
+    boxShadow: '9px 12px 22px rgba(0,0,0,0.14), inset 0 1px 3px rgba(255,235,177,0.1), inset 0 -8px 18px rgba(0,0,0,0.68)',
+    indicator: { width: 8, height: 25, top: '7%', background: '#f26b55', boxShadow: '0 0 13px rgba(242,107,85,0.72)' }
+  },
+  {
+    name: 'Nocturne Brass - Amber Rim',
+    decoration: 'nocturne-brass',
+    outerRim: true,
+    outerRimColor: 'rgba(215,163,122,0.92)',
+    outerRimHighlight: 'rgba(255,214,176,0.18)',
+    reducedRimShadow: true,
+    softNocturneRings: true,
+    hideGenericGrooves: true,
+    size: 313,
+    backgroundColor: '#171614',
+    backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
+    boxShadow: '9px 12px 22px rgba(0,0,0,0.14), inset 0 1px 3px rgba(255,235,177,0.1), inset 0 -8px 18px rgba(0,0,0,0.68)',
+    indicator: { width: 8, height: 25, top: '7%', background: '#f26b55', boxShadow: '0 0 13px rgba(242,107,85,0.72)' }
+  },
+  {
+    name: 'Smoked Glass Halo',
+    decoration: 'smoked-glass',
+    hideGenericGrooves: true,
+    size: 316,
+    backgroundColor: '#181b1b',
+    backgroundImage: 'radial-gradient(circle at 45% 15%, rgba(255,255,255,0.18), rgba(255,255,255,0.036) 22%, transparent 44%), radial-gradient(circle at 68% 74%, rgba(89,110,91,0.16), transparent 42%), conic-gradient(from 35deg at 50% 50%, #0f1010, #252828, #121414, #212424, #0f1010)',
+    boxShadow: '0 2px 7px rgba(0,0,0,0.58), 16px 19px 38px rgba(0,0,0,0.34), inset 0 2px 5px rgba(255,255,255,0.13), inset 0 -12px 28px rgba(0,0,0,0.66)',
+    indicator: { width: 6, height: 22, top: '7.5%', background: '#df6f5a', boxShadow: '0 0 12px rgba(223,111,90,0.68)' }
+  },
+  {
+    name: 'Carbon Fiber Weave',
+    decoration: 'carbon-weave',
+    hideGenericGrooves: true,
+    size: 318,
+    backgroundColor: '#141414',
+    backgroundImage: 'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.07), transparent 36%), conic-gradient(from 0deg at 50% 50%, #0d0d0d, #252525, #101010, #202020, #0d0d0d)',
+    boxShadow: '1px 2px 7px rgba(0,0,0,0.68), 18px 22px 42px rgba(0,0,0,0.38), inset 0 1px 2px rgba(255,255,255,0.08), inset 0 -10px 24px rgba(0,0,0,0.75)',
+    indicator: { width: 7, height: 23, top: '8%', background: '#df6f5a', boxShadow: '0 0 10px rgba(223,111,90,0.62)' }
+  },
+  {
+    name: 'Tape Reel Night',
+    decoration: 'tape-reel',
+    hideGenericGrooves: true,
+    size: 322,
+    backgroundColor: '#171513',
+    backgroundImage: 'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.08), rgba(255,255,255,0.02) 24%, transparent 42%), conic-gradient(from 18deg at 50% 50%, #0d0c0b, #27231d, #11100e, #211e19, #0d0c0b)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.68), 18px 22px 42px rgba(0,0,0,0.38), inset 0 1px 3px rgba(255,230,170,0.1), inset 0 -12px 28px rgba(0,0,0,0.76)',
+    indicator: { width: 8, height: 24, top: '8%', background: '#f06b55', boxShadow: '0 0 13px rgba(240,107,85,0.7)' }
+  },
+  {
+    name: 'Warm Bakelite Halo',
+    decoration: 'bakelite-halo',
+    hideGenericGrooves: true,
+    size: 318,
+    backgroundColor: '#18120e',
+    backgroundImage: 'radial-gradient(circle at 45% 18%, rgba(255,205,140,0.12), rgba(255,255,255,0.02) 25%, transparent 43%), conic-gradient(from 0deg at 50% 50%, #0f0c09, #2d2118, #120d0a, #261b14, #0f0c09)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.64), 18px 22px 42px rgba(0,0,0,0.36), inset 0 2px 4px rgba(255,210,150,0.12), inset 0 -12px 28px rgba(0,0,0,0.72)',
+    indicator: { width: 8, height: 25, top: '8%', background: '#d4af37', boxShadow: '0 0 12px rgba(212,175,55,0.62)' }
+  },
+  {
+    name: 'Patina Etched Night',
+    decoration: 'patina-night',
+    hideGenericGrooves: true,
+    size: 320,
+    backgroundColor: '#151a17',
+    backgroundImage: `${RUBBER_MATTE_NOISE}, radial-gradient(circle at 50% 18%, rgba(214,238,200,0.08), transparent 38%), radial-gradient(circle at 27% 78%, rgba(122,166,120,0.11), transparent 35%), conic-gradient(from 0deg at 50% 50%, #0f1310, #22261f, #0d100e, #1d211c, #0f1310)`,
+    backgroundBlendMode: 'overlay, normal, normal, normal',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.66), 18px 22px 42px rgba(0,0,0,0.37), inset 0 1px 3px rgba(214,238,200,0.1), inset 0 -12px 28px rgba(0,0,0,0.78)',
+    indicator: { width: 7, height: 24, top: '8%', background: '#8ead76', boxShadow: '0 0 12px rgba(142,173,118,0.66)' }
+  },
+  {
+    name: 'Broadcast Radar',
+    decoration: 'broadcast-radar',
+    hideGenericGrooves: true,
+    size: 320,
+    animated: true,
+    backgroundColor: '#121414',
+    backgroundImage: 'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.075), transparent 38%), conic-gradient(from 0deg at 50% 50%, #0d0f0f, #222524, #0c0d0d, #1d2020, #0d0f0f)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.66), 18px 22px 42px rgba(0,0,0,0.37), inset 0 1px 3px rgba(180,210,190,0.09), inset 0 -12px 28px rgba(0,0,0,0.76)',
+    indicator: { width: 7, height: 24, top: '8%', background: '#df6f5a', boxShadow: '0 0 12px rgba(223,111,90,0.66)' }
+  }
+];
+
+const CENTER_DIAL_GROOVES = [
+  { name: 'None', backgroundImage: 'none', opacity: 0 },
+  { name: 'Fine Ribs', backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, transparent, transparent 2px, rgba(0,0,0,0.4) 3px, rgba(0,0,0,0.4) 4px)', opacity: 1 },
+  { name: 'Soft Fine Ribs', backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, transparent, transparent 2px, rgba(0,0,0,0.25) 3px, rgba(0,0,0,0.25) 4px)', opacity: 1 },
+  { name: 'Wide Grooves', backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, transparent, transparent 4px, rgba(0,0,0,0.36) 5px, rgba(0,0,0,0.36) 7px)', opacity: 1 },
+  { name: 'Thick Sparse Grooves', backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, transparent, transparent 9px, rgba(0,0,0,0.42) 10px, rgba(0,0,0,0.42) 13px)', opacity: 1 },
+  { name: 'Stepped Concentric', backgroundImage: 'radial-gradient(circle at 50% 50%, transparent 0 30%, rgba(58,58,58,0.55) 30.4%, rgba(10,10,10,0.42) 31%, transparent 31.8%, transparent 39%, rgba(51,51,51,0.5) 39.4%, rgba(9,9,9,0.44) 40.1%, transparent 41%, transparent 48%, rgba(37,37,37,0.52) 48.4%, rgba(8,8,8,0.46) 49.2%, transparent 50%, transparent 58%, rgba(34,34,34,0.48) 58.4%, rgba(6,6,6,0.44) 59.2%, transparent 60%)', opacity: 1 }
+];
+
+const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowStyle, surfaceStyle, grooveStyle, circlesEnabled = true, numbersEnabled = true, animationStyle = 0, onDoubleClickDrift, onDoubleClickSpread }) => {
   const [isDraggingDrift, setIsDraggingDrift] = useState(false);
   const [isDraggingSpread, setIsDraggingSpread] = useState(false);
   const driftY = useRef(0), driftStart = useRef(0), spreadY = useRef(0), spreadStart = useRef(0);
@@ -1713,20 +2002,236 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
   const driftRot = (drift / 100 * 270) - 135;
   const spreadRot = (spread / 100 * 270) - 135;
   const auraActive = isDraggingDrift || isDraggingSpread || drift > 0.25;
+  const surface = surfaceStyle || CENTER_DIAL_SURFACES[0];
+  const outerSize = surface.size || 320;
+  const outerShadow = surface.boxShadow || shadowStyle || '2px 2px 8px rgba(0,0,0,0.7), 18px 18px 40px rgba(0,0,0,0.4), inset 1px 1px 3px rgba(255,255,255,0.15), inset -4px -4px 10px rgba(0,0,0,0.9)';
+  const rimFillColor = surface.outerRimColor || 'rgba(86,50,28,0.88)';
+  const rimInnerInset = surface.outerRim ? (surface.rimWidth || 12) : 12;
+  const guardedOuterShadow = surface.outerRim ? (surface.allowOuterShadow ? outerShadow : 'none') : outerShadow;
+  const spreadIndicator = surface.indicator || { width: 8, height: 24, top: '8%', background: '#e66a53', boxShadow: '0 0 10px #e66a53' };
+  const indicatorPosition = spreadIndicator.bottom ? { bottom: spreadIndicator.bottom } : { top: spreadIndicator.top || '8%' };
+  const renderSurfaceDecoration = () => {
+    switch (surface.decoration) {
+      case 'concentric-ribs':
+        return (
+          <>
+            <div className="absolute inset-[12px] rounded-full border border-[#262626] bg-[#1a1a1a]/60 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)] pointer-events-none" />
+            <div className="absolute inset-[26px] rounded-full border border-[#2b2b2b] bg-[#151515]/58 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)] pointer-events-none" />
+            <div className="absolute inset-[40px] rounded-full border border-[#373737] bg-[#111]/56 shadow-[inset_0_2px_6px_rgba(0,0,0,0.88)] pointer-events-none" />
+            <div className="absolute inset-[54px] rounded-full border border-[#414141] bg-[#0a0a0a]/54 shadow-[inset_0_2px_6px_rgba(0,0,0,0.86)] pointer-events-none" />
+          </>
+        );
+      case 'obsidian-aperture':
+        return (
+          <>
+            <div
+              className="absolute inset-[10px] rounded-full opacity-70 pointer-events-none"
+              style={{
+                background: 'repeating-conic-gradient(from -9deg, rgba(255,255,255,0.055) 0deg 8deg, rgba(0,0,0,0.42) 8deg 24deg, rgba(255,255,255,0.025) 24deg 30deg)',
+                WebkitMask: 'radial-gradient(circle, transparent 0 36%, #000 37% 89%, transparent 90%)',
+                mask: 'radial-gradient(circle, transparent 0 36%, #000 37% 89%, transparent 90%)'
+              }}
+            />
+            <div className="absolute inset-[22px] rounded-full border border-white/10 shadow-[inset_0_8px_18px_rgba(0,0,0,0.74)] pointer-events-none" />
+            <div className="absolute inset-[72px] rounded-full border border-[#d4af37]/20 shadow-[0_0_12px_rgba(212,175,55,0.08)] pointer-events-none" />
+          </>
+        );
+      case 'nocturne-brass':
+        return (
+          <>
+            {surface.outerRim && (
+              <>
+                <div className="absolute inset-0 rounded-full pointer-events-none" />
+                {surface.ringOnlyShadow && (
+                  <div
+                    className="absolute inset-0 rounded-full pointer-events-none"
+                    style={{
+                      boxShadow: surface.ringBottomShadow
+                        ? surface.ringFlavorMatch === 'soft'
+                          ? 'inset 2px 2px 7px rgba(0,0,0,0.82), inset 0 -4px 7px rgba(0,0,0,0.66), inset -1px -1px 2px rgba(215,154,92,0.12)'
+                          : surface.ringFlavorMatch
+                          ? 'inset 3px 3px 10px rgba(0,0,0,0.9), inset 0 -6px 10px rgba(0,0,0,0.76), inset -1px -1px 2px rgba(215,154,92,0.1)'
+                          : 'inset 2px 2px 5px rgba(0,0,0,0.72), inset 0 -3px 5px rgba(0,0,0,0.58), inset -1px -1px 2px rgba(215,154,92,0.14)'
+                        : 'inset 2px 2px 5px rgba(0,0,0,0.72), inset -1px -1px 2px rgba(215,154,92,0.16)',
+                      WebkitMask: `radial-gradient(circle, transparent 0 calc(50% - ${rimInnerInset}px), #000 calc(50% - ${rimInnerInset}px) 100%)`,
+                      mask: `radial-gradient(circle, transparent 0 calc(50% - ${rimInnerInset}px), #000 calc(50% - ${rimInnerInset}px) 100%)`
+                    }}
+                  />
+                )}
+                {surface.ringSeatBevel && (
+                  <>
+                    <div
+                      className="absolute inset-0 rounded-full pointer-events-none"
+                      style={{
+                        boxShadow: surface.ringFlavorMatch
+                          ? surface.ringFlavorMatch === 'soft'
+                            ? 'inset 0 0 0 1px rgba(24,12,6,0.88), inset 0 0 0 2px rgba(79,44,22,0.62), inset 0 0 0 3px rgba(173,111,58,0.18), inset 0 0 0 4px rgba(255,220,160,0.045)'
+                            : 'inset 0 0 0 2px rgba(14,7,3,0.92), inset 0 0 0 4px rgba(63,34,16,0.72), inset 0 0 0 5px rgba(173,111,58,0.16), inset 0 0 0 6px rgba(255,220,160,0.035)'
+                          : 'inset 0 0 0 1px rgba(43,23,11,0.78), inset 0 0 0 2px rgba(120,80,42,0.48), inset 0 0 0 3px rgba(255,220,160,0.06)',
+                        WebkitMask: `radial-gradient(circle, transparent 0 calc(50% - ${rimInnerInset}px), #000 calc(50% - ${rimInnerInset}px) 100%)`,
+                        mask: `radial-gradient(circle, transparent 0 calc(50% - ${rimInnerInset}px), #000 calc(50% - ${rimInnerInset}px) 100%)`
+                      }}
+                    />
+                    <div
+                      className="absolute rounded-full pointer-events-none"
+                      style={{
+                        inset: rimInnerInset,
+                        boxShadow: surface.ringFlavorMatch
+                          ? surface.ringFlavorMatch === 'soft'
+                            ? '0 0 0 1px rgba(10,6,3,0.96), 0 0 0 2px rgba(61,33,16,0.72), 0 1px 0 rgba(255,205,140,0.08), 0 -1px 0 rgba(0,0,0,0.55)'
+                            : '0 0 0 2px rgba(6,3,1,0.98), 0 0 0 4px rgba(42,22,10,0.82), 0 1px 0 rgba(255,205,140,0.06), 0 -1px 0 rgba(0,0,0,0.68)'
+                          : '0 0 0 1px rgba(28,14,6,0.88), 0 1px 0 rgba(255,205,140,0.1), 0 -1px 0 rgba(0,0,0,0.38)'
+                      }}
+                    />
+                  </>
+                )}
+              </>
+            )}
+            <div
+              className="absolute inset-[18px] rounded-full pointer-events-none"
+              style={{
+                background: 'repeating-conic-gradient(from 0deg, rgba(212,175,55,0.42) 0deg 1.8deg, transparent 1.8deg 12deg)',
+                WebkitMask: 'radial-gradient(circle, transparent 0 77%, #000 78% 82%, transparent 83%)',
+                mask: 'radial-gradient(circle, transparent 0 77%, #000 78% 82%, transparent 83%)'
+              }}
+            />
+            <div className="absolute inset-[34px] rounded-full border pointer-events-none" style={{ borderColor: surface.softNocturneRings ? 'rgba(212,175,55,0.2)' : 'rgba(212,175,55,0.25)' }} />
+            <div className="absolute inset-[76px] rounded-full border pointer-events-none" style={{ borderColor: surface.softNocturneRings ? 'rgba(212,175,55,0.16)' : 'rgba(212,175,55,0.18)' }} />
+            <div className="absolute inset-[104px] rounded-full border pointer-events-none" style={{ borderColor: surface.softNocturneRings ? 'rgba(212,175,55,0.11)' : 'rgba(212,175,55,0.12)' }} />
+          </>
+        );
+      case 'smoked-glass':
+        return (
+          <>
+            <div className="absolute inset-[14px] rounded-full border border-white/12 bg-white/[0.025] shadow-[inset_0_2px_14px_rgba(255,255,255,0.08),inset_0_-14px_24px_rgba(0,0,0,0.42)] pointer-events-none" />
+            <div className="absolute left-[20%] top-[10%] h-[68px] w-[150px] rotate-[-18deg] rounded-full bg-white/[0.075] blur-[10px] pointer-events-none" />
+            <div className="absolute inset-[52px] rounded-full border border-[#f4ead6]/10 pointer-events-none" />
+            <div className="absolute inset-[92px] rounded-full border border-[#799e7c]/16 pointer-events-none" />
+          </>
+        );
+      case 'carbon-weave':
+        return (
+          <>
+            <div
+              className="absolute inset-0 rounded-full opacity-35 pointer-events-none"
+              style={{
+                backgroundImage: 'repeating-linear-gradient(45deg, rgba(212,175,55,0.11) 0px, rgba(212,175,55,0.11) 2px, transparent 2px, transparent 8px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.42) 0px, rgba(0,0,0,0.42) 2px, transparent 2px, transparent 8px)'
+              }}
+            />
+            <div className="absolute inset-[18px] rounded-full border border-[#d4af37]/16 shadow-[inset_0_1px_8px_rgba(212,175,55,0.045)] pointer-events-none" />
+            <div className="absolute inset-[64px] rounded-full border border-[#d4af37]/20 pointer-events-none" />
+            <div className="absolute inset-[92px] rounded-full border border-black/65 pointer-events-none" />
+          </>
+        );
+      case 'tape-reel':
+        return (
+          <>
+            <div className="absolute inset-[18px] rounded-full border border-[#d4af37]/38 shadow-[inset_0_10px_18px_rgba(0,0,0,0.55),0_0_9px_rgba(212,175,55,0.08)] pointer-events-none" />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="absolute left-1/2 top-1/2 h-9 w-5 origin-center rounded-full bg-black/38 shadow-[inset_0_3px_8px_rgba(0,0,0,0.85),0_1px_0_rgba(255,255,255,0.05)] pointer-events-none" style={{ transform: `translate(-50%, -50%) rotate(${i * 60}deg) translateY(-103px)` }} />
+            ))}
+          </>
+        );
+      case 'bakelite-halo':
+        return (
+          <>
+            <div className="absolute inset-[12px] rounded-full border border-[#5a331d]/50 shadow-[inset_0_4px_12px_rgba(255,178,102,0.06),inset_0_-14px_24px_rgba(0,0,0,0.58)] pointer-events-none" />
+            <div
+              className="absolute inset-[30px] rounded-full pointer-events-none"
+              style={{
+                background: 'repeating-conic-gradient(from 4deg, rgba(212,175,55,0.34) 0deg 7deg, transparent 7deg 28deg)',
+                WebkitMask: 'radial-gradient(circle, transparent 0 74%, #000 75% 80%, transparent 81%)',
+                mask: 'radial-gradient(circle, transparent 0 74%, #000 75% 80%, transparent 81%)'
+              }}
+            />
+            <div className="absolute inset-[76px] rounded-full border border-[#d4af37]/18 pointer-events-none" />
+          </>
+        );
+      case 'patina-night':
+        return (
+          <>
+            <div className="absolute inset-0 rounded-full opacity-20 mix-blend-overlay pointer-events-none" style={{ backgroundImage: RUBBER_MATTE_NOISE }} />
+            <div className="absolute left-[12%] top-[23%] h-[72px] w-[120px] rotate-[-18deg] rounded-full bg-[#7aa678]/10 blur-[14px] pointer-events-none" />
+            <div className="absolute right-[10%] bottom-[18%] h-[92px] w-[124px] rotate-[16deg] rounded-full bg-[#d4af37]/8 blur-[18px] pointer-events-none" />
+            <div className="absolute inset-[20px] rounded-full border border-[#7aa678]/20 pointer-events-none" />
+            <div className="absolute inset-[58px] rounded-full border border-[#d4af37]/14 pointer-events-none" />
+            <div className="absolute inset-[94px] rounded-full border border-[#7aa678]/14 pointer-events-none" />
+          </>
+        );
+      case 'broadcast-radar':
+        return (
+          <>
+            <div className="absolute inset-[20px] rounded-full border border-[#799e7c]/20 pointer-events-none" />
+            <div className="absolute inset-[50px] rounded-full border border-[#799e7c]/14 pointer-events-none" />
+            <div className="absolute inset-[82px] rounded-full border border-[#d4af37]/12 pointer-events-none" />
+            <div
+              className="center-radar-sweep absolute inset-0 rounded-full pointer-events-none opacity-40"
+              style={{
+                background: 'conic-gradient(from 0deg, transparent 0deg, rgba(121,158,124,0.16) 18deg, transparent 42deg)',
+                WebkitMask: 'radial-gradient(circle, transparent 0 36%, #000 37% 91%, transparent 92%)',
+                mask: 'radial-gradient(circle, transparent 0 36%, #000 37% 91%, transparent 92%)'
+              }}
+            />
+            {Array.from({ length: 16 }).map((_, i) => (
+              <span key={i} className="absolute left-1/2 top-1/2 h-[6px] w-px origin-center bg-[#799e7c]/30 pointer-events-none" style={{ transform: `translate(-50%, -50%) rotate(${i * 22.5}deg) translateY(-136px)` }} />
+            ))}
+          </>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="relative flex justify-center items-center z-20" style={{ width: 340, height: 340 }}>
       <WobblyAura drift={drift} spread={spread} active={auraActive} rate={rate} animationStyle={animationStyle} />
-      <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center group z-10" style={{ width: 320, height: 320, backgroundColor: '#1f1e1d', backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, transparent, transparent 2px, rgba(0,0,0,0.4) 3px, rgba(0,0,0,0.4) 4px), conic-gradient(from 0deg at 50% 50%, #111, #333, #111, #333, #111)', boxShadow: shadowStyle || '2px 2px 8px rgba(0,0,0,0.7), 18px 18px 40px rgba(0,0,0,0.4), inset 1px 1px 3px rgba(255,255,255,0.15), inset -4px -4px 10px rgba(0,0,0,0.9)' }}
+      <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center group z-10 overflow-hidden" style={{ width: outerSize, height: outerSize, backgroundColor: surface.outerRim ? (surface.rimBackgroundColor || rimFillColor) : surface.backgroundColor || '#1f1e1d', backgroundImage: surface.outerRim ? (surface.outerRimTexture ? surface.rimBackgroundImage : `radial-gradient(circle, transparent 0 calc(50% - ${rimInnerInset}px), ${rimFillColor} calc(50% - ${rimInnerInset}px) 100%)`) : surface.backgroundImage || CENTER_DIAL_SURFACES[0].backgroundImage, backgroundSize: surface.outerRimTexture ? surface.rimBackgroundSize : undefined, backgroundPosition: surface.outerRimTexture ? 'center' : undefined, backgroundBlendMode: surface.outerRimTexture ? 'normal, normal' : surface.backgroundBlendMode, boxShadow: guardedOuterShadow }}
         onPointerDown={handleSpreadDown} onPointerMove={handleSpreadMove} onPointerUp={handleSpreadUp} onPointerCancel={handleSpreadUp} onDoubleClick={onDoubleClickSpread}>
-        <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40">
-          <circle cx="160" cy="160" r="140" fill="none" stroke="#d4af37" strokeWidth="1" strokeDasharray="4 6.995" />
-          <circle cx="160" cy="160" r="120" fill="none" stroke="#d4af37" strokeWidth="0.5" />
-          <circle cx="160" cy="160" r="90" fill="none" stroke="#d4af37" strokeWidth="2" strokeDasharray="20 42.83" />
-          {[...Array(11)].map((_, i) => (<text key={i} x="160" y="35" fill="#d4af37" fontSize="8" fontFamily="monospace" textAnchor="middle" style={{ transformOrigin: '160px 160px', transform: `rotate(${-135 + i * 27}deg)` }}>{i < 9 ? `0${i+1}` : `${i+1}`}</text>))}
+        {surface.outerRim && (
+          <div
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              inset: rimInnerInset,
+              backgroundColor: surface.backgroundColor || '#1f1e1d',
+              backgroundImage: surface.backgroundImage || CENTER_DIAL_SURFACES[0].backgroundImage,
+              backgroundBlendMode: surface.backgroundBlendMode
+            }}
+          />
+        )}
+        {!surface.hideGenericGrooves && grooveStyle && grooveStyle.backgroundImage !== 'none' && (
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{
+              backgroundImage: grooveStyle.backgroundImage,
+              opacity: grooveStyle.opacity ?? 1,
+              mixBlendMode: 'multiply'
+            }}
+          />
+        )}
+        {renderSurfaceDecoration()}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+          {circlesEnabled && (
+            <g opacity="0.75">
+              {!surface.outerRim && <circle cx="160" cy="160" r="140" fill="none" stroke="#a85b3d" strokeWidth="1" strokeDasharray="4 6.995" />}
+              <circle cx="160" cy="160" r="120" fill="none" stroke="#a85b3d" strokeWidth="0.5" />
+              <circle cx="160" cy="160" r="90" fill="none" stroke="#a85b3d" strokeWidth="2" strokeDasharray="20 42.83" />
+            </g>
+          )}
+          {numbersEnabled && [...Array(11)].map((_, i) => (<text key={i} x="160" y="35" fill="#d4af37" opacity="0.46" fontSize="8" fontFamily="monospace" textAnchor="middle" style={{ transformOrigin: '160px 160px', transform: `rotate(${-135 + i * 27}deg)` }}>{i < 9 ? `0${i+1}` : `${i+1}`}</text>))}
         </svg>
         <div className="absolute inset-0 transition-transform duration-75 pointer-events-none" style={{ transform: `rotate(${spreadRot}deg)` }}>
-          <div className="absolute top-[8%] left-1/2 -translate-x-1/2 w-2 h-6 bg-[#e66a53] rounded-full shadow-[0_0_10px_#e66a53]" />
+          <div
+            className="absolute left-1/2 -translate-x-1/2 rounded-full"
+            style={{
+              ...indicatorPosition,
+              width: spreadIndicator.width,
+              height: spreadIndicator.height,
+              background: spreadIndicator.background,
+              boxShadow: spreadIndicator.boxShadow,
+              opacity: spreadIndicator.opacity ?? 1,
+              border: spreadIndicator.border
+            }}
+          />
         </div>
         <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center hover:brightness-110 transition-all z-20" style={{ width: 140, height: 140, background: 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 20%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #a88842 0deg, #edd39a 45deg, #a88842 90deg, #edd39a 135deg, #a88842 180deg, #edd39a 225deg, #a88842 270deg, #edd39a 315deg, #a88842 360deg)', boxShadow: '15px 15px 30px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.9), inset -4px -4px 8px rgba(0,0,0,0.6)' }}
           onPointerDown={handleDriftDown} onPointerMove={handleDriftMove} onPointerUp={handleDriftUp} onPointerCancel={handleDriftUp} onDoubleClick={onDoubleClickDrift}>
@@ -2592,6 +3097,10 @@ export default function App() {
   const [modeStyle, setModeStyle] = useState(() => initial('modeStyle', CODE_DEFAULT_DESIGN.modeStyle));
   const [knobStyle, setKnobStyle] = useState(() => initial('knobStyle', CODE_DEFAULT_DESIGN.knobStyle));
   const [centerDialStyle, setCenterDialStyle] = useState(() => initial('centerDialStyle', CODE_DEFAULT_DESIGN.centerDialStyle));
+  const [centerDialSurfaceStyle, setCenterDialSurfaceStyle] = useState(() => initial('centerDialSurfaceStyle', CODE_DEFAULT_DESIGN.centerDialSurfaceStyle));
+  const [centerDialGrooveStyle, setCenterDialGrooveStyle] = useState(() => initial('centerDialGrooveStyle', CODE_DEFAULT_DESIGN.centerDialGrooveStyle));
+  const [centerDialCirclesEnabled, setCenterDialCirclesEnabled] = useState(() => initial('centerDialCirclesEnabled', CODE_DEFAULT_DESIGN.centerDialCirclesEnabled));
+  const [centerDialNumbersEnabled, setCenterDialNumbersEnabled] = useState(() => initial('centerDialNumbersEnabled', CODE_DEFAULT_DESIGN.centerDialNumbersEnabled));
   const [driftAnimation, setDriftAnimation] = useState(() => initial('driftAnimation', CODE_DEFAULT_DESIGN.driftAnimation));
   const [bgIndex, setBgIndex] = useState(() => initial('bgIndex', CODE_DEFAULT_DESIGN.bgIndex));
   const [showOutputs, setShowOutputs] = useState(() => initial('showOutputs', CODE_DEFAULT_DESIGN.showOutputs));
@@ -2725,6 +3234,10 @@ export default function App() {
       modeStyle,
       knobStyle,
       centerDialStyle,
+      centerDialSurfaceStyle,
+      centerDialGrooveStyle,
+      centerDialCirclesEnabled,
+      centerDialNumbersEnabled,
       driftAnimation,
       bgIndex,
       showOutputs,
@@ -2902,7 +3415,13 @@ export default function App() {
               <BotanicalCenterDial 
                 drift={drift} setDrift={setDrift} onDoubleClickDrift={() => setDrift(0)}
                 spread={spread} setSpread={setSpread} onDoubleClickSpread={() => setSpread(0)}
-                rate={rate} shadowStyle={CENTER_DIAL_SHADOWS[centerDialStyle].shadow} animationStyle={driftAnimation}
+                rate={rate}
+                shadowStyle={CENTER_DIAL_SHADOWS[centerDialStyle].shadow}
+                surfaceStyle={CENTER_DIAL_SURFACES[centerDialSurfaceStyle]}
+                grooveStyle={CENTER_DIAL_GROOVES[centerDialGrooveStyle]}
+                circlesEnabled={centerDialCirclesEnabled}
+                numbersEnabled={centerDialNumbersEnabled}
+                animationStyle={driftAnimation}
               />
             </div>
 
@@ -3324,6 +3843,41 @@ export default function App() {
             </div>
 
             <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Center Dial Surface</span>
+              <div className="relative w-full h-11">
+                <select value={centerDialSurfaceStyle} onChange={e => setCenterDialSurfaceStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {CENTER_DIAL_SURFACES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Dial Groove Style</span>
+              <div className="relative w-full h-11">
+                <select value={centerDialGrooveStyle} onChange={e => setCenterDialGrooveStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {CENTER_DIAL_GROOVES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-3">
+                <span className="text-white/50 text-[9px] font-bold tracking-[0.18em] uppercase">Dial Circles</span>
+                <button onClick={() => setCenterDialCirclesEnabled(!centerDialCirclesEnabled)} className={`w-10 h-5 rounded-full border border-white/20 flex items-center px-1 transition-colors ${centerDialCirclesEnabled ? 'bg-[#d4af37]/40' : 'bg-black/20'}`}>
+                  <div className={`w-2.5 h-2.5 rounded-full bg-white transition-transform ${centerDialCirclesEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-3">
+                <span className="text-white/50 text-[9px] font-bold tracking-[0.18em] uppercase">Dial Numbers</span>
+                <button onClick={() => setCenterDialNumbersEnabled(!centerDialNumbersEnabled)} className={`w-10 h-5 rounded-full border border-white/20 flex items-center px-1 transition-colors ${centerDialNumbersEnabled ? 'bg-[#d4af37]/40' : 'bg-black/20'}`}>
+                  <div className={`w-2.5 h-2.5 rounded-full bg-white transition-transform ${centerDialNumbersEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
               <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">I/O Meter Scale</span>
               <div className="relative w-full h-11">
                 <select value={ioScaleStyle} onChange={e => setIoScaleStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
@@ -3516,6 +4070,13 @@ export default function App() {
         @keyframes drift-core-pulse {
           0%, 100% { transform: translate(-50%, -50%) scale(0.82); opacity: 0.18; }
           50% { transform: translate(-50%, -50%) scale(1.22); opacity: 0.42; }
+        }
+        .center-radar-sweep {
+          animation: center-radar-sweep 8s linear infinite;
+        }
+        @keyframes center-radar-sweep {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         body { overflow: hidden; touch-action: none; }
