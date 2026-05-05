@@ -2859,12 +2859,12 @@ export default function App() {
 
             <div className="absolute top-[38%] right-[10%] z-30 grid grid-cols-2 gap-x-6 gap-y-10 justify-items-center">
               <div className="relative">
-                <MatteKnob label="Filter" value={character} onChange={setCharacter} onDoubleClick={() => setCharacter(0)} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
+                <MatteKnob label="Filter" value={character} onChange={setCharacter} onDoubleClick={() => setCharacter(0)} size={50} labelColorOverride="text-black/80 font-black" />
                 <div className="absolute -top-3 -right-6 z-40">
                   <FilterSwitchEngine value={charFilter} onChange={setCharFilter} styleIndex={filterSwitchStyle} />
                 </div>
               </div>
-              <MatteKnob label="Sweeten" value={sweeten} onChange={setSweeten} onDoubleClick={() => setSweeten(0)} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
+              <MatteKnob label="Sweeten" value={sweeten} onChange={setSweeten} onDoubleClick={() => setSweeten(0)} size={50} labelColorOverride="text-black/80 font-black" />
               <div className="relative">
                 <div className="absolute -right-6 top-1/2 -translate-y-1/2">
                   <HardwareLED active={power && biasHF > 20} color="coral" size={6} label="DRV" />
