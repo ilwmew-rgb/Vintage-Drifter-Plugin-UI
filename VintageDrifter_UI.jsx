@@ -18,6 +18,7 @@ const SAKURA_IMAGE_PRESETS = {
 
 const LFO_IMAGE_PRESET = { enabled: true, locked: true, x: 250, y: 636, size: 72, rotate: 0 };
 const DEFAULT_PANEL_FACE_COLOR = '#f4ead6';
+const OUTER_PLUGIN_SCALE = 0.95;
 
 const DECORATIVE_CIRCLE_PRESETS = {
   circle1: { enabled: true, locked: true, x: 619, y: 676, size: 655, rotate: 0, color: '#e66a53', opacity: 0.9 },
@@ -669,27 +670,47 @@ const WobblyAura = (props) => (
     : <CreativeDriftAura {...props} />
 );
 
-const SakuraImageLayer = ({ src, settings, alt }) => {
+const SakuraImageLayer = ({ src, settings, alt, matteBacking = false }) => {
   if (!settings.enabled) return null;
+  const layerStyle = {
+    left: settings.x,
+    top: settings.y,
+    width: settings.size,
+    transform: `translate(-50%, -50%) rotate(${settings.rotate}deg)`,
+    transformOrigin: 'center'
+  };
 
   return (
-    <img
-      src={src}
-      alt={alt}
-      className="absolute pointer-events-none select-none"
-      draggable={false}
-      style={{
-        left: settings.x,
-        top: settings.y,
-        width: settings.size,
-        transform: `translate(-50%, -50%) rotate(${settings.rotate}deg)`,
-        transformOrigin: 'center',
-        zIndex: 39,
-        opacity: 0.9,
-        filter: 'brightness(0.95)',
-        mixBlendMode: 'luminosity'
-      }}
-    />
+    <>
+      {matteBacking && (
+        <img
+          src={src}
+          alt=""
+          aria-hidden="true"
+          className="absolute pointer-events-none select-none"
+          draggable={false}
+          style={{
+            ...layerStyle,
+            zIndex: 38,
+            opacity: 0.94,
+            filter: 'brightness(0) saturate(100%) invert(97%) sepia(16%) saturate(355%) hue-rotate(343deg) brightness(105%) contrast(96%)'
+          }}
+        />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        className="absolute pointer-events-none select-none"
+        draggable={false}
+        style={{
+          ...layerStyle,
+          zIndex: 39,
+          opacity: 0.9,
+          filter: 'brightness(0.95)',
+          mixBlendMode: 'luminosity'
+        }}
+      />
+    </>
   );
 };
 
@@ -1299,7 +1320,7 @@ const KNOB_STYLES = [
   { name: 'Polished Onyx', boxShadow: '0px 15px 25px rgba(0,0,0,0.6), 0px 6px 12px rgba(0,0,0,0.7), inset 0px 2px 5px rgba(255,255,255,0.5), inset 0px -3px 8px rgba(0,0,0,0.9)', backgroundImage: 'radial-gradient(circle at 35% 25%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 30%, rgba(0,0,0,0.9) 100%)', backgroundColor: '#0a0a0a' }
 ];
 
-const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride, shadingStyle }) => {
+const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride, shadingStyle, labelOffsetY = 0 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
   const startVal = useRef(0);
@@ -1316,7 +1337,12 @@ const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, 
           <div className="absolute top-[10%] left-1/2 -translate-x-1/2 rounded-full" style={{ width: size * 0.06, height: size * 0.25, background: isCoral ? '#fff' : 'linear-gradient(to bottom, #d4af37, #8a6a1c)', boxShadow: isCoral ? '0 1px 2px rgba(0,0,0,0.5)' : '0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.8)' }} />
         </div>
       </div>
-      <div className={`mt-4 text-[9px] font-black tracking-[0.2em] uppercase ${labelColorOverride || (isCoral ? 'text-[#fff] drop-shadow-md' : 'text-[#7a7465]')}`}>{label}</div>
+      <div
+        className={`mt-4 text-[9px] font-black tracking-[0.2em] uppercase ${labelColorOverride || (isCoral ? 'text-[#fff] drop-shadow-md' : 'text-[#7a7465]')}`}
+        style={{ transform: labelOffsetY ? `translateY(${labelOffsetY}px)` : undefined }}
+      >
+        {label}
+      </div>
     </div>
   );
 };
@@ -1503,7 +1529,7 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
           style={{ width: `${value}%` }}
         />
         <div
-          className="absolute top-1/2 h-7 w-5 -translate-x-1/2 -translate-y-1/2 rounded-md border border-[#111] bg-[#222] shadow-[0_4px_6px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.05)]"
+          className="absolute top-1/2 h-7 w-5 -translate-x-1/2 -translate-y-1/2 rounded-md border border-black bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.09)]"
           style={{ left: `${value}%` }}
         >
           <div className="absolute left-1/2 top-1/2 h-3 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#df6f5a] shadow-[0_0_6px_rgba(223,111,90,0.9),inset_0_1px_1px_rgba(255,255,255,0.3)]" />
@@ -1834,6 +1860,17 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
   const label = (m, active, extra = '') => (
     <span className={`text-[8px] font-black tracking-[0.18em] uppercase transition-colors ${extra}`} style={{ color: active ? tone[m].color : '#8a7e6b' }}>{m}</span>
   );
+  const FlavorLabel = () => (
+    <div
+      className="absolute left-[calc(50%+3px)] top-[-28px] -translate-x-1/2 text-[11px] font-black uppercase tracking-[0.14em]"
+      style={{
+        color: 'rgba(58, 53, 45, 0.58)',
+        textShadow: '0 1px 0 rgba(255,255,255,0.24), 0 -1px 0 rgba(0,0,0,0.12)'
+      }}
+    >
+      FLAVOR
+    </div>
+  );
 
   const baseClass = isMovable ? "flex flex-col z-10" : "absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col z-10";
   
@@ -1902,6 +1939,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
           boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08), 0 1px 1px rgba(255,255,255,0.45), 0 -1px 1px rgba(0,0,0,0.08)',
           border: '1px solid rgba(0,0,0,0.8)'
         }}>
+          <FlavorLabel />
           {modes.map(m => {
             const ledColor = m === 'calm' ? '#4ade80' : m === 'vintage' ? '#fb923c' : '#ef4444';
             return (
@@ -2055,6 +2093,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
           boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08), 0 1px 1px rgba(255,255,255,0.45), 0 -1px 1px rgba(0,0,0,0.08)',
           border: '1px solid rgba(0,0,0,0.8)'
         }}>
+          <FlavorLabel />
           {modes.map(m => {
             const ledColor = m === 'calm' ? '#4ade80' : m === 'vintage' ? '#fb923c' : '#ef4444';
             return (
@@ -2081,6 +2120,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
           boxShadow: '0 0 0 1px #2b170b, 0 0 0 2px #78502a, inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08)',
           border: '1px solid rgba(0,0,0,0.8)'
         }}>
+          <FlavorLabel />
           {modes.map(m => {
             const ledColor = m === 'calm' ? '#4ade80' : m === 'vintage' ? '#fb923c' : '#ef4444';
             return (
@@ -2107,6 +2147,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
           boxShadow: '0 0 0 1px #2b170b, 0 0 0 2px #78502a, inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08)',
           border: '1px solid rgba(0,0,0,0.8)'
         }}>
+          <FlavorLabel />
           {modes.map(m => {
             const ledColor = m === 'calm' ? '#4ade80' : m === 'vintage' ? '#fb923c' : '#ef4444';
             return (
@@ -2201,6 +2242,18 @@ const FRAMES = [
   },
 
   { name: 'Oiled Walnut - Double Join Seat', inset: '-inset-5', radius: '3rem',
+    style: {
+      backgroundImage: 'url("/textures/walnut.png")',
+      backgroundSize: '200px',
+      boxShadow: 'inset 0 4px 9px rgba(255,255,255,0.1), inset 0 -8px 20px rgba(0,0,0,0.5), 10px 15px 35px rgba(0,0,0,0.6)',
+      border: '1px solid #111'
+    },
+    panelStyle: {
+      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1px #2b170b, 0 0 0 2px #78502a'
+    }
+  },
+
+  { name: 'Oiled Walnut - Double Join Rounded', inset: '-inset-5', radius: '4.5rem',
     style: {
       backgroundImage: 'url("/textures/walnut.png")',
       backgroundSize: '200px',
@@ -2719,7 +2772,7 @@ export default function App() {
           {/* Frame Wrapper */}
           <div 
             className={`absolute ${FRAMES[frameStyle]?.inset || '-inset-6'} transition-all duration-500 pointer-events-none`} 
-            style={{ borderRadius: FRAMES[frameStyle]?.radius || '4.5rem', zIndex: -1, ...FRAMES[frameStyle]?.style }}
+            style={{ borderRadius: FRAMES[frameStyle]?.radius || '4.5rem', zIndex: -1, transform: `scale(${OUTER_PLUGIN_SCALE})`, transformOrigin: 'center center', ...FRAMES[frameStyle]?.style }}
           >
             {FRAMES[frameStyle]?.innerStyle && (
               <div 
@@ -2735,8 +2788,10 @@ export default function App() {
             )}
           </div>
 
-          <AnalogCables position="left" parallel={parallelCables} />
-          {showOutputs && <AnalogCables position="right" parallel={parallelCables} />}
+          <div className="absolute inset-0 pointer-events-none" style={{ transform: `scale(${OUTER_PLUGIN_SCALE})`, transformOrigin: 'center center', zIndex: -2 }}>
+            <AnalogCables position="left" parallel={parallelCables} />
+            {showOutputs && <AnalogCables position="right" parallel={parallelCables} />}
+          </div>
 
           <PresetBrowser presets={DEMO_PRESETS} currentPreset={currentPreset}
             onPrev={() => setCurrentPreset(p => (p - 1 + DEMO_PRESETS.length) % DEMO_PRESETS.length)}
@@ -2744,39 +2799,9 @@ export default function App() {
             onLoad={setCurrentPreset} onSave={(name) => console.log('Save preset:', name)} />
 
           <div
-            className="relative w-full h-full rounded-[4rem] shadow-[0_40px_80px_rgba(0,0,0,0.4),0_20px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500 z-10"
-            style={{ backgroundColor: activePanelFaceColor, ...FRAMES[frameStyle]?.panelStyle }}
+            className="absolute inset-0 rounded-[4rem] shadow-[0_40px_80px_rgba(0,0,0,0.4),0_20px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500"
+            style={{ backgroundColor: activePanelFaceColor, zIndex: 8, transform: `scale(${OUTER_PLUGIN_SCALE})`, transformOrigin: 'center center', ...FRAMES[frameStyle]?.panelStyle }}
           >
-
-            <EditableDecorativeCircles
-              circles={decorativeCircleSettings}
-              selectedId={selectedCircle}
-              setSelectedId={setSelectedCircle}
-              onUpdate={updateDecorativeCircle}
-              stageRef={pluginStageRef}
-            />
-
-            <EditableAuraShapes
-              shapes={auraShapes}
-              selectedId={selectedAuraShape}
-              setSelectedId={setSelectedAuraShape}
-              onUpdate={updateAuraShape}
-              stageRef={pluginStageRef}
-            />
-            <DetailedFernsRight showFerns={showFerns} />
-            <SakuraImageLayer src={sakuraSrc} settings={sakuraImageSettings.sakura} alt="Sakura decorative layer" />
-            <SakuraImageLayer src={sakura2Src} settings={sakuraImageSettings.sakura2} alt="Sakura 2 decorative layer" />
-            <SakuraImageLayer src={sakura2Src} settings={sakuraImageSettings.sakura3} alt="Sakura 3 decorative layer" />
-            <EditableImageAsset
-              src={lfoSrc}
-              settings={lfoImageSettings}
-              selected={selectedHardwareSection === 'lfoImage'}
-              onSelect={() => setSelectedHardwareSection('lfoImage')}
-              onUpdate={updateLfoImage}
-              stageRef={pluginStageRef}
-              alt="LFO image layer"
-            />
-
             <div
               className="absolute inset-0 pointer-events-none z-[5] transition-all duration-300"
               style={{
@@ -2800,18 +2825,55 @@ export default function App() {
 
             <CornerScrews enabled={screwsEnabled} styleIndex={screwStyle} />
 
+            <div
+              className="absolute inset-0 rounded-[4rem] transition-all duration-500"
+              style={{ transform: `scale(${1 / OUTER_PLUGIN_SCALE})`, transformOrigin: 'center center' }}
+            >
+
+            <EditableDecorativeCircles
+              circles={decorativeCircleSettings}
+              selectedId={selectedCircle}
+              setSelectedId={setSelectedCircle}
+              onUpdate={updateDecorativeCircle}
+              stageRef={pluginStageRef}
+            />
+
+            <EditableAuraShapes
+              shapes={auraShapes}
+              selectedId={selectedAuraShape}
+              setSelectedId={setSelectedAuraShape}
+              onUpdate={updateAuraShape}
+              stageRef={pluginStageRef}
+            />
+            <DetailedFernsRight showFerns={showFerns} />
+            <SakuraImageLayer src={sakuraSrc} settings={sakuraImageSettings.sakura} alt="Sakura decorative layer" matteBacking />
+            <SakuraImageLayer src={sakura2Src} settings={sakuraImageSettings.sakura2} alt="Sakura 2 decorative layer" matteBacking />
+            <SakuraImageLayer src={sakura2Src} settings={sakuraImageSettings.sakura3} alt="Sakura 3 decorative layer" matteBacking />
+            <EditableImageAsset
+              src={lfoSrc}
+              settings={lfoImageSettings}
+              selected={selectedHardwareSection === 'lfoImage'}
+              onSelect={() => setSelectedHardwareSection('lfoImage')}
+              onUpdate={updateLfoImage}
+              stageRef={pluginStageRef}
+              alt="LFO image layer"
+            />
+
             <div className={`absolute inset-0 bg-[#3a352d]/50 backdrop-grayscale transition-all duration-700 z-40 pointer-events-none ${power ? 'opacity-0' : 'opacity-100'}`} />
 
             <div className="absolute top-[6%] left-[8%] z-10 flex flex-col items-start">
               <h1 className="text-3xl leading-none font-black tracking-tighter text-[#e66a53] drop-shadow-sm flex gap-3"><span>VINTAGE</span> <span>DRIFTER</span></h1>
-              <p className="text-[10px] tracking-[0.4em] font-bold text-[#8b7b65] mt-1">BY POLARIS DSP</p>
+              <p className="text-[10px] tracking-[0.2em] font-bold text-[#8b7b65] mt-1">MOTION / TONE / INSTABILITY</p>
             </div>
 
             <div className="absolute top-[6%] right-[10%] z-10 flex flex-col items-center">
-              <div className="text-[12px] font-black tracking-[0.2em] text-[#e66a53] mb-4 drop-shadow-sm">POWER</div>
-              <button onClick={() => setPower(!power)} className="relative w-8 h-14 bg-[#111] rounded-md border border-white/10 shadow-[inset_0_2px_5px_rgba(0,0,0,0.8),10px_10px_20px_rgba(0,0,0,0.4)] flex justify-center items-center">
-                <div className="w-3 h-8 rounded-full bg-gradient-to-b from-[#edd39a] to-[#a88842] shadow-[0_5px_10px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(255,255,255,0.9)] transition-transform duration-200" style={{ transform: power ? 'translateY(-8px)' : 'translateY(8px)' }} />
-              </button>
+              <div className="text-[12px] font-black tracking-[0.2em] text-[#e66a53] mb-4 drop-shadow-sm">POLARIS DSP</div>
+              <div className="relative top-[5px] flex flex-col items-center">
+                <button onClick={() => setPower(!power)} className="relative w-8 h-14 bg-[#111] rounded-md border border-white/10 shadow-[inset_0_2px_5px_rgba(0,0,0,0.8),10px_10px_20px_rgba(0,0,0,0.4)] flex justify-center items-center">
+                  <div className="w-3 h-8 rounded-full bg-gradient-to-b from-[#edd39a] to-[#a88842] shadow-[0_5px_10px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(255,255,255,0.9)] transition-transform duration-200" style={{ transform: power ? 'translateY(-8px)' : 'translateY(8px)' }} />
+                </button>
+                <div className="mt-3 text-[9px] font-black tracking-[0.24em] text-[#3a352d]/70 drop-shadow-[0_1px_0_rgba(255,255,255,0.18)]">POWER</div>
+              </div>
             </div>
 
             <EditableHardwareWrapper 
@@ -2858,20 +2920,20 @@ export default function App() {
             </EditableHardwareWrapper>
 
             <div className="absolute top-[38%] right-[10%] z-30 grid grid-cols-2 gap-x-6 gap-y-10 justify-items-center">
-              <div className="relative">
-                <MatteKnob label="Filter" value={character} onChange={setCharacter} onDoubleClick={() => setCharacter(0)} size={50} />
-                <div className="absolute -top-3 -right-6 z-40">
-                  <FilterSwitchEngine value={charFilter} onChange={setCharFilter} styleIndex={filterSwitchStyle} />
-                </div>
-              </div>
+              <MatteKnob label="Noise" value={noise} onChange={setNoise} onDoubleClick={() => setNoise(0)} size={50} />
               <MatteKnob label="Sweeten" value={sweeten} onChange={setSweeten} onDoubleClick={() => setSweeten(0)} size={50} />
               <div className="relative">
                 <div className="absolute -right-6 top-1/2 -translate-y-1/2">
                   <HardwareLED active={power && biasHF > 20} color="coral" size={6} label="DRV" />
                 </div>
-                <MatteKnob label="Sat" value={biasHF} onChange={setBiasHF} onDoubleClick={() => setBiasHF(0)} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
+                <MatteKnob label="Sat" value={biasHF} onChange={setBiasHF} onDoubleClick={() => setBiasHF(0)} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
               </div>
-              <MatteKnob label="Noise" value={noise} onChange={setNoise} onDoubleClick={() => setNoise(0)} size={45} labelColorOverride="text-white/90 drop-shadow-md" />
+              <div className="relative">
+                <MatteKnob label="Filter" value={character} onChange={setCharacter} onDoubleClick={() => setCharacter(0)} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
+                <div className="absolute -top-3 -right-6 z-40">
+                  <FilterSwitchEngine value={charFilter} onChange={setCharFilter} styleIndex={filterSwitchStyle} />
+                </div>
+              </div>
             </div>
 
             <EditableHardwareWrapper 
@@ -2913,7 +2975,7 @@ export default function App() {
               stageRef={pluginStageRef}
             >
               <div className="flex flex-col items-center gap-3">
-                <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} shadingStyle={KNOB_STYLES[knobStyle]} />
+                <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} shadingStyle={KNOB_STYLES[knobStyle]} labelOffsetY={5} />
               </div>
             </EditableHardwareWrapper>
 
@@ -2965,8 +3027,22 @@ export default function App() {
               </div>
             </EditableHardwareWrapper>
 
+            <div
+              className="absolute z-30 text-center text-[10px] font-black uppercase tracking-[0.24em]"
+              style={{
+                bottom: 'calc(3.4% + 1px)',
+                left: 'calc(19% + 1px)',
+                transform: 'translateX(-50%)',
+                color: 'rgba(58, 53, 45, 0.58)',
+                textShadow: '0 1px 0 rgba(255,255,255,0.24), 0 -1px 0 rgba(0,0,0,0.12)'
+              }}
+            >
+              IMPERFECT BY DESIGN
+            </div>
+
           </div>
         </div>
+      </div>
       </div>
 
       {/* Sidebar Panel - Redesigned Sidebar */}
