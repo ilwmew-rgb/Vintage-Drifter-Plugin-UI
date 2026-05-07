@@ -72,6 +72,8 @@ const CODE_DEFAULT_DESIGN = {
   centerDialStyle: 1,
   centerDialSurfaceStyle: 15,
   centerDialGrooveStyle: 1,
+  centerDialMarkStyle: 0,
+  centerDialNumberStyle: 0,
   centerDialCirclesEnabled: false,
   centerDialNumbersEnabled: false,
   driftAnimation: 3,
@@ -1430,10 +1432,9 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
 
   const DragSurface = ({ onChange }) => {
     const surfaceRef = useRef(null);
-    const updateFromPointer = (event) => {
-      const rect = surfaceRef.current?.getBoundingClientRect();
+    const updateFromPointer = (clientX, rect) => {
       if (!rect) return;
-      const next = Math.round(Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * 100);
+      const next = Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * 100);
       onChange(next);
     };
     return (
@@ -1442,13 +1443,20 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
         className="absolute inset-0 cursor-pointer touch-none"
         onPointerDown={event => {
           event.preventDefault();
-          event.currentTarget.setPointerCapture(event.pointerId);
-          updateFromPointer(event);
-        }}
-        onPointerMove={event => {
-          if (event.buttons !== 1) return;
-          event.preventDefault();
-          updateFromPointer(event);
+          const rect = surfaceRef.current?.getBoundingClientRect();
+          updateFromPointer(event.clientX, rect);
+          const handleMove = (moveEvent) => {
+            moveEvent.preventDefault();
+            updateFromPointer(moveEvent.clientX, rect);
+          };
+          const handleUp = () => {
+            window.removeEventListener('pointermove', handleMove);
+            window.removeEventListener('pointerup', handleUp);
+            window.removeEventListener('pointercancel', handleUp);
+          };
+          window.addEventListener('pointermove', handleMove);
+          window.addEventListener('pointerup', handleUp);
+          window.addEventListener('pointercancel', handleUp);
         }}
       />
     );
@@ -1538,30 +1546,35 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
     </div>
   );
 
-  const IlluminatedRubberFader = ({ label, value, onChange }) => (
+  const IlluminatedRubberFader = ({ label, value, onChange }) => {
+    const thumbLeft = `calc(8px + ${value} * (100% - 16px) / 100)`;
+    return (
     <div className="relative z-10 flex w-[88px] flex-col gap-1">
-      <div className="flex items-center text-[8px] font-black uppercase tracking-[0.18em] text-[#aaa39a] drop-shadow-md">{label}</div>
+      <div className="flex items-center pl-[8px] pr-0 text-[8px] font-black uppercase tracking-[0.18em] text-[#aaa39a] drop-shadow-md">{label}</div>
       <div className="relative h-8">
-        <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full border-b border-[#333] bg-[#141414] shadow-[inset_0_3px_5px_rgba(0,0,0,0.8)]" />
+        <div className="absolute left-2 right-2 top-1/2 h-2 -translate-y-1/2 rounded-full border-b border-[#333] bg-[#141414] shadow-[inset_0_3px_5px_rgba(0,0,0,0.8)]" />
         <div
-          className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-[#1a1714]/40"
-          style={{ width: `${value}%` }}
+          className="absolute left-2 top-1/2 h-2 -translate-y-1/2 rounded-full bg-[#1a1714]/40"
+          style={{ width: `calc(${value} * (100% - 16px) / 100)` }}
         />
         <div
           className="absolute top-1/2 h-7 w-5 -translate-x-1/2 -translate-y-1/2 rounded-md border border-black bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.09)]"
-          style={{ left: `${value}%` }}
+          style={{ left: thumbLeft }}
         >
           <div className="absolute left-1/2 top-1/2 h-3 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#df6f5a] shadow-[0_0_6px_rgba(223,111,90,0.9),inset_0_1px_1px_rgba(255,255,255,0.3)]" />
         </div>
-        <DragSurface onChange={onChange} />
+        <div className="absolute left-[1px] right-[1px] top-[-7px] bottom-[-7px]">
+          <DragSurface onChange={onChange} />
+        </div>
       </div>
     </div>
   );
+  };
 
   switch (styleIndex) {
     case 0:
       return (
-        <div className="absolute bottom-[12%] left-[50%] z-10 flex -translate-x-1/2 gap-8 overflow-hidden rounded-full border border-[#1a1a1a] bg-[#282828] px-5 py-3 shadow-[0_8px_14px_rgba(0,0,0,0.22),0_2px_4px_rgba(0,0,0,0.18),inset_0_1px_2px_rgba(255,255,255,0.07),inset_0_-1px_2px_rgba(0,0,0,0.22)]">
+        <div className="absolute bottom-[12%] left-[50%] z-10 flex w-[248px] -translate-x-1/2 justify-center gap-4 overflow-hidden rounded-full border border-[#1a1a1a] bg-[#282828] px-5 py-3 shadow-[0_8px_14px_rgba(0,0,0,0.22),0_2px_4px_rgba(0,0,0,0.18),inset_0_1px_2px_rgba(255,255,255,0.07),inset_0_-1px_2px_rgba(0,0,0,0.22)]">
           <div className="absolute inset-0 bg-gradient-to-b from-[#ffffff08] to-transparent pointer-events-none" />
           <div className="absolute inset-0 opacity-30 mix-blend-overlay pointer-events-none" style={{ backgroundImage: RUBBER_MATTE_NOISE }} />
           <IlluminatedRubberFader label="Depth" value={depth} onChange={setDepth} />
@@ -1771,6 +1784,7 @@ const CENTER_DIAL_SURFACES = [
     name: 'Nocturne Brass Inlay',
     decoration: 'nocturne-brass',
     hideGenericGrooves: true,
+    allowGrooveOverlay: true,
     size: 320,
     backgroundColor: '#171614',
     backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
@@ -1782,6 +1796,7 @@ const CENTER_DIAL_SURFACES = [
     decoration: 'nocturne-brass',
     outerRim: true,
     hideGenericGrooves: true,
+    allowGrooveOverlay: true,
     size: 320,
     backgroundColor: '#171614',
     backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
@@ -1795,6 +1810,7 @@ const CENTER_DIAL_SURFACES = [
     reducedRimShadow: true,
     softNocturneRings: true,
     hideGenericGrooves: true,
+    allowGrooveOverlay: true,
     size: 313,
     backgroundColor: '#171614',
     backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
@@ -1814,6 +1830,7 @@ const CENTER_DIAL_SURFACES = [
     reducedRimShadow: true,
     softNocturneRings: true,
     hideGenericGrooves: true,
+    allowGrooveOverlay: true,
     size: 313,
     backgroundColor: '#171614',
     backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
@@ -1833,6 +1850,7 @@ const CENTER_DIAL_SURFACES = [
     reducedRimShadow: true,
     softNocturneRings: true,
     hideGenericGrooves: true,
+    allowGrooveOverlay: true,
     size: 313,
     backgroundColor: '#171614',
     backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
@@ -1851,6 +1869,7 @@ const CENTER_DIAL_SURFACES = [
     reducedRimShadow: true,
     softNocturneRings: true,
     hideGenericGrooves: true,
+    allowGrooveOverlay: true,
     size: 313,
     backgroundColor: '#171614',
     backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
@@ -1873,6 +1892,7 @@ const CENTER_DIAL_SURFACES = [
     reducedRimShadow: true,
     softNocturneRings: true,
     hideGenericGrooves: true,
+    allowGrooveOverlay: true,
     size: 313,
     backgroundColor: '#171614',
     backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
@@ -1895,6 +1915,7 @@ const CENTER_DIAL_SURFACES = [
     reducedRimShadow: true,
     softNocturneRings: true,
     hideGenericGrooves: true,
+    allowGrooveOverlay: true,
     size: 313,
     backgroundColor: '#171614',
     backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
@@ -1910,6 +1931,7 @@ const CENTER_DIAL_SURFACES = [
     reducedRimShadow: true,
     softNocturneRings: true,
     hideGenericGrooves: true,
+    allowGrooveOverlay: true,
     size: 313,
     backgroundColor: '#171614',
     backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
@@ -1925,6 +1947,7 @@ const CENTER_DIAL_SURFACES = [
     reducedRimShadow: true,
     softNocturneRings: true,
     hideGenericGrooves: true,
+    allowGrooveOverlay: true,
     size: 313,
     backgroundColor: '#171614',
     backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
@@ -2004,7 +2027,35 @@ const CENTER_DIAL_GROOVES = [
   { name: 'Stepped Concentric', backgroundImage: 'radial-gradient(circle at 50% 50%, transparent 0 30%, rgba(58,58,58,0.55) 30.4%, rgba(10,10,10,0.42) 31%, transparent 31.8%, transparent 39%, rgba(51,51,51,0.5) 39.4%, rgba(9,9,9,0.44) 40.1%, transparent 41%, transparent 48%, rgba(37,37,37,0.52) 48.4%, rgba(8,8,8,0.46) 49.2%, transparent 50%, transparent 58%, rgba(34,34,34,0.48) 58.4%, rgba(6,6,6,0.44) 59.2%, transparent 60%)', opacity: 1 }
 ];
 
-const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowStyle, surfaceStyle, grooveStyle, circlesEnabled = true, numbersEnabled = true, animationStyle = 0, onDoubleClickDrift, onDoubleClickSpread }) => {
+const CENTER_DIAL_MARK_STYLES = [
+  { name: 'None' },
+  { name: 'Classic Rings' },
+  { name: 'Fine Brass Index' },
+  { name: 'Ivory Micro Ticks' },
+  { name: 'Studio Double Ring' },
+  { name: 'Quiet Tick Ring' },
+  { name: 'Amber Calibration' },
+  { name: 'Twin Hairlines' },
+  { name: 'Minimal Dots' },
+  { name: 'Inner Compass' },
+  { name: 'Gold Hairline' }
+];
+
+const CENTER_DIAL_NUMBER_STYLES = [
+  { name: 'None' },
+  { name: 'Classic 0-10' },
+  { name: 'Bold Mono' },
+  { name: 'Ivory Serif' },
+  { name: 'Small Caps' },
+  { name: 'Amber Micro' },
+  { name: 'Studio Decimal' },
+  { name: 'Wide Brass' },
+  { name: 'Inner Gold' },
+  { name: 'Soft Cream' },
+  { name: 'Compact Label' }
+];
+
+const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowStyle, surfaceStyle, grooveStyle, markStyleIndex = 0, numberStyleIndex = 0, circlesEnabled = true, numbersEnabled = true, animationStyle = 0, onDoubleClickDrift, onDoubleClickSpread }) => {
   const [isDraggingDrift, setIsDraggingDrift] = useState(false);
   const [isDraggingSpread, setIsDraggingSpread] = useState(false);
   const driftY = useRef(0), driftStart = useRef(0), spreadY = useRef(0), spreadStart = useRef(0);
@@ -2025,6 +2076,183 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
   const guardedOuterShadow = surface.outerRim ? (surface.allowOuterShadow ? outerShadow : 'none') : outerShadow;
   const spreadIndicator = surface.indicator || { width: 8, height: 24, top: '8%', background: '#e66a53', boxShadow: '0 0 10px #e66a53' };
   const indicatorPosition = spreadIndicator.bottom ? { bottom: spreadIndicator.bottom } : { top: spreadIndicator.top || '8%' };
+  const dialMarkScale = outerSize / 320;
+  const dialMarkCenter = outerSize / 2;
+  const dialMarkOuterRadius = 140 * dialMarkScale;
+  const dialMarkMiddleRadius = 120 * dialMarkScale;
+  const dialMarkInnerRadius = 90 * dialMarkScale;
+  const dialNumberY = dialMarkCenter - 125 * dialMarkScale;
+  const innerMarkLimit = surface.outerRim ? dialMarkCenter - rimInnerInset - 10 * dialMarkScale : dialMarkCenter - 18 * dialMarkScale;
+  const markOuterRadius = Math.min(126 * dialMarkScale, innerMarkLimit);
+  const markMidRadius = markOuterRadius - 22 * dialMarkScale;
+  const markInnerRadius = markOuterRadius - 48 * dialMarkScale;
+  const markNumbers = Array.from({ length: 11 }, (_, i) => i);
+  const markPoint = (angle, radius) => {
+    const rad = (angle - 90) * Math.PI / 180;
+    return {
+      x: dialMarkCenter + Math.cos(rad) * radius,
+      y: dialMarkCenter + Math.sin(rad) * radius
+    };
+  };
+  const renderNumbers = ({ radius, color = '#d4af37', opacity = 0.5, size = 12, family = 'monospace', weight = 700, letterSpacing = 0, rotate = false }) => {
+    if (!numbersEnabled) return null;
+    return markNumbers.map((number, i) => {
+      const angle = -135 + i * 27;
+      const point = markPoint(angle, radius);
+      return (
+        <text
+          key={`num-${i}`}
+          x={point.x}
+          y={point.y}
+          fill={color}
+          opacity={opacity}
+          fontSize={size * dialMarkScale}
+          fontFamily={family}
+          fontWeight={weight}
+          letterSpacing={letterSpacing}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          style={{ transformOrigin: `${point.x}px ${point.y}px`, transform: rotate ? `rotate(${angle}deg)` : undefined }}
+        >
+          {number}
+        </text>
+      );
+    });
+  };
+  const renderTicks = ({ radius, length = 8, color = '#d4af37', opacity = 0.35, width = 1, count = 55, majorEvery = 5 }) => {
+    if (!circlesEnabled) return null;
+    return Array.from({ length: count }, (_, i) => {
+      const angle = -135 + i * (270 / (count - 1));
+      const major = i % majorEvery === 0;
+      const outer = markPoint(angle, radius);
+      const inner = markPoint(angle, radius - (major ? length : length * 0.52) * dialMarkScale);
+      return (
+        <line
+          key={`tick-${i}`}
+          x1={inner.x}
+          y1={inner.y}
+          x2={outer.x}
+          y2={outer.y}
+          stroke={color}
+          strokeOpacity={major ? opacity : opacity * 0.55}
+          strokeWidth={(major ? width : width * 0.7) * dialMarkScale}
+          strokeLinecap="round"
+        />
+      );
+    });
+  };
+  const renderCircle = ({ radius, color = '#a85b3d', opacity = 0.35, width = 1, dash }) => {
+    if (!circlesEnabled) return null;
+    return <circle cx={dialMarkCenter} cy={dialMarkCenter} r={radius} fill="none" stroke={color} strokeOpacity={opacity} strokeWidth={width * dialMarkScale} strokeDasharray={dash} />;
+  };
+  const renderDialMarkStyle = () => {
+    if (markStyleIndex === 0) return null;
+    switch (markStyleIndex) {
+      case 1:
+        return (
+          <>
+            {renderCircle({ radius: markOuterRadius, opacity: 0.28, width: 0.8 })}
+            {renderCircle({ radius: markMidRadius, opacity: 0.2, width: 0.65 })}
+            {renderTicks({ radius: markOuterRadius - 4 * dialMarkScale, length: 7, opacity: 0.42, width: 0.9, count: 41, majorEvery: 4 })}
+          </>
+        );
+      case 2:
+        return (
+          <>
+            {renderCircle({ radius: markOuterRadius - 2 * dialMarkScale, color: '#d4af37', opacity: 0.24, width: 0.7 })}
+            {renderCircle({ radius: markInnerRadius, color: '#d4af37', opacity: 0.16, width: 0.6 })}
+            {renderTicks({ radius: markOuterRadius - 8 * dialMarkScale, length: 10, color: '#d4af37', opacity: 0.38, width: 0.8, count: 55, majorEvery: 5 })}
+          </>
+        );
+      case 3:
+        return (
+          <>
+            {renderCircle({ radius: markMidRadius, color: '#f4ead6', opacity: 0.16, width: 0.7 })}
+            {renderTicks({ radius: markOuterRadius - 10 * dialMarkScale, length: 5, color: '#f4ead6', opacity: 0.28, width: 0.75, count: 31, majorEvery: 3 })}
+          </>
+        );
+      case 4:
+        return (
+          <>
+            {renderCircle({ radius: markOuterRadius - 6 * dialMarkScale, color: '#8a6a32', opacity: 0.32, width: 0.7 })}
+            {renderCircle({ radius: markOuterRadius - 32 * dialMarkScale, color: '#8a6a32', opacity: 0.16, width: 0.7 })}
+          </>
+        );
+      case 5:
+        return (
+          <>
+            {renderTicks({ radius: markOuterRadius - 3 * dialMarkScale, length: 12, color: '#d4af37', opacity: 0.34, width: 0.8, count: 21, majorEvery: 2 })}
+          </>
+        );
+      case 6:
+        return (
+          <>
+            {renderCircle({ radius: markOuterRadius - 4 * dialMarkScale, color: '#e66a53', opacity: 0.2, width: 0.8 })}
+            {renderTicks({ radius: markOuterRadius - 8 * dialMarkScale, length: 8, color: '#e66a53', opacity: 0.34, width: 0.9, count: 41, majorEvery: 4 })}
+          </>
+        );
+      case 7:
+        return (
+          <>
+            {renderCircle({ radius: markOuterRadius - 6 * dialMarkScale, color: '#b88935', opacity: 0.22, width: 0.7 })}
+            {renderCircle({ radius: markInnerRadius + 6 * dialMarkScale, color: '#b88935', opacity: 0.13, width: 0.6 })}
+          </>
+        );
+      case 8:
+        return (
+          <>
+            {circlesEnabled && markNumbers.map((_, i) => {
+              const point = markPoint(-135 + i * 27, markOuterRadius - 10 * dialMarkScale);
+              return <circle key={`dot-${i}`} cx={point.x} cy={point.y} r={(i % 5 === 0 ? 2.2 : 1.35) * dialMarkScale} fill="#d4af37" opacity={i % 5 === 0 ? 0.5 : 0.26} />;
+            })}
+          </>
+        );
+      case 9:
+        return (
+          <>
+            {renderCircle({ radius: markOuterRadius - 5 * dialMarkScale, color: '#d4af37', opacity: 0.18, width: 0.7 })}
+            {renderCircle({ radius: markMidRadius - 4 * dialMarkScale, color: '#e66a53', opacity: 0.12, width: 0.7 })}
+          </>
+        );
+      case 10:
+        return (
+          <>
+            {renderCircle({ radius: markOuterRadius - 2 * dialMarkScale, color: '#edd39a', opacity: 0.2, width: 0.55 })}
+            {renderCircle({ radius: markOuterRadius - 14 * dialMarkScale, color: '#edd39a', opacity: 0.12, width: 0.55 })}
+            {renderTicks({ radius: markOuterRadius - 4 * dialMarkScale, length: 6, color: '#edd39a', opacity: 0.26, width: 0.7, count: 31, majorEvery: 3 })}
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+  const renderDialNumberStyle = () => {
+    if (numberStyleIndex === 0) return null;
+    switch (numberStyleIndex) {
+      case 1:
+        return renderNumbers({ radius: markOuterRadius - 28 * dialMarkScale, opacity: 0.56, size: 12.4, family: 'monospace', weight: 800 });
+      case 2:
+        return renderNumbers({ radius: markOuterRadius - 26 * dialMarkScale, color: '#edd39a', opacity: 0.58, size: 13, family: 'monospace', weight: 900 });
+      case 3:
+        return renderNumbers({ radius: markOuterRadius - 27 * dialMarkScale, color: '#f4ead6', opacity: 0.5, size: 12.8, family: 'Georgia, serif', weight: 700 });
+      case 4:
+        return renderNumbers({ radius: markOuterRadius - 27 * dialMarkScale, color: '#e7d6a4', opacity: 0.54, size: 12.2, family: 'Arial, sans-serif', weight: 800, letterSpacing: 0.8 });
+      case 5:
+        return renderNumbers({ radius: markOuterRadius - 29 * dialMarkScale, color: '#d4af37', opacity: 0.46, size: 11.8, family: 'monospace', weight: 700 });
+      case 6:
+        return renderNumbers({ radius: markOuterRadius - 24 * dialMarkScale, color: '#d4af37', opacity: 0.54, size: 12.2, family: 'monospace', weight: 800 });
+      case 7:
+        return renderNumbers({ radius: markOuterRadius - 28 * dialMarkScale, color: '#edd39a', opacity: 0.5, size: 12.6, family: 'Georgia, serif', weight: 700, letterSpacing: 0.5 });
+      case 8:
+        return renderNumbers({ radius: markInnerRadius + 14 * dialMarkScale, color: '#d4af37', opacity: 0.45, size: 11.6, family: 'monospace', weight: 800 });
+      case 9:
+        return renderNumbers({ radius: markOuterRadius - 30 * dialMarkScale, color: '#f4ead6', opacity: 0.42, size: 12, family: 'Arial, sans-serif', weight: 700 });
+      case 10:
+        return renderNumbers({ radius: markOuterRadius - 25 * dialMarkScale, color: '#edd39a', opacity: 0.52, size: 12.5, family: 'Arial, sans-serif', weight: 900 });
+      default:
+        return null;
+    }
+  };
   const renderSurfaceDecoration = () => {
     switch (surface.decoration) {
       case 'concentric-ribs':
@@ -2213,10 +2441,11 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
             }}
           />
         )}
-        {!surface.hideGenericGrooves && grooveStyle && grooveStyle.backgroundImage !== 'none' && (
+        {(!surface.hideGenericGrooves || surface.allowGrooveOverlay) && grooveStyle && grooveStyle.backgroundImage !== 'none' && (
           <div
-            className="absolute inset-0 rounded-full pointer-events-none"
+            className="absolute rounded-full pointer-events-none"
             style={{
+              inset: surface.outerRim ? rimInnerInset : 0,
               backgroundImage: grooveStyle.backgroundImage,
               opacity: grooveStyle.opacity ?? 1,
               mixBlendMode: 'multiply'
@@ -2224,15 +2453,9 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
           />
         )}
         {renderSurfaceDecoration()}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none">
-          {circlesEnabled && (
-            <g opacity="0.75">
-              {!surface.outerRim && <circle cx="160" cy="160" r="140" fill="none" stroke="#a85b3d" strokeWidth="1" strokeDasharray="4 6.995" />}
-              <circle cx="160" cy="160" r="120" fill="none" stroke="#a85b3d" strokeWidth="0.5" />
-              <circle cx="160" cy="160" r="90" fill="none" stroke="#a85b3d" strokeWidth="2" strokeDasharray="20 42.83" />
-            </g>
-          )}
-          {numbersEnabled && [...Array(11)].map((_, i) => (<text key={i} x="160" y="35" fill="#d4af37" opacity="0.46" fontSize="8" fontFamily="monospace" textAnchor="middle" style={{ transformOrigin: '160px 160px', transform: `rotate(${-135 + i * 27}deg)` }}>{i < 9 ? `0${i+1}` : `${i+1}`}</text>))}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${outerSize} ${outerSize}`}>
+          {renderDialMarkStyle()}
+          {renderDialNumberStyle()}
         </svg>
         <div className="absolute inset-0 transition-transform duration-75 pointer-events-none" style={{ transform: `rotate(${spreadRot}deg)` }}>
           <div
@@ -2292,6 +2515,39 @@ const PresetBrowser = ({ presets, currentPreset, onPrev, onNext, onLoad, onSave 
         </div>
       )}
     </div>
+  );
+};
+
+const DesignGridOverlay = ({ mode }) => {
+  if (mode === 'off') return null;
+  const isDetailed = mode === 'detail';
+  return (
+    <div
+      className="absolute inset-0 z-[95] pointer-events-none rounded-[4rem]"
+      style={{
+        backgroundImage: isDetailed
+          ? [
+              'linear-gradient(rgba(255,255,255,0.16) 1px, transparent 1px)',
+              'linear-gradient(90deg, rgba(255,255,255,0.16) 1px, transparent 1px)',
+              'linear-gradient(rgba(230,106,83,0.38) 1px, transparent 1px)',
+              'linear-gradient(90deg, rgba(230,106,83,0.38) 1px, transparent 1px)',
+              'linear-gradient(rgba(237,211,154,0.64) 2px, transparent 2px)',
+              'linear-gradient(90deg, rgba(237,211,154,0.64) 2px, transparent 2px)'
+            ].join(', ')
+          : [
+              'linear-gradient(rgba(237,211,154,0.56) 1px, transparent 1px)',
+              'linear-gradient(90deg, rgba(237,211,154,0.56) 1px, transparent 1px)',
+              'linear-gradient(rgba(230,106,83,0.62) 2px, transparent 2px)',
+              'linear-gradient(90deg, rgba(230,106,83,0.62) 2px, transparent 2px)'
+            ].join(', '),
+        backgroundSize: isDetailed
+          ? '10px 10px, 10px 10px, 50px 50px, 50px 50px, 425px 425px, 425px 425px'
+          : '50px 50px, 50px 50px, 425px 425px, 425px 425px',
+        boxShadow: 'inset 0 0 0 1px rgba(237,211,154,0.38)',
+        opacity: isDetailed ? 0.82 : 0.72,
+        mixBlendMode: 'multiply'
+      }}
+    />
   );
 };
 
@@ -3114,6 +3370,8 @@ export default function App() {
   const [centerDialStyle, setCenterDialStyle] = useState(() => initial('centerDialStyle', CODE_DEFAULT_DESIGN.centerDialStyle));
   const [centerDialSurfaceStyle, setCenterDialSurfaceStyle] = useState(() => initial('centerDialSurfaceStyle', CODE_DEFAULT_DESIGN.centerDialSurfaceStyle));
   const [centerDialGrooveStyle, setCenterDialGrooveStyle] = useState(() => initial('centerDialGrooveStyle', CODE_DEFAULT_DESIGN.centerDialGrooveStyle));
+  const [centerDialMarkStyle, setCenterDialMarkStyle] = useState(() => initial('centerDialMarkStyle', CODE_DEFAULT_DESIGN.centerDialMarkStyle));
+  const [centerDialNumberStyle, setCenterDialNumberStyle] = useState(() => initial('centerDialNumberStyle', CODE_DEFAULT_DESIGN.centerDialNumberStyle));
   const [centerDialCirclesEnabled, setCenterDialCirclesEnabled] = useState(() => initial('centerDialCirclesEnabled', CODE_DEFAULT_DESIGN.centerDialCirclesEnabled));
   const [centerDialNumbersEnabled, setCenterDialNumbersEnabled] = useState(() => initial('centerDialNumbersEnabled', CODE_DEFAULT_DESIGN.centerDialNumbersEnabled));
   const [driftAnimation, setDriftAnimation] = useState(() => initial('driftAnimation', CODE_DEFAULT_DESIGN.driftAnimation));
@@ -3141,6 +3399,7 @@ export default function App() {
   const [ioScaleStyle, setIoScaleStyle] = useState(() => initial('ioScaleStyle', CODE_DEFAULT_DESIGN.ioScaleStyle));
   const [bottomSectionStyle, setBottomSectionStyle] = useState(() => initial('bottomSectionStyle', CODE_DEFAULT_DESIGN.bottomSectionStyle));
   const [defaultSaveMessage, setDefaultSaveMessage] = useState('');
+  const [designGridMode, setDesignGridMode] = useState('off');
   const sakuraImageSettings = {
     sakura: { ...SAKURA_IMAGE_PRESETS.sakura, ...sakuraImageState.sakura },
     sakura2: { ...SAKURA_IMAGE_PRESETS.sakura2, ...sakuraImageState.sakura2 },
@@ -3251,6 +3510,8 @@ export default function App() {
       centerDialStyle,
       centerDialSurfaceStyle,
       centerDialGrooveStyle,
+      centerDialMarkStyle,
+      centerDialNumberStyle,
       centerDialCirclesEnabled,
       centerDialNumbersEnabled,
       driftAnimation,
@@ -3434,6 +3695,8 @@ export default function App() {
                 shadowStyle={CENTER_DIAL_SHADOWS[centerDialStyle].shadow}
                 surfaceStyle={CENTER_DIAL_SURFACES[centerDialSurfaceStyle]}
                 grooveStyle={CENTER_DIAL_GROOVES[centerDialGrooveStyle]}
+                markStyleIndex={centerDialMarkStyle}
+                numberStyleIndex={centerDialNumberStyle}
                 circlesEnabled={centerDialCirclesEnabled}
                 numbersEnabled={centerDialNumbersEnabled}
                 animationStyle={driftAnimation}
@@ -3561,6 +3824,8 @@ export default function App() {
               </div>
             </EditableHardwareWrapper>
 
+            <DesignGridOverlay mode={designGridMode} />
+
             <div
               className="absolute z-30 text-center text-[10px] font-black uppercase tracking-[0.24em]"
               style={{
@@ -3612,6 +3877,33 @@ export default function App() {
                   {BOTTOM_SECTION_STYLE_NAMES.map((name, i) => <option key={i} value={i}>{name}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 border-t border-white/10 pt-5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Alignment Grid</span>
+                  <span className="text-white/35 text-[9px] font-bold uppercase tracking-[0.12em]">{designGridMode === 'off' ? 'Hidden' : designGridMode === 'normal' ? 'Normal' : 'Detailed'}</span>
+                </div>
+                <button onClick={() => setDesignGridMode(mode => mode === 'off' ? 'normal' : 'off')} className={`w-11 h-6 rounded-full border-2 border-white/20 flex items-center px-1 transition-colors ${designGridMode !== 'off' ? 'bg-[#d4af37]/40' : 'bg-black/20'}`}>
+                  <div className={`w-3 h-3 rounded-full bg-white transition-transform ${designGridMode !== 'off' ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  ['off', 'Off'],
+                  ['normal', 'Grid'],
+                  ['detail', 'Detail']
+                ].map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    onClick={() => setDesignGridMode(mode)}
+                    className={`h-9 rounded-xl border text-[9px] font-black uppercase tracking-[0.14em] transition-all ${designGridMode === mode ? 'border-[#edd39a]/70 bg-[#edd39a]/18 text-[#edd39a]' : 'border-white/10 bg-white/5 text-white/45 hover:text-white/70'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -3872,6 +4164,42 @@ export default function App() {
               <div className="relative w-full h-11">
                 <select value={centerDialGrooveStyle} onChange={e => setCenterDialGrooveStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
                   {CENTER_DIAL_GROOVES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Dial Ring Style</span>
+              <div className="relative w-full h-11">
+                <select
+                  value={centerDialMarkStyle}
+                  onChange={e => {
+                    const next = Number(e.target.value);
+                    setCenterDialMarkStyle(next);
+                    if (next > 0) setCenterDialCirclesEnabled(true);
+                  }}
+                  className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none"
+                >
+                  {CENTER_DIAL_MARK_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Dial Number Style</span>
+              <div className="relative w-full h-11">
+                <select
+                  value={centerDialNumberStyle}
+                  onChange={e => {
+                    const next = Number(e.target.value);
+                    setCenterDialNumberStyle(next);
+                    if (next > 0) setCenterDialNumbersEnabled(true);
+                  }}
+                  className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none"
+                >
+                  {CENTER_DIAL_NUMBER_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
               </div>
