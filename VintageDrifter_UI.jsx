@@ -17,7 +17,8 @@ const DRIFT_ANIMATION_STYLES = [
   'Coral Dual Smooth Aurora',
   'Coral Dual Outer Ribbon',
   'Coral Dual Outer Ribbon Flutter',
-  'Coral Dual Outer Flutter Clean'
+  'Coral Dual Outer Flutter Clean',
+  'Knob Flutter Coral Filled'
 ];
 
 const normalizeDriftAnimationStyle = (value) => {
@@ -802,7 +803,7 @@ const OriginalWobblyAura = ({ drift, spread, active, rate, originalFlutter = fal
   );
 };
 
-const KnobFlutterRing = ({ drift, active, rate, color = '#e66a53', strokeWidth = 2.5 }) => {
+const KnobFlutterRing = ({ drift, active, rate, mode, color = '#e66a53', strokeWidth = 2.5, filled = false, sizeOffset = 0 }) => {
   const ringRef = useRef(null);
   const requestRef = useRef();
   const tRef = useRef(0);
@@ -836,17 +837,36 @@ const KnobFlutterRing = ({ drift, active, rate, color = '#e66a53', strokeWidth =
     return () => cancelAnimationFrame(requestRef.current);
   }, []);
 
+  const modeFreqMult = (mode === 'calm' || mode === 0) ? 2.8 : ((mode === 'vintage' || mode === 1) ? 1.8 : 1.0);
+  const modeIntenseMult = (mode === 'calm' || mode === 0) ? 0.5 : ((mode === 'vintage' || mode === 1) ? 0.75 : 1.0);
+
   const intensity = Math.max(0.08, drift / 100);
-  const flutterRestScale = 0.18 + intensity * 0.46;
-  const flutterBurstScale = 3.6 + intensity * 8.4;
+  const flutterRestScale = filled ? (0.4 + intensity * 0.8) : (0.18 + intensity * 0.46);
+  const flutterBurstScale = (filled ? (12 + intensity * 24) : (3.6 + intensity * 8.4)) * modeIntenseMult;
   const flutterBlur = 0.04 + intensity * 0.08;
-  const flutterCycle = Math.max(1.02, 1.6 - intensity * 0.18 - rate / 285);
+  const flutterCycle = Math.max(1.02, (1.6 - intensity * 0.18 - rate / 285) * modeFreqMult);
   const flutterFrequency = `${(0.018 + intensity * 0.01).toFixed(3)} ${(0.082 + intensity * 0.03).toFixed(3)}`;
-  const filterId = strokeWidth < 2 ? 'driftKnobFlutterCoralThin' : 'driftKnobFlutterCoral';
+  const filterId = filled 
+    ? (strokeWidth < 2 ? 'driftKnobFlutterCoralThinFilled' : 'driftKnobFlutterCoralFilled') 
+    : (strokeWidth < 2 ? 'driftKnobFlutterCoralThin' : 'driftKnobFlutterCoral');
   const spinDuration = `${Math.max(7.5, 16 - rate / 7)}s`;
+  const baseSize = 240 + sizeOffset;
+  const innerSize = 200 + sizeOffset;
+  const travel = Math.min(1, drift / 100);
+  const startAngle = 225; // Matches the knob's visual start (-135deg in CSS rotation is 225deg in conic-gradient)
+  const sweepAngle = travel * 270;
 
   return (
-    <div className={`absolute left-1/2 top-1/2 z-30 w-[236px] h-[236px] -translate-x-1/2 -translate-y-1/2 pointer-events-none overflow-hidden rounded-full transition-all duration-500 ease-out ${active ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
+    <div 
+      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none overflow-hidden rounded-full transition-all duration-500 ease-out"
+      style={{ 
+        width: baseSize, 
+        height: baseSize,
+        opacity: active ? (filled ? 1 : 0.88) : 0,
+        WebkitMaskImage: filled ? `conic-gradient(from ${startAngle}deg, transparent 0deg, #000 8deg, #000 ${Math.max(8, sweepAngle - 8)}deg, transparent ${sweepAngle}deg)` : 'none',
+        maskImage: filled ? `conic-gradient(from ${startAngle}deg, transparent 0deg, #000 8deg, #000 ${Math.max(8, sweepAngle - 8)}deg, transparent ${sweepAngle}deg)` : 'none'
+      }}
+    >
       <svg className="absolute w-0 h-0" aria-hidden="true" focusable="false">
         <defs>
           <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
@@ -872,16 +892,22 @@ const KnobFlutterRing = ({ drift, active, rate, color = '#e66a53', strokeWidth =
           </filter>
         </defs>
       </svg>
-      <div className="absolute left-1/2 top-1/2 w-[196px] h-[196px] -translate-x-1/2 -translate-y-1/2 mix-blend-screen">
+      <div 
+        className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${filled ? 'mix-blend-normal' : 'mix-blend-screen'}`}
+        style={{ width: innerSize, height: innerSize }}
+      >
         <div
           ref={ringRef}
           className="w-full h-full"
           style={{
-            border: `${strokeWidth}px solid ${color}`,
+            background: filled 
+              ? `conic-gradient(from ${startAngle}deg, #ffb09e 0deg, #e66a53 ${sweepAngle * 0.52}deg, #7e2a24 ${sweepAngle}deg, transparent ${sweepAngle}deg)` 
+              : 'transparent',
+            border: filled ? 'none' : `${strokeWidth}px solid ${color}`,
             borderRadius: '50%',
-            filter: `url(#${filterId}) drop-shadow(0 0 6px ${color})`,
-            opacity: color === '#e66a53' ? 0.88 : 0.94,
-            animation: `spin ${spinDuration} linear infinite`,
+            filter: `url(#${filterId}) drop-shadow(0 0 7.6px ${color})`,
+            opacity: filled ? 1.0 : (color === '#e66a53' ? 0.88 : 0.94),
+            animation: filled ? 'none' : `spin ${spinDuration} linear infinite`,
             transition: 'border-radius 0.1s ease-out'
           }}
         />
@@ -1780,7 +1806,7 @@ const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle, aurora
   );
 };
 
-const WobblyAura = (props) => {
+const WobblyAura = ({ mode, ...props }) => {
   const styleName = DRIFT_ANIMATION_STYLES[normalizeDriftAnimationStyle(props.animationStyle)] || DRIFT_ANIMATION_STYLES[0];
   switch (styleName) {
     case 'Original Flutter':
@@ -1790,7 +1816,9 @@ const WobblyAura = (props) => {
     case 'Aurora Flutter':
       return <CreativeDriftAura {...props} animationStyle={3} />;
     case 'Knob Flutter Coral Thin':
-      return <KnobFlutterRing {...props} color="#e66a53" strokeWidth={1.35} />;
+      return <KnobFlutterRing {...props} mode={mode} color="#e66a53" strokeWidth={1.35} />;
+    case 'Knob Flutter Coral Filled':
+      return <KnobFlutterRing {...props} mode={mode} color="#c26650" strokeWidth={1.35} filled={true} sizeOffset={-30} />;
     case 'Coral Drift Needles':
       return <KnobDriftExperiment {...props} variant="needles" />;
     case 'Coral Needles Fine':
@@ -3705,7 +3733,7 @@ const normalizeSpreadPointerStyle = (value) => {
   return Math.max(0, Math.min(SPREAD_POINTER_STYLES.length - 1, numericValue));
 };
 
-const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowStyle, surfaceStyle, grooveStyle, markStyleIndex = 0, numberStyleIndex = 0, circlesEnabled = true, numbersEnabled = true, guideRings = CENTER_DIAL_GUIDE_RING_DEFAULTS, middleKnobStyle = 0, spreadPointerStyle = 0, animationStyle = 0, onDoubleClickDrift, onDoubleClickSpread }) => {
+const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, shadowStyle, surfaceStyle, grooveStyle, markStyleIndex = 0, numberStyleIndex = 0, circlesEnabled = true, numbersEnabled = true, guideRings = CENTER_DIAL_GUIDE_RING_DEFAULTS, middleKnobStyle = 0, spreadPointerStyle = 0, animationStyle = 0, onDoubleClickDrift, onDoubleClickSpread }) => {
   const [isDraggingDrift, setIsDraggingDrift] = useState(false);
   const [isDraggingSpread, setIsDraggingSpread] = useState(false);
   const driftY = useRef(0), driftStart = useRef(0), spreadY = useRef(0), spreadStart = useRef(0);
@@ -4324,7 +4352,6 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
 
   return (
     <div className="relative flex justify-center items-center z-20" style={{ width: 340, height: 340 }}>
-      <WobblyAura drift={drift} spread={spread} active={auraActive} rate={rate} animationStyle={animationStyle} />
       <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center group z-10 overflow-hidden" style={{ width: outerSize, height: outerSize, backgroundColor: surface.outerRim ? (surface.rimBackgroundColor || rimFillColor) : surface.backgroundColor || '#1f1e1d', backgroundImage: surface.outerRim ? (surface.outerRimTexture ? surface.rimBackgroundImage : `radial-gradient(circle, transparent 0 calc(50% - ${rimInnerInset}px), ${rimFillColor} calc(50% - ${rimInnerInset}px) 100%)`) : surface.backgroundImage || CENTER_DIAL_SURFACES[0].backgroundImage, backgroundSize: surface.outerRimTexture ? surface.rimBackgroundSize : undefined, backgroundPosition: surface.outerRimTexture ? 'center' : undefined, backgroundBlendMode: surface.outerRimTexture ? 'normal, normal' : surface.backgroundBlendMode, boxShadow: guardedOuterShadow }}
         onPointerDown={handleSpreadDown} onPointerMove={handleSpreadMove} onPointerUp={handleSpreadUp} onPointerCancel={handleSpreadUp} onDoubleClick={onDoubleClickSpread}>
         {surface.outerRim && (
@@ -4358,6 +4385,7 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
         <div className="absolute inset-0 transition-transform duration-75 pointer-events-none" style={{ transform: `rotate(${spreadRot}deg)` }}>
           {renderSpreadPointer()}
         </div>
+        <WobblyAura drift={drift} spread={spread} active={auraActive} rate={rate} mode={mode} animationStyle={animationStyle} />
         <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center hover:brightness-110 transition-all z-20" style={{ width: 140, height: 140, background: middleKnobBackground, boxShadow: middleKnobShadow }}
           onPointerDown={handleDriftDown} onPointerMove={handleDriftMove} onPointerUp={handleDriftUp} onPointerCancel={handleDriftUp} onDoubleClick={onDoubleClickDrift}>
           {middleKnobIsOriginal && (
@@ -5616,7 +5644,31 @@ export default function App() {
                 middleKnobStyle={middleKnobStyle}
                 spreadPointerStyle={spreadPointerStyle}
                 animationStyle={driftAnimation}
+                mode={mode}
               />
+            </div>
+
+            {/* Vertical Wabi-Sabi Text */}
+            <div 
+              className="absolute z-20 flex flex-col items-center pointer-events-none select-none transition-all duration-500"
+              style={{
+                right: '4.5%',
+                top: '14%',
+                transform: 'translateY(-50%)',
+                opacity: 0.4,
+                color: '#7a5d49',
+                fontFamily: "'M PLUS 1p', sans-serif",
+                fontWeight: 700,
+                fontSize: '13px',
+                lineHeight: '1.4',
+                letterSpacing: '0.12em',
+                textShadow: '0 0.5px 0 rgba(255,255,255,0.3)'
+              }}
+            >
+              <span>侘</span>
+              <span>び</span>
+              <span>寂</span>
+              <span>び</span>
             </div>
 
             <EditableHardwareWrapper 
