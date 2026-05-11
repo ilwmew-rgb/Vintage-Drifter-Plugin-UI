@@ -1,14 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import sakuraSrc from './Images/Sakura.png';
 import sakura2Src from './Images/Sakura2.png';
 import lfoSrc from './Images/LFO.png';
 
 const DRIFT_ANIMATION_STYLES = [
-  'Original Drift',
   'Original Flutter',
   'Aurora Veil',
-  'Aurora Flutter'
+  'Aurora Flutter',
+  'Knob Flutter Coral Thin',
+  'Coral Drift Needles',
+  'Coral Needles Fine',
+  'Coral Needles Meter',
+  'Coral Dual Rails Arc',
+  'Coral Dual Smooth Ribbon',
+  'Coral Dual Smooth Aurora',
+  'Coral Dual Outer Ribbon',
+  'Coral Dual Outer Ribbon Flutter',
+  'Coral Dual Outer Flutter Clean'
 ];
+
+const normalizeDriftAnimationStyle = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(DRIFT_ANIMATION_STYLES.length - 1, numericValue));
+};
 
 const SAKURA_IMAGE_PRESETS = {
   sakura: { enabled: true, x: 845, y: 286, size: 300, rotate: 6 },
@@ -19,6 +35,32 @@ const SAKURA_IMAGE_PRESETS = {
 const LFO_IMAGE_PRESET = { enabled: true, locked: true, x: 250, y: 636, size: 72, rotate: 0 };
 const DEFAULT_PANEL_FACE_COLOR = '#f4ead6';
 const OUTER_PLUGIN_SCALE = 0.95;
+
+const CENTER_DIAL_GUIDE_RING_DEFAULTS = {
+  large: { enabled: true, locked: true, size: 245 },
+  small: { enabled: true, locked: true, size: 161 }
+};
+
+const BRAND_TEXT_STYLES = [
+  {
+    name: 'Warm Ivory',
+    polarisColor: '#fff8eb',
+    powerColor: '#fff8eb',
+    powerShadow: '0 1px 2px rgba(0,0,0,0.18)'
+  },
+  {
+    name: 'Original Red / Grey',
+    polarisColor: '#e66a53',
+    powerColor: 'rgba(58,53,45,0.7)',
+    powerShadow: '0 1px 0 rgba(255,255,255,0.18)'
+  }
+];
+
+const normalizeBrandTextStyle = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(BRAND_TEXT_STYLES.length - 1, numericValue));
+};
 
 const DECORATIVE_CIRCLE_PRESETS = {
   circle1: { enabled: true, locked: true, x: 619, y: 676, size: 655, rotate: 0, color: '#e66a53', opacity: 0.9 },
@@ -49,34 +91,41 @@ const CODE_DEFAULT_DESIGN = {
   power: true,
   input: 50,
   output: 50,
-  drift: 0,
-  spread: 0,
-  character: 22.778125,
-  charFilter: 0,
+  ioLinkStyle: "fiberCoralCenter",
+  ioLinked: false,
+  drift: 0.65625,
+  spread: 100,
+  character: 100,
   sweeten: 0,
-  biasHF: 11.3375,
+  biasHF: 0,
   noise: 0,
-  rate: 11.43125,
-  depth: 5,
-  stereoPhase: 0,
-  mode: 'vintage',
+  rate: 28.749999999999993,
+  depth: 100,
+  stereoPhase: 100,
+  mode: "vintage",
   autoGain: true,
-  lfoEnabled: false,
-  lfoSync: true,
+  lfoEnabled: true,
+  lfoSync: false,
   lfoShape: 0,
-  lfoSyncDiv: 4,
-  currentPreset: 5,
+  lfoSyncDiv: 6,
+  currentPreset: 4,
   frameStyle: 8,
   modeStyle: 13,
   knobStyle: 0,
   centerDialStyle: 1,
-  centerDialSurfaceStyle: 15,
-  centerDialGrooveStyle: 1,
+  middleKnobStyle: 4,
+  centerDialSurfaceStyle: 14,
+  centerDialGrooveStyle: 0,
   centerDialMarkStyle: 0,
   centerDialNumberStyle: 0,
-  centerDialCirclesEnabled: false,
-  centerDialNumbersEnabled: false,
-  driftAnimation: 3,
+  centerDialCirclesEnabled: true,
+  centerDialNumbersEnabled: true,
+  centerDialGuideRings: {
+    large: { enabled: true, locked: true, size: 245 },
+    small: { enabled: true, locked: true, size: 161 }
+  },
+  spreadPointerStyle: 0,
+  driftAnimation: 8,
   bgIndex: 2,
   showOutputs: true,
   parallelCables: true,
@@ -85,40 +134,224 @@ const CODE_DEFAULT_DESIGN = {
   faceTextureEnabled: true,
   faceTextureStyle: 0,
   faceTextureOpacity: 29,
-  panelFaceColor: '#e8dfcc',
+  panelFaceColor: "#e8dfcc",
   useDefaultPanelFaceColor: true,
+  brandTextStyle: 1,
   screwsEnabled: true,
-  screwStyle: 5,
-  lfoImageState: { enabled: true, locked: true, x: 131, y: 710, size: 155, rotate: 6 },
+  screwStyle: 0,
+  lfoImageState: {
+    enabled: true,
+    locked: true,
+    x: 131,
+    y: 710,
+    size: 155,
+    rotate: 6
+  },
   sakuraImageState: {
-    sakura: { enabled: true, x: 841, y: 277, size: 300, rotate: 6 },
-    sakura2: { enabled: true, x: 8, y: 271, size: 335, rotate: 1 },
-    sakura3: { enabled: true, x: 872, y: 774, size: 338, rotate: 34 }
+    sakura: {
+      enabled: true,
+      x: 841,
+      y: 277,
+      size: 300,
+      rotate: 6
+    },
+    sakura2: {
+      enabled: true,
+      x: 8,
+      y: 271,
+      size: 335,
+      rotate: 1
+    },
+    sakura3: {
+      enabled: true,
+      x: 872,
+      y: 774,
+      size: 338,
+      rotate: 34
+    }
   },
   decorativeCircles: {
-    circle1: { enabled: false, locked: true, x: 612, y: 734, size: 655, rotate: 0, color: '#e66a53', opacity: 0.9 },
-    circle2: { enabled: false, locked: true, x: 59, y: 504, size: 334, rotate: 0, color: '#e0a96d', opacity: 0.7 },
-    circle3: { enabled: false, locked: true, x: 643, y: 306, size: 236, rotate: 0, color: '#b04a4a', opacity: 0.5 },
-    leaf1: { enabled: false, locked: true, x: 105, y: 757, size: 320, rotate: -3, color: '#2c3e35', opacity: 0.82 },
-    leaf2: { enabled: false, locked: true, x: 180, y: 720, size: 280, rotate: 15, color: '#1e2a24', opacity: 0.6 }
+    circle1: {
+      enabled: false,
+      locked: true,
+      x: 635,
+      y: 777,
+      size: 733,
+      rotate: 0,
+      color: "#e66a53",
+      opacity: 0.92
+    },
+    circle2: {
+      enabled: false,
+      locked: true,
+      x: 59,
+      y: 504,
+      size: 334,
+      rotate: 0,
+      color: "#e0a96d",
+      opacity: 0.7
+    },
+    circle3: {
+      enabled: false,
+      locked: true,
+      x: 590,
+      y: 330,
+      size: 225,
+      rotate: 0,
+      color: "#b04a4a",
+      opacity: 0.5
+    },
+    leaf1: {
+      enabled: false,
+      locked: true,
+      x: 105,
+      y: 757,
+      size: 320,
+      rotate: -3,
+      color: "#2c3e35",
+      opacity: 0.82
+    },
+    leaf2: {
+      enabled: false,
+      locked: true,
+      x: 180,
+      y: 720,
+      size: 280,
+      rotate: 15,
+      color: "#1e2a24",
+      opacity: 0.6
+    }
   },
   hardwarePositions: {
-    io: { x: 420, y: 204, locked: true },
-    mode: { x: 79, y: 440, locked: true },
-    driftVisual: { x: 705, y: 564, locked: true },
-    rate: { x: 132, y: 720, locked: true },
-    lfo: { x: 238, y: 637, locked: true },
-    autoGain: { x: 691, y: 710, locked: true }
+    io: {
+      x: 420,
+      y: 204,
+      locked: true
+    },
+    mode: {
+      x: 79,
+      y: 440,
+      locked: true
+    },
+    driftVisual: {
+      x: 696,
+      y: 564,
+      locked: true
+    },
+    rate: {
+      x: 132,
+      y: 721,
+      locked: true
+    },
+    lfo: {
+      x: 234,
+      y: 630,
+      locked: true
+    },
+    autoGain: {
+      x: 691,
+      y: 710,
+      locked: true
+    }
   },
   auraShapes: [
-    { id: 'aura-1', enabled: true, x: 66, y: 472, size: 326, blur: 0, opacity: 1, gradientAngle: 0, color1: '#d5a981', color2: '#eca57e', isAnimated: true, locked: true, rotate: 0, blobRadius: '51% 48% 61% 28% / 67% 69% 40% 31%' },
-    { id: 'aura-1777944917420', enabled: true, locked: true, x: 95, y: 759, size: 304, rotate: 82.00053901898676, opacity: 0, blur: 0, color1: '#324d39', color2: '#2c4939', gradientAngle: 295, isAnimated: true, blobRadius: '70% 62% 43% 75% / 67% 50% 33% 41%' },
-    { id: 'aura-1777948941070', enabled: true, locked: true, x: 741, y: 448, size: 334, rotate: -2, opacity: 0, blur: 0, color1: '#b04a4a', color2: '#7aa678', gradientAngle: 343, isAnimated: true, blobRadius: '57% 36% 70% 61% / 38% 44% 42% 37%' },
-    { id: 'aura-1777948979946', enabled: true, locked: true, x: 727, y: 437, size: 354, rotate: -2, opacity: 0, blur: 0, color1: '#b04a4a', color2: '#edd39a', gradientAngle: 182, isAnimated: true, blobRadius: '50% 53% 60% 71% / 66% 47% 53% 35%' },
-    { id: 'aura-1778074211761', enabled: true, locked: true, x: 630, y: 721, size: 641, rotate: 193, opacity: 0.95, blur: 0, color1: '#d77665', color2: '#cd8e5b', gradientAngle: 114, isAnimated: true, blobRadius: '41% 29% 68% 42% / 33% 59% 50% 61%' },
-    { id: 'aura-1778074515921', enabled: true, locked: true, x: 921, y: 221, size: 332, rotate: 312.2433963601078, opacity: 0, blur: 0, color1: '#d27441', color2: '#b5723b', gradientAngle: 360, isAnimated: true, blobRadius: '63% 31% 51% 47% / 35% 64% 38% 56%' }
+    {
+      id: "aura-1",
+      enabled: true,
+      x: 65,
+      y: 470,
+      size: 318,
+      blur: 0,
+      opacity: 1,
+      gradientAngle: 0,
+      color1: "#d5a981",
+      color2: "#eca57e",
+      isAnimated: true,
+      locked: true,
+      rotate: 0,
+      blobRadius: "51% 48% 61% 28% / 67% 69% 40% 31%"
+    },
+    {
+      id: "aura-1777944917420",
+      enabled: true,
+      locked: true,
+      x: 95,
+      y: 759,
+      size: 304,
+      rotate: 82.00053901898676,
+      opacity: 0,
+      blur: 0,
+      color1: "#324d39",
+      color2: "#2c4939",
+      gradientAngle: 295,
+      isAnimated: true,
+      blobRadius: "70% 62% 43% 75% / 67% 50% 33% 41%"
+    },
+    {
+      id: "aura-1777948941070",
+      enabled: true,
+      locked: true,
+      x: 295,
+      y: 822,
+      size: 50,
+      rotate: 11,
+      opacity: 0,
+      blur: 0,
+      color1: "#d77058",
+      color2: "#ca6c59",
+      gradientAngle: 343,
+      isAnimated: true,
+      blobRadius: "45% 65% 63% 36% / 56% 53% 53% 33%"
+    },
+    {
+      id: "aura-1777948979946",
+      enabled: true,
+      locked: true,
+      x: 622,
+      y: 731,
+      size: 621,
+      rotate: -2,
+      opacity: 0,
+      blur: 0,
+      color1: "#b04a4a",
+      color2: "#edd39a",
+      gradientAngle: 182,
+      isAnimated: true,
+      blobRadius: "51% 27% 59% 55% / 56% 27% 64% 33%"
+    },
+    {
+      id: "aura-1778074211761",
+      enabled: true,
+      locked: true,
+      x: 633,
+      y: 720,
+      size: 641,
+      rotate: 193,
+      opacity: 0,
+      blur: 0,
+      color1: "#de6c58",
+      color2: "#de6c59",
+      gradientAngle: 114,
+      isAnimated: true,
+      blobRadius: "41% 29% 68% 42% / 33% 59% 50% 61%"
+    },
+    {
+      id: "aura-1778074515921",
+      enabled: true,
+      locked: true,
+      x: 658,
+      y: 714,
+      size: 634,
+      rotate: -38,
+      opacity: 0.97,
+      blur: 0,
+      color1: "#de6c59",
+      color2: "#de7058",
+      gradientAngle: 360,
+      isAnimated: true,
+      blobRadius: "38% 70% 60% 56% / 26% 64% 40% 72%"
+    }
   ],
-  filterSwitchStyle: 0,
   ioScaleStyle: 6,
   bottomSectionStyle: 0
 };
@@ -439,7 +672,7 @@ const EditableHardwareWrapper = ({ id, x, y, locked, selected, onSelect, onUpdat
         left: x,
         top: y,
         transform: 'translate(-50%, -50%)',
-        zIndex: selected ? 100 : id === 'io' ? 45 : 30,
+        zIndex: selected ? 100 : id === 'lfo' ? 70 : id === 'io' ? 45 : 30,
       }}
     >
       {children}
@@ -569,16 +802,872 @@ const OriginalWobblyAura = ({ drift, spread, active, rate, originalFlutter = fal
   );
 };
 
-const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle }) => {
+const KnobFlutterRing = ({ drift, active, rate, color = '#e66a53', strokeWidth = 2.5 }) => {
+  const ringRef = useRef(null);
+  const requestRef = useRef();
+  const tRef = useRef(0);
+  const paramsRef = useRef({ drift, rate });
+  useEffect(() => { paramsRef.current = { drift, rate }; }, [drift, rate]);
+
+  useEffect(() => {
+    let lastUpdate = 0;
+    const loop = (timestamp) => {
+      requestRef.current = requestAnimationFrame(loop);
+      if (timestamp - lastUpdate < 30) return;
+      lastUpdate = timestamp;
+      const { drift, rate } = paramsRef.current;
+      if (!ringRef.current) return;
+      if (drift <= 0.1) {
+        ringRef.current.style.borderRadius = '50%';
+        return;
+      }
+
+      tRef.current += 0.03 * Math.max(0.5, rate / 20);
+      const t = tRef.current;
+      const w = drift / 100;
+      const b1 = 50 + (w * 6.5 * Math.sin(t));
+      const b2 = 50 - (w * 5.2 * Math.cos(t * 1.18));
+      const b3 = 50 + (w * 7.8 * Math.sin(t * 0.86));
+      const b4 = 50 - (w * 5.9 * Math.cos(t * 1.07));
+
+      ringRef.current.style.borderRadius = `${b1}% ${100-b1}% ${b2}% ${100-b2}% / ${b3}% ${b4}% ${100-b4}% ${100-b3}%`;
+    };
+    requestRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(requestRef.current);
+  }, []);
+
+  const intensity = Math.max(0.08, drift / 100);
+  const flutterRestScale = 0.18 + intensity * 0.46;
+  const flutterBurstScale = 3.6 + intensity * 8.4;
+  const flutterBlur = 0.04 + intensity * 0.08;
+  const flutterCycle = Math.max(1.02, 1.6 - intensity * 0.18 - rate / 285);
+  const flutterFrequency = `${(0.018 + intensity * 0.01).toFixed(3)} ${(0.082 + intensity * 0.03).toFixed(3)}`;
+  const filterId = strokeWidth < 2 ? 'driftKnobFlutterCoralThin' : 'driftKnobFlutterCoral';
+  const spinDuration = `${Math.max(7.5, 16 - rate / 7)}s`;
+
+  return (
+    <div className={`absolute left-1/2 top-1/2 z-30 w-[236px] h-[236px] -translate-x-1/2 -translate-y-1/2 pointer-events-none overflow-hidden rounded-full transition-all duration-500 ease-out ${active ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
+      <svg className="absolute w-0 h-0" aria-hidden="true" focusable="false">
+        <defs>
+          <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency={flutterFrequency} numOctaves="2" seed="17" result="knobFlutterNoise">
+              <animate attributeName="seed" values="17;17;52;23;23" keyTimes="0;0.66;0.75;0.88;1" dur={`${flutterCycle}s`} repeatCount="indefinite" />
+            </feTurbulence>
+            <feGaussianBlur in="knobFlutterNoise" stdDeviation={flutterBlur} result="softKnobFlutterNoise" />
+            <feColorMatrix
+              in="softKnobFlutterNoise"
+              type="matrix"
+              values="1 0 0 0 0  0 0 0 0 0.5  0 0 1 0 0  0 0 0 1 0"
+              result="horizontalKnobFlutterNoise"
+            />
+            <feDisplacementMap in="SourceGraphic" in2="horizontalKnobFlutterNoise" scale={flutterRestScale} xChannelSelector="R" yChannelSelector="G">
+              <animate
+                attributeName="scale"
+                values={`${flutterRestScale};${flutterRestScale};${flutterBurstScale};${flutterRestScale};${flutterRestScale}`}
+                keyTimes="0;0.66;0.75;0.88;1"
+                dur={`${flutterCycle}s`}
+                repeatCount="indefinite"
+              />
+            </feDisplacementMap>
+          </filter>
+        </defs>
+      </svg>
+      <div className="absolute left-1/2 top-1/2 w-[196px] h-[196px] -translate-x-1/2 -translate-y-1/2 mix-blend-screen">
+        <div
+          ref={ringRef}
+          className="w-full h-full"
+          style={{
+            border: `${strokeWidth}px solid ${color}`,
+            borderRadius: '50%',
+            filter: `url(#${filterId}) drop-shadow(0 0 6px ${color})`,
+            opacity: color === '#e66a53' ? 0.88 : 0.94,
+            animation: `spin ${spinDuration} linear infinite`,
+            transition: 'border-radius 0.1s ease-out'
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
+const KnobDriftExperiment = ({ drift, spread, active, rate, variant }) => {
+  const intensity = Math.max(0.08, drift / 100);
+  const spreadIntensity = Math.max(0.08, spread / 100);
+  const baseSpeed = Math.max(4.2, 14 - rate / 8);
+  const fastSpeed = Math.max(2.7, baseSpeed * 0.62);
+  const slowSpeed = baseSpeed * 1.45;
+  const glowOpacity = active ? 0.24 + intensity * 0.42 : 0;
+  const travel = Math.max(0, Math.min(1, drift / 100));
+  const spreadTravel = Math.max(0, Math.min(1, spread / 100));
+  const travelDegrees = travel * 270;
+  const annulusMask = 'radial-gradient(circle, transparent 0 58%, #000 59% 91%, transparent 92%)';
+  const softAnnulusMask = 'radial-gradient(circle, transparent 0 56%, #000 58% 89%, transparent 91%)';
+  const stageStyle = {
+    '--knob-drift-speed': `${baseSpeed}s`,
+    '--knob-drift-speed-fast': `${fastSpeed}s`,
+    '--knob-drift-speed-slow': `${slowSpeed}s`,
+    '--knob-drift-opacity': glowOpacity
+  };
+  const stageClass = `absolute left-1/2 top-1/2 z-30 w-[236px] h-[236px] -translate-x-1/2 -translate-y-1/2 pointer-events-none overflow-hidden rounded-full transition-all duration-500 ease-out ${active ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`;
+  const normalizeAngle = (angle) => ((angle + 180) % 360 + 360) % 360 - 180;
+  const travelProgressForAngle = (angle) => {
+    const normalizedAngle = normalizeAngle(angle);
+    if (normalizedAngle < -135 || normalizedAngle > 135) return null;
+    return (normalizedAngle + 135) / 270;
+  };
+  const isTravelReached = (progress) => progress <= travel + 0.001;
+  const reachedShadow = (extra = 0) => `0 0 ${5 + intensity * 7 + extra}px rgba(230,106,83,${0.34 + intensity * 0.4})`;
+  const renderFineDriftNeedles = (count = 43) => (
+    Array.from({ length: count }).map((_, i) => {
+      const progress = i / (count - 1);
+      const angle = -135 + progress * 270;
+      const driftReached = progress <= travel + 0.001;
+      const major = i % 7 === 0;
+      return (
+        <span
+          key={`fine-${i}`}
+          className="knob-drift-needle absolute left-1/2 top-1/2 rounded-full bg-[#e66a53]"
+          style={{
+            width: major ? 1.6 : 1,
+            height: major ? 10 : 6,
+            transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-75px)`,
+            opacity: driftReached ? 0.38 + intensity * 0.44 : 0.06,
+            boxShadow: driftReached
+              ? `0 0 ${3.5 + intensity * 5.5}px rgba(230,106,83,${0.3 + intensity * 0.34})`
+              : 'none',
+            filter: driftReached ? `brightness(${1 + intensity * 0.55})` : 'brightness(0.5)'
+          }}
+        />
+      );
+    })
+  );
+
+  if (variant === 'comets' || variant === 'cometsFlutter') {
+    const isFlutter = variant === 'cometsFlutter';
+    const phaseFilterId = 'driftPhaseCometsFlutter';
+    const phaseRestScale = 0.28 + intensity * 0.54;
+    const phaseBurstScale = 7 + intensity * 15;
+    const phaseBlur = 0.055 + intensity * 0.11;
+    const phaseCycle = Math.max(1.04, 1.66 - intensity * 0.22 - rate / 285);
+    const phaseFrequency = `${(0.019 + intensity * 0.01).toFixed(3)} ${(0.083 + intensity * 0.034).toFixed(3)}`;
+    return (
+      <div className={stageClass} style={stageStyle}>
+        {isFlutter && (
+          <svg className="absolute w-0 h-0" aria-hidden="true" focusable="false">
+            <defs>
+              <filter id={phaseFilterId} x="-45%" y="-45%" width="190%" height="190%" colorInterpolationFilters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency={phaseFrequency} numOctaves="2" seed="29" result="phaseNoise">
+                  <animate attributeName="seed" values="29;29;61;37;37" keyTimes="0;0.62;0.72;0.86;1" dur={`${phaseCycle}s`} repeatCount="indefinite" />
+                </feTurbulence>
+                <feGaussianBlur in="phaseNoise" stdDeviation={phaseBlur} result="softPhaseNoise" />
+                <feColorMatrix
+                  in="softPhaseNoise"
+                  type="matrix"
+                  values="1 0 0 0 0  0 0 0 0 0.45  0 0 1 0 0  0 0 0 1 0"
+                  result="horizontalPhaseNoise"
+                />
+                <feDisplacementMap in="SourceGraphic" in2="horizontalPhaseNoise" scale={phaseRestScale} xChannelSelector="R" yChannelSelector="G">
+                  <animate
+                    attributeName="scale"
+                    values={`${phaseRestScale};${phaseRestScale};${phaseBurstScale};${phaseRestScale};${phaseRestScale}`}
+                    keyTimes="0;0.62;0.72;0.86;1"
+                    dur={`${phaseCycle}s`}
+                    repeatCount="indefinite"
+                  />
+                </feDisplacementMap>
+              </filter>
+            </defs>
+          </svg>
+        )}
+        <div
+          className="knob-drift-spin absolute inset-0 rounded-full mix-blend-screen"
+          style={{
+            background: 'conic-gradient(from 12deg, transparent 0deg 28deg, rgba(230,106,83,0.92) 32deg 48deg, transparent 58deg 132deg, rgba(230,106,83,0.72) 138deg 151deg, transparent 164deg 254deg, rgba(230,106,83,0.5) 262deg 273deg, transparent 286deg 360deg)',
+            WebkitMask: annulusMask,
+            mask: annulusMask,
+            filter: `${isFlutter ? `url(#${phaseFilterId}) ` : ''}drop-shadow(0 0 7px rgba(230,106,83,0.8))`,
+            opacity: 0.56 + intensity * 0.28,
+            animationDuration: 'var(--knob-drift-speed)'
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (variant === 'needles') {
+    return (
+      <div className={stageClass} style={stageStyle}>
+        <div
+          className="absolute inset-[10px] rounded-full"
+          style={{
+            border: '1px solid rgba(230,106,83,0.42)',
+            WebkitMask: softAnnulusMask,
+            mask: softAnnulusMask,
+            boxShadow: '0 0 12px rgba(230,106,83,0.14)'
+          }}
+        />
+        {Array.from({ length: 18 }).map((_, i) => {
+          const angle = i * 20;
+          const progress = travelProgressForAngle(angle);
+          const isReached = progress !== null && progress <= travel + 0.001;
+          const baseOpacity = 0.18 + (i % 4) * 0.08;
+          const opacity = isReached ? Math.min(0.9, baseOpacity + 0.3 + intensity * 0.28) : baseOpacity;
+          return (
+            <span
+              key={i}
+              className="knob-drift-needle absolute left-1/2 top-1/2 w-[2px] rounded-full bg-[#e66a53]"
+              style={{
+                height: i % 3 === 0 ? 22 : 13,
+                transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-95px)`,
+                opacity,
+                boxShadow: isReached
+                  ? `0 0 ${5 + intensity * 5}px rgba(230,106,83,${0.34 + intensity * 0.34})`
+                  : '0 0 4px rgba(230,106,83,0.34)',
+                filter: isReached ? `brightness(${1.05 + intensity * 0.5})` : 'brightness(0.82)'
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (variant === 'needlesArc') {
+    const needleCount = 31;
+    return (
+      <div className={stageClass} style={stageStyle}>
+        <div
+          className="absolute inset-[10px] rounded-full"
+          style={{
+            border: '1px solid rgba(230,106,83,0.22)',
+            WebkitMask: softAnnulusMask,
+            mask: softAnnulusMask,
+            boxShadow: '0 0 12px rgba(230,106,83,0.1)'
+          }}
+        />
+        <div
+          className="absolute inset-0 rounded-full mix-blend-screen transition-all duration-150"
+          style={{
+            background: `conic-gradient(from -135deg, rgba(230,106,83,0.38) 0deg, rgba(230,106,83,0.18) ${Math.max(0, travelDegrees - 3)}deg, transparent ${travelDegrees}deg 360deg)`,
+            WebkitMask: annulusMask,
+            mask: annulusMask,
+            opacity: 0.22 + intensity * 0.32,
+            filter: 'drop-shadow(0 0 8px rgba(230,106,83,0.42))'
+          }}
+        />
+        {Array.from({ length: needleCount }).map((_, i) => {
+          const progress = i / (needleCount - 1);
+          const angle = -135 + progress * 270;
+          const isReached = progress <= travel + 0.001;
+          const major = i % 5 === 0;
+          const brightness = isReached ? 0.52 + intensity * 0.42 : 0.16;
+          return (
+            <span
+              key={i}
+              className="knob-drift-needle absolute left-1/2 top-1/2 w-[2px] rounded-full bg-[#e66a53]"
+              style={{
+                height: major ? 24 : 14,
+                transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-95px)`,
+                opacity: brightness,
+                boxShadow: isReached
+                  ? `0 0 ${5 + intensity * 7}px rgba(230,106,83,${0.35 + intensity * 0.4})`
+                  : '0 0 3px rgba(230,106,83,0.22)',
+                filter: isReached ? `brightness(${1.05 + intensity * 0.75})` : 'brightness(0.62)'
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (variant === 'needlesFine') {
+    const needleCount = 43;
+    return (
+      <div className={stageClass} style={stageStyle}>
+        {Array.from({ length: needleCount }).map((_, i) => {
+          const progress = i / (needleCount - 1);
+          const angle = -135 + progress * 270;
+          const isReached = isTravelReached(progress);
+          const major = i % 7 === 0;
+          return (
+            <span
+              key={i}
+              className="knob-drift-needle absolute left-1/2 top-1/2 rounded-full bg-[#e66a53]"
+              style={{
+                width: major ? 1.6 : 1,
+                height: major ? 20 : 10,
+                transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-96px)`,
+                opacity: isReached ? 0.44 + intensity * 0.42 : 0.12,
+                boxShadow: isReached ? reachedShadow(1) : '0 0 2px rgba(230,106,83,0.22)',
+                filter: isReached ? `brightness(${1.05 + intensity * 0.6})` : 'brightness(0.58)'
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (variant === 'needlesMeter') {
+    const needleCount = 25;
+    return (
+      <div className={stageClass} style={stageStyle}>
+        <div
+          className="absolute inset-0 rounded-full mix-blend-screen"
+          style={{
+            background: `conic-gradient(from -135deg, rgba(230,106,83,0.24) 0deg, rgba(230,106,83,0.13) ${Math.max(0, travelDegrees - 2)}deg, transparent ${travelDegrees}deg 360deg)`,
+            WebkitMask: 'radial-gradient(circle, transparent 0 63%, #000 64% 87%, transparent 88%)',
+            mask: 'radial-gradient(circle, transparent 0 63%, #000 64% 87%, transparent 88%)',
+            opacity: 0.24 + intensity * 0.32
+          }}
+        />
+        {Array.from({ length: needleCount }).map((_, i) => {
+          const progress = i / (needleCount - 1);
+          const angle = -135 + progress * 270;
+          const isReached = isTravelReached(progress);
+          const major = i % 4 === 0;
+          return (
+            <span
+              key={i}
+              className="knob-drift-needle absolute left-1/2 top-1/2 rounded-[2px] bg-[#e66a53]"
+              style={{
+                width: major ? 4 : 3,
+                height: major ? 22 : 15,
+                transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-91px)`,
+                opacity: isReached ? 0.5 + intensity * 0.38 : 0.14,
+                boxShadow: isReached ? reachedShadow(2) : '0 0 3px rgba(230,106,83,0.2)',
+                filter: isReached ? `brightness(${1.08 + intensity * 0.62})` : 'brightness(0.56)'
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (variant === 'needlesCrown') {
+    const needleCount = 33;
+    return (
+      <div className={stageClass} style={stageStyle}>
+        {Array.from({ length: needleCount }).map((_, i) => {
+          const progress = i / (needleCount - 1);
+          const angle = -135 + progress * 270;
+          const isReached = isTravelReached(progress);
+          const crownLift = Math.sin(progress * Math.PI);
+          return (
+            <span
+              key={i}
+              className="knob-drift-needle absolute left-1/2 top-1/2 rounded-full bg-[#e66a53]"
+              style={{
+                width: 1.7,
+                height: 10 + crownLift * 18,
+                transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-94px)`,
+                opacity: isReached ? 0.42 + intensity * 0.43 : 0.1 + crownLift * 0.08,
+                boxShadow: isReached ? reachedShadow(1.5) : '0 0 2px rgba(230,106,83,0.18)',
+                filter: isReached ? `brightness(${1 + intensity * 0.72})` : 'brightness(0.52)'
+              }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (variant === 'needlesRails') {
+    const needleCount = 29;
+    return (
+      <div className={stageClass} style={stageStyle}>
+        {Array.from({ length: needleCount }).map((_, i) => {
+          const progress = i / (needleCount - 1);
+          const angle = -135 + progress * 270;
+          const isReached = isTravelReached(progress);
+          const major = i % 4 === 0;
+          const opacity = isReached ? 0.44 + intensity * 0.4 : 0.13;
+          return (
+            <React.Fragment key={i}>
+              <span
+                className="knob-drift-needle absolute left-1/2 top-1/2 rounded-full bg-[#e66a53]"
+                style={{
+                  width: 1.6,
+                  height: major ? 22 : 14,
+                  transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-97px)`,
+                  opacity,
+                  boxShadow: isReached ? reachedShadow(1) : '0 0 2px rgba(230,106,83,0.2)',
+                  filter: isReached ? `brightness(${1.06 + intensity * 0.62})` : 'brightness(0.6)'
+                }}
+              />
+              <span
+                className="knob-drift-needle absolute left-1/2 top-1/2 rounded-full bg-[#e66a53]"
+                style={{
+                  width: 1.2,
+                  height: major ? 12 : 8,
+                  transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-76px)`,
+                  opacity: isReached ? opacity * 0.82 : 0.08,
+                  boxShadow: isReached ? '0 0 5px rgba(230,106,83,0.42)' : 'none',
+                  filter: isReached ? `brightness(${1 + intensity * 0.45})` : 'brightness(0.48)'
+                }}
+              />
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (variant === 'needlesDualRails') {
+    const needleCount = 29;
+    return (
+      <div className={stageClass} style={stageStyle}>
+        {Array.from({ length: needleCount }).map((_, i) => {
+          const progress = i / (needleCount - 1);
+          const angle = -135 + progress * 270;
+          const driftReached = progress <= travel + 0.001;
+          const spreadReached = progress <= spreadTravel + 0.001;
+          const major = i % 4 === 0;
+          const driftOpacity = driftReached ? 0.42 + intensity * 0.42 : 0.08;
+          const spreadOpacity = spreadReached ? 0.46 + spreadIntensity * 0.42 : 0.12;
+          return (
+            <React.Fragment key={i}>
+              <span
+                className="knob-drift-needle absolute left-1/2 top-1/2 rounded-full bg-[#e66a53]"
+                style={{
+                  width: 1.25,
+                  height: major ? 12 : 8,
+                  transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-76px)`,
+                  opacity: driftOpacity,
+                  boxShadow: driftReached
+                    ? `0 0 ${4 + intensity * 5}px rgba(230,106,83,${0.32 + intensity * 0.32})`
+                    : 'none',
+                  filter: driftReached ? `brightness(${1 + intensity * 0.5})` : 'brightness(0.5)'
+                }}
+              />
+              <span
+                className="knob-drift-needle absolute left-1/2 top-1/2 rounded-full bg-[#e66a53]"
+                style={{
+                  width: 1.8,
+                  height: major ? 23 : 15,
+                  transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-97px)`,
+                  opacity: spreadOpacity,
+                  boxShadow: spreadReached
+                    ? `0 0 ${5 + spreadIntensity * 7}px rgba(230,106,83,${0.34 + spreadIntensity * 0.38})`
+                    : '0 0 2px rgba(230,106,83,0.18)',
+                  filter: spreadReached ? `brightness(${1.04 + spreadIntensity * 0.62})` : 'brightness(0.56)'
+                }}
+              />
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const dualRailProfiles = {
+    dualFine: {
+      count: 43,
+      innerY: -75,
+      outerY: -98,
+      innerWidth: 0.9,
+      outerWidth: 1.35,
+      innerHeight: (major) => major ? 10 : 6,
+      outerHeight: (major) => major ? 18 : 10,
+      innerRadius: '9999px',
+      outerRadius: '9999px',
+      majorEvery: 7,
+      innerDim: 0.06,
+      outerDim: 0.1
+    },
+    dualBars: {
+      count: 25,
+      innerY: -74,
+      outerY: -96,
+      innerWidth: 3,
+      outerWidth: 4.4,
+      innerHeight: (major) => major ? 12 : 8,
+      outerHeight: (major) => major ? 23 : 16,
+      innerRadius: '2px',
+      outerRadius: '2px',
+      majorEvery: 4,
+      innerDim: 0.08,
+      outerDim: 0.12
+    },
+    dualCrown: {
+      count: 33,
+      innerY: -75,
+      outerY: -97,
+      innerWidth: 1.1,
+      outerWidth: 1.8,
+      innerHeight: (major, progress) => 7 + Math.sin(progress * Math.PI) * 8 + (major ? 3 : 0),
+      outerHeight: (major, progress) => 12 + Math.sin(progress * Math.PI) * 16 + (major ? 4 : 0),
+      innerRadius: '9999px',
+      outerRadius: '9999px',
+      majorEvery: 6,
+      innerDim: 0.07,
+      outerDim: 0.1
+    },
+    dualSplit: {
+      count: 31,
+      innerY: -72,
+      outerY: -100,
+      innerWidth: 1.4,
+      outerWidth: 1.7,
+      innerHeight: (major) => major ? 15 : 9,
+      outerHeight: (major) => major ? 19 : 12,
+      innerRadius: '9999px',
+      outerRadius: '9999px',
+      majorEvery: 5,
+      innerDim: 0.07,
+      outerDim: 0.11
+    },
+    dualBlades: {
+      count: 27,
+      innerY: -76,
+      outerY: -97,
+      innerWidth: 2.1,
+      outerWidth: 3.2,
+      innerHeight: (major) => major ? 13 : 8,
+      outerHeight: (major) => major ? 26 : 17,
+      innerRadius: '1px 1px 9999px 9999px',
+      outerRadius: '1px 1px 9999px 9999px',
+      majorEvery: 3,
+      innerDim: 0.08,
+      outerDim: 0.12
+    }
+  };
+
+  if (dualRailProfiles[variant]) {
+    const profile = dualRailProfiles[variant];
+    return (
+      <div className={stageClass} style={stageStyle}>
+        {Array.from({ length: profile.count }).map((_, i) => {
+          const progress = i / (profile.count - 1);
+          const angle = -135 + progress * 270;
+          const driftReached = progress <= travel + 0.001;
+          const spreadReached = progress <= spreadTravel + 0.001;
+          const major = i % profile.majorEvery === 0;
+          const innerOpacity = driftReached ? 0.38 + intensity * 0.44 : profile.innerDim;
+          const outerOpacity = spreadReached ? 0.42 + spreadIntensity * 0.44 : profile.outerDim;
+          return (
+            <React.Fragment key={i}>
+              <span
+                className="knob-drift-needle absolute left-1/2 top-1/2 bg-[#e66a53]"
+                style={{
+                  width: profile.innerWidth,
+                  height: profile.innerHeight(major, progress),
+                  borderRadius: profile.innerRadius,
+                  transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(${profile.innerY}px)`,
+                  opacity: innerOpacity,
+                  boxShadow: driftReached
+                    ? `0 0 ${3.5 + intensity * 5.5}px rgba(230,106,83,${0.3 + intensity * 0.34})`
+                    : 'none',
+                  filter: driftReached ? `brightness(${1 + intensity * 0.55})` : 'brightness(0.5)'
+                }}
+              />
+              <span
+                className="knob-drift-needle absolute left-1/2 top-1/2 bg-[#e66a53]"
+                style={{
+                  width: profile.outerWidth,
+                  height: profile.outerHeight(major, progress),
+                  borderRadius: profile.outerRadius,
+                  transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(${profile.outerY}px)`,
+                  opacity: outerOpacity,
+                  boxShadow: spreadReached
+                    ? `0 0 ${5 + spreadIntensity * 7}px rgba(230,106,83,${0.32 + spreadIntensity * 0.38})`
+                    : '0 0 2px rgba(230,106,83,0.16)',
+                  filter: spreadReached ? `brightness(${1.04 + spreadIntensity * 0.66})` : 'brightness(0.54)'
+                }}
+              />
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (variant?.startsWith('dualSmooth')) {
+    if (variant === 'dualSmoothOuterRibbon' || variant === 'dualSmoothOuterRibbonClean') {
+      const outerStageSize = 313;
+      const outerCenter = outerStageSize / 2;
+      const outerRadius = 126;
+      const innerGuideRadius = 87;
+      const innerGuideCircumference = 2 * Math.PI * innerGuideRadius;
+      const innerGuideMaxArc = innerGuideCircumference * 0.75;
+      const outerCircumference = 2 * Math.PI * outerRadius;
+      const outerMaxArc = outerCircumference * 0.75;
+      const outerDash = Math.max(0.001, spreadTravel * outerMaxArc);
+      const outerGap = outerCircumference;
+      const outerGradientId = 'dualSpreadOuterRibbonStroke';
+      return (
+        <div className={stageClass} style={{ ...stageStyle, width: outerStageSize, height: outerStageSize }}>
+          <svg className="absolute inset-0 h-full w-full mix-blend-screen" viewBox={`0 0 ${outerStageSize} ${outerStageSize}`} aria-hidden="true">
+            <defs>
+              <linearGradient id={outerGradientId} x1="14%" y1="12%" x2="86%" y2="88%">
+                <stop offset="0%" stopColor="#ffb09e" stopOpacity="0.95" />
+                <stop offset="52%" stopColor="#e66a53" stopOpacity="0.95" />
+                <stop offset="100%" stopColor="#7e2a24" stopOpacity="0.64" />
+              </linearGradient>
+            </defs>
+            {variant !== 'dualSmoothOuterRibbonClean' && (
+              <circle
+                cx={outerCenter}
+                cy={outerCenter}
+                r={innerGuideRadius}
+                fill="none"
+                stroke="#e66a53"
+                strokeWidth="1.1"
+                strokeDasharray={`${innerGuideMaxArc} ${innerGuideCircumference}`}
+                opacity="0.12"
+                transform={`rotate(135 ${outerCenter} ${outerCenter})`}
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+            <circle
+              cx={outerCenter}
+              cy={outerCenter}
+              r={outerRadius}
+              fill="none"
+              stroke={`url(#${outerGradientId})`}
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={`${outerDash} ${outerGap}`}
+              opacity={0.34 + spreadIntensity * 0.5}
+              transform={`rotate(135 ${outerCenter} ${outerCenter})`}
+              vectorEffect="non-scaling-stroke"
+              style={{
+                filter: `drop-shadow(0 0 ${4 + spreadIntensity * 8}px rgba(230,106,83,0.62))`,
+                transition: 'stroke-dasharray 150ms ease-out, opacity 150ms ease-out, filter 150ms ease-out'
+              }}
+            />
+          </svg>
+          <div className="absolute left-1/2 top-1/2 h-[236px] w-[236px] -translate-x-1/2 -translate-y-1/2">
+            {renderFineDriftNeedles()}
+          </div>
+        </div>
+      );
+    }
+
+    const outerRadius = 88;
+    const circumference = 2 * Math.PI * outerRadius;
+    const maxArc = circumference * 0.75;
+    const dash = Math.max(0.001, spreadTravel * maxArc);
+    const gap = circumference;
+    const headDash = Math.min(Math.max(12, circumference * 0.045), Math.max(12, dash));
+    const headOffset = -Math.max(0, dash - headDash);
+    const spreadGradientId = `dualSpreadStroke-${variant}`;
+    const spreadGlowId = `dualSpreadGlow-${variant}`;
+    const svgBaseCircle = {
+      cx: 118,
+      cy: 118,
+      r: outerRadius,
+      fill: 'none',
+      transform: 'rotate(135 118 118)',
+      vectorEffect: 'non-scaling-stroke'
+    };
+    const svgTransition = 'stroke-dasharray 150ms ease-out, stroke-dashoffset 150ms ease-out, opacity 150ms ease-out, filter 150ms ease-out';
+    const renderSpreadSvg = (children) => (
+      <svg className="absolute inset-0 h-full w-full mix-blend-screen" viewBox="0 0 236 236" aria-hidden="true">
+        <defs>
+          <linearGradient id={spreadGradientId} x1="16%" y1="12%" x2="84%" y2="88%">
+            <stop offset="0%" stopColor="#ffb09e" stopOpacity="0.95" />
+            <stop offset="52%" stopColor="#e66a53" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#7e2a24" stopOpacity="0.64" />
+          </linearGradient>
+          <filter id={spreadGlowId} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation={2.6 + spreadIntensity * 2.4} result="spreadGlow" />
+            <feMerge>
+              <feMergeNode in="spreadGlow" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        <circle
+          {...svgBaseCircle}
+          stroke="#e66a53"
+          strokeWidth="1.2"
+          strokeDasharray={`${maxArc} ${gap}`}
+          opacity="0.1"
+        />
+        {children}
+      </svg>
+    );
+
+    const spreadLayer = (() => {
+      if (variant === 'dualSmoothArc') {
+        return renderSpreadSvg(
+          <circle
+            {...svgBaseCircle}
+            stroke="url(#dualSpreadStroke-dualSmoothArc)"
+            strokeWidth="3.2"
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${gap}`}
+            opacity={0.3 + spreadIntensity * 0.58}
+            style={{
+              filter: `drop-shadow(0 0 ${4 + spreadIntensity * 8}px rgba(230,106,83,0.68))`,
+              transition: svgTransition
+            }}
+          />
+        );
+      }
+
+      if (variant === 'dualSmoothRibbon') {
+        return renderSpreadSvg(
+          <circle
+            {...svgBaseCircle}
+            stroke={`url(#${spreadGradientId})`}
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${gap}`}
+            opacity={0.34 + spreadIntensity * 0.5}
+            style={{
+              filter: `drop-shadow(0 0 ${4 + spreadIntensity * 8}px rgba(230,106,83,0.62))`,
+              transition: svgTransition
+            }}
+          />
+        );
+      }
+
+      if (variant === 'dualSmoothHalo') {
+        return renderSpreadSvg(
+          <>
+            <circle
+              {...svgBaseCircle}
+              stroke={`url(#${spreadGradientId})`}
+              strokeWidth="12"
+              strokeLinecap="round"
+              strokeDasharray={`${dash} ${gap}`}
+              opacity={0.16 + spreadIntensity * 0.32}
+              style={{
+                filter: `url(#${spreadGlowId})`,
+                transition: svgTransition
+              }}
+            />
+            <circle
+              {...svgBaseCircle}
+              stroke="#ffb09e"
+              strokeWidth="1.1"
+              strokeLinecap="round"
+              strokeDasharray={`${dash} ${gap}`}
+              opacity={0.26 + spreadIntensity * 0.34}
+              style={{ transition: svgTransition }}
+            />
+          </>
+        );
+      }
+
+      if (variant === 'dualSmoothSweep') {
+        return renderSpreadSvg(
+          <>
+            <circle
+              {...svgBaseCircle}
+              stroke="#e66a53"
+              strokeWidth="2.6"
+              strokeLinecap="round"
+              strokeDasharray={`${dash} ${gap}`}
+              opacity={0.18 + spreadIntensity * 0.34}
+              style={{ transition: svgTransition }}
+            />
+            <circle
+              {...svgBaseCircle}
+              stroke="#ffb09e"
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={`${Math.min(headDash, dash)} ${gap}`}
+              strokeDashoffset={headOffset}
+              opacity={0.5 + spreadIntensity * 0.42}
+              style={{
+                filter: `drop-shadow(0 0 ${5 + spreadIntensity * 10}px rgba(230,106,83,0.72))`,
+                transition: svgTransition
+              }}
+            />
+          </>
+        );
+      }
+
+      if (variant === 'dualSmoothComet') {
+        return renderSpreadSvg(
+          <>
+            <circle
+              {...svgBaseCircle}
+              stroke={`url(#${spreadGradientId})`}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray={`${dash} ${gap}`}
+              opacity={0.2 + spreadIntensity * 0.42}
+              style={{
+                filter: `drop-shadow(0 0 ${4 + spreadIntensity * 8}px rgba(230,106,83,0.56))`,
+                transition: svgTransition
+              }}
+            />
+            <circle
+              {...svgBaseCircle}
+              stroke="#ffb09e"
+              strokeWidth="7"
+              strokeLinecap="round"
+              strokeDasharray={`${Math.min(headDash * 0.68, dash)} ${gap}`}
+              strokeDashoffset={headOffset}
+              opacity={0.48 + spreadIntensity * 0.44}
+              style={{
+                filter: `drop-shadow(0 0 ${7 + spreadIntensity * 11}px rgba(255,176,158,0.74))`,
+                transition: svgTransition
+              }}
+            />
+          </>
+        );
+      }
+
+      return renderSpreadSvg(
+        <>
+          <circle
+            {...svgBaseCircle}
+            stroke={`url(#${spreadGradientId})`}
+            strokeWidth="14"
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${gap}`}
+            opacity={0.12 + spreadIntensity * 0.34}
+            style={{
+              filter: `url(#${spreadGlowId})`,
+              transition: svgTransition
+            }}
+          />
+          <circle
+            {...svgBaseCircle}
+            stroke="#e66a53"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${gap}`}
+            opacity={0.26 + spreadIntensity * 0.42}
+            style={{ transition: svgTransition }}
+          />
+        </>
+      );
+    })();
+
+    return (
+      <div className={stageClass} style={stageStyle}>
+        {spreadLayer}
+        {renderFineDriftNeedles()}
+      </div>
+    );
+  }
+
+  return null;
+};
+
+const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle, auroraScale = 1, auroraScaleX = 1, spreadReactive = true, filterId = 'driftAuroraLiquid', saturation = 1.25 }) => {
   const organicVariant = ORGANIC_AURORA_VARIANTS[animationStyle];
   const isOrganic = Boolean(organicVariant);
   const intensity = Math.max(0.08, drift / 100);
-  const visualSpread = spread * 0.5;
+  const effectiveSpread = spreadReactive ? spread : 0;
+  const visualSpread = effectiveSpread * 0.5;
   const spreadScaleX = 1 + (visualSpread / 135);
   const spreadScaleY = 1 + (visualSpread / 520);
   const spreadShift = visualSpread * 1.25;
   const baseSpeed = Math.max(1.6, 10 - (rate / 9));
-  const glowOpacity = active ? 0.2 + intensity * 0.26 + (spread / 100) * 0.12 : 0;
+  const glowOpacity = active ? 0.2 + intensity * 0.26 + (effectiveSpread / 100) * 0.12 : 0;
+  const auroraWidth = 168 * auroraScale * auroraScaleX;
+  const auroraHeight = 168 * auroraScale;
+  const glowWidth = 95 * auroraScale * auroraScaleX;
+  const glowHeight = 95 * auroraScale;
   const organicRestScale = organicVariant ? organicVariant.restScale(intensity) : 0;
   const organicBurstScale = organicVariant ? organicVariant.burstScale(intensity) : 0;
   const organicBlur = organicVariant ? organicVariant.blur(intensity) : 0;
@@ -593,16 +1682,20 @@ const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle }) => {
   const chromaGlow = (
     <>
       <div
-        className="absolute w-[95%] h-[95%] rounded-full blur-[72px] transition-all duration-300"
+        className="absolute rounded-full blur-[72px] transition-all duration-300"
         style={{
+          width: `${glowWidth}%`,
+          height: `${glowHeight}%`,
           background: 'radial-gradient(circle, rgba(230,106,83,0.95), rgba(230,106,83,0.16) 52%, transparent 72%)',
           opacity: glowOpacity,
           transform: `translateX(-${spreadShift}px) scaleX(${1 + visualSpread / 180})`
         }}
       />
       <div
-        className="absolute w-[95%] h-[95%] rounded-full blur-[72px] transition-all duration-300"
+        className="absolute rounded-full blur-[72px] transition-all duration-300"
         style={{
+          width: `${glowWidth}%`,
+          height: `${glowHeight}%`,
           background: 'radial-gradient(circle, rgba(237,211,154,0.95), rgba(237,211,154,0.14) 52%, transparent 72%)',
           opacity: glowOpacity,
           transform: `translateX(${spreadShift}px) scaleX(${1 + visualSpread / 180})`
@@ -619,7 +1712,7 @@ const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle }) => {
       {isOrganic && (
         <svg className="absolute w-0 h-0" aria-hidden="true" focusable="false">
           <defs>
-            <filter id="driftAuroraLiquid" x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
+            <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
               <feTurbulence type={organicVariant.type} baseFrequency={organicFrequency} numOctaves={organicVariant.numOctaves} seed="7" result="liquidNoise">
                 <animate attributeName="seed" values={organicVariant.seedValues} keyTimes={organicVariant.keyTimes} dur={`${organicCycle}s`} repeatCount="indefinite" />
               </feTurbulence>
@@ -655,10 +1748,12 @@ const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle }) => {
       )}
       {chromaGlow}
       <div
-        className={`absolute w-[168%] h-[168%] ${isOrganic ? 'drift-aurora-liquid-field' : ''}`}
+        className={`absolute ${isOrganic ? 'drift-aurora-liquid-field' : ''}`}
         style={{
+          width: `${auroraWidth}%`,
+          height: `${auroraHeight}%`,
           transform: `scaleX(${spreadScaleX}) scaleY(${spreadScaleY})`,
-          filter: isOrganic ? 'url(#driftAuroraLiquid)' : undefined
+          filter: isOrganic ? `url(#${filterId})` : undefined
         }}
       >
         {[0, 1, 2, 3].map((i) => (
@@ -672,7 +1767,7 @@ const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle }) => {
               background: i % 2
                 ? 'linear-gradient(130deg, transparent 8%, rgba(237,211,154,0.08), rgba(237,211,154,0.62), transparent 74%)'
                 : 'linear-gradient(50deg, transparent 7%, rgba(230,106,83,0.1), rgba(230,106,83,0.55), transparent 78%)',
-              filter: `blur(${2 + i * 0.7}px) saturate(1.25)`,
+              filter: `blur(${2 + i * 0.7}px) saturate(${saturation})`,
               opacity: 0.38 + intensity * 0.42,
               animationDuration: `${baseSpeed * (1.06 + i * 0.14)}s`,
               animationDelay: `${i * -0.9}s`
@@ -685,11 +1780,62 @@ const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle }) => {
   );
 };
 
-const WobblyAura = (props) => (
-  (props.animationStyle ?? 0) <= 1
-    ? <OriginalWobblyAura {...props} originalFlutter={(props.animationStyle ?? 0) === 1} />
-    : <CreativeDriftAura {...props} />
-);
+const WobblyAura = (props) => {
+  const styleName = DRIFT_ANIMATION_STYLES[normalizeDriftAnimationStyle(props.animationStyle)] || DRIFT_ANIMATION_STYLES[0];
+  switch (styleName) {
+    case 'Original Flutter':
+      return <OriginalWobblyAura {...props} originalFlutter />;
+    case 'Aurora Veil':
+      return <CreativeDriftAura {...props} animationStyle={2} />;
+    case 'Aurora Flutter':
+      return <CreativeDriftAura {...props} animationStyle={3} />;
+    case 'Knob Flutter Coral Thin':
+      return <KnobFlutterRing {...props} color="#e66a53" strokeWidth={1.35} />;
+    case 'Coral Drift Needles':
+      return <KnobDriftExperiment {...props} variant="needles" />;
+    case 'Coral Needles Fine':
+      return <KnobDriftExperiment {...props} variant="needlesFine" />;
+    case 'Coral Needles Meter':
+      return <KnobDriftExperiment {...props} variant="needlesMeter" />;
+    case 'Coral Dual Rails Arc':
+      return <KnobDriftExperiment {...props} variant="dualSmoothArc" />;
+    case 'Coral Dual Smooth Ribbon':
+      return <KnobDriftExperiment {...props} variant="dualSmoothRibbon" />;
+    case 'Coral Dual Smooth Aurora':
+      return (
+        <>
+          <KnobDriftExperiment {...props} variant="dualSmoothRibbon" />
+          <CreativeDriftAura
+            {...props}
+            animationStyle={3}
+            auroraScale={0.86}
+            auroraScaleX={1.1}
+            spreadReactive={false}
+            filterId="driftAuroraLiquidCombo"
+            saturation={1.08}
+          />
+        </>
+      );
+    case 'Coral Dual Outer Ribbon':
+      return <KnobDriftExperiment {...props} variant="dualSmoothOuterRibbon" />;
+    case 'Coral Dual Outer Ribbon Flutter':
+      return (
+        <>
+          <KnobDriftExperiment {...props} variant="dualSmoothOuterRibbon" />
+          <KnobFlutterRing {...props} color="#e66a53" strokeWidth={1.35} />
+        </>
+      );
+    case 'Coral Dual Outer Flutter Clean':
+      return (
+        <>
+          <KnobDriftExperiment {...props} variant="dualSmoothOuterRibbonClean" />
+          <KnobFlutterRing {...props} color="#e66a53" strokeWidth={1.35} />
+        </>
+      );
+    default:
+      return <OriginalWobblyAura {...props} originalFlutter />;
+  }
+};
 
 const SakuraImageLayer = ({ src, settings, alt, matteBacking = false }) => {
   if (!settings.enabled) return null;
@@ -1341,7 +2487,7 @@ const KNOB_STYLES = [
   { name: 'Polished Onyx', boxShadow: '0px 15px 25px rgba(0,0,0,0.6), 0px 6px 12px rgba(0,0,0,0.7), inset 0px 2px 5px rgba(255,255,255,0.5), inset 0px -3px 8px rgba(0,0,0,0.9)', backgroundImage: 'radial-gradient(circle at 35% 25%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 30%, rgba(0,0,0,0.9) 100%)', backgroundColor: '#0a0a0a' }
 ];
 
-const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride, shadingStyle, labelOffsetY = 0 }) => {
+const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride, shadingStyle, labelOffsetY = 0, indicatorActive = true }) => {
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
   const startVal = useRef(0);
@@ -1355,7 +2501,20 @@ const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, 
       <div className="relative rounded-full cursor-ns-resize touch-none" style={{ width: size, height: size, backgroundColor: isCoral ? '#e66a53' : (shadingStyle?.backgroundColor || '#111'), boxShadow: isCoral ? '10px 10px 18px rgba(180,60,40,0.4), 4px 4px 6px rgba(180,60,40,0.3), inset 2px 2px 5px rgba(255,255,255,0.4), inset -2px -2px 5px rgba(0,0,0,0.3)' : (shadingStyle?.boxShadow || '12px 12px 20px rgba(0,0,0,0.45), 4px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)'), backgroundImage: isCoral ? 'none' : (shadingStyle?.backgroundImage || 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)') }}
         onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
         <div className="absolute inset-0 transition-transform duration-75" style={{ transform: `rotate(${rotation}deg)` }}>
-          <div className="absolute top-[10%] left-1/2 -translate-x-1/2 rounded-full" style={{ width: size * 0.06, height: size * 0.25, background: isCoral ? '#fff' : 'linear-gradient(to bottom, #d4af37, #8a6a1c)', boxShadow: isCoral ? '0 1px 2px rgba(0,0,0,0.5)' : '0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.8)' }} />
+          <div
+            className="absolute top-[10%] left-1/2 -translate-x-1/2 rounded-full transition-all duration-300"
+            style={{
+              width: size * 0.06,
+              height: size * 0.25,
+              background: indicatorActive
+                ? isCoral ? '#fff' : 'linear-gradient(to bottom, #d4af37, #8a6a1c)'
+                : 'linear-gradient(to bottom, #57534c, #272522)',
+              boxShadow: indicatorActive
+                ? isCoral ? '0 1px 2px rgba(0,0,0,0.5)' : '0 0 8px rgba(212,175,55,0.44), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.8)'
+                : '0 1px 2px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.08)',
+              opacity: indicatorActive ? 1 : 0.55
+            }}
+          />
         </div>
       </div>
       <div
@@ -1364,6 +2523,183 @@ const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, 
       >
         {label}
       </div>
+    </div>
+  );
+};
+
+const IO_LINK_STYLE_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'fiber', label: 'Fiber Optic Bridge' },
+  { value: 'fiberCoral', label: 'Fiber Optic Bridge Coral' },
+  { value: 'fiberCoralGreyRing', label: 'Fiber Optic Coral Grey Ring' },
+  { value: 'fiberCoralCenter', label: 'Fiber Optic Coral Center' },
+  { value: 'magnetic', label: 'Magnetic Clasp' },
+  { value: 'chain', label: 'The Chain Link' },
+  { value: 'nixie', label: 'Nixie Filament' },
+  { value: 'toggle', label: 'Micro Toggle' },
+  { value: 'toggleCopper', label: 'Micro Toggle Copper' },
+  { value: 'togglePowerCopper', label: 'Micro Toggle Power Copper' },
+  { value: 'pulse', label: 'Node Pulse' },
+  { value: 'pulseCoral', label: 'Node Pulse Coral' }
+];
+
+const MetalGradient = ({ className = '' }) => (
+  <span className={`bg-gradient-to-b from-[#444] via-[#222] to-[#111] ${className}`} />
+);
+
+const FiberOpticLink = ({ active, onToggle, accent = '#df6f5a', accentLight = '#ff9c8a' }) => (
+  <button onClick={onToggle} className="relative flex h-10 w-16 items-center justify-center outline-none group" aria-pressed={active} aria-label="Toggle I/O link">
+    <span className="relative h-[3px] w-full overflow-hidden rounded-full border-b border-[#333] bg-[#111] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]">
+      <span
+        className={`absolute inset-0 origin-left transition-all duration-500 ${active ? 'scale-x-100' : 'scale-x-0'}`}
+        style={{
+          backgroundColor: accent,
+          boxShadow: active ? `0 0 10px ${accent}` : undefined
+        }}
+      />
+    </span>
+    <span
+      className={`absolute h-3 w-3 rounded-full border-[1.5px] transition-all duration-300 ${active ? '' : 'border-[#444] bg-[#1a1a1a] shadow-[0_2px_4px_rgba(0,0,0,0.5)] group-hover:border-[#666]'}`}
+      style={active ? { backgroundColor: accent, borderColor: accentLight, boxShadow: `0 0 10px ${accent}` } : undefined}
+    />
+  </button>
+);
+
+const FiberOpticCoralLink = (props) => (
+  <FiberOpticLink {...props} accent="#e66a53" accentLight="#ffb29f" />
+);
+
+const FiberOpticCoralGreyRingLink = ({ active, onToggle }) => (
+  <button onClick={onToggle} className="relative flex h-10 w-16 items-center justify-center outline-none group" aria-pressed={active} aria-label="Toggle I/O link">
+    <span className="relative h-[3px] w-full overflow-hidden rounded-full border-b border-[#333] bg-[#111] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]">
+      <span
+        className={`absolute left-1/2 top-0 h-full -translate-x-1/2 bg-[#e66a53] transition-all duration-500 ease-out ${active ? 'w-full opacity-100' : 'w-0 opacity-0'}`}
+        style={{ boxShadow: active ? '0 0 10px #e66a53' : undefined }}
+      />
+    </span>
+    <span className={`absolute flex h-3 w-3 items-center justify-center rounded-full border-[1.5px] transition-all duration-300 ${active ? 'border-[#444] bg-[#1a1a1a] shadow-[0_0_10px_#e66a53]' : 'border-[#444] bg-[#1a1a1a] shadow-[0_2px_4px_rgba(0,0,0,0.5)] group-hover:border-[#666]'}`}>
+      <span className={`h-[9px] w-[9px] rounded-full transition-all duration-300 ${active ? 'bg-[#e66a53] shadow-[0_0_8px_#e66a53]' : 'bg-transparent'}`} />
+    </span>
+  </button>
+);
+
+const FiberOpticCoralCenterLink = ({ active, onToggle }) => (
+  <button onClick={onToggle} className="relative flex h-10 w-16 items-center justify-center outline-none group" aria-pressed={active} aria-label="Toggle I/O link">
+    <span className="relative h-[3px] w-full overflow-hidden rounded-full border-b border-[#333] bg-[#111] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]">
+      <span
+        className={`absolute left-1/2 top-0 h-full -translate-x-1/2 bg-[#e66a53] transition-all duration-500 ease-out ${active ? 'w-full opacity-100' : 'w-0 opacity-0'}`}
+        style={{ boxShadow: active ? '0 0 10px #e66a53' : undefined }}
+      />
+    </span>
+    <span
+      className={`absolute h-3 w-3 rounded-full border-[1.5px] transition-all duration-300 ${active ? '' : 'border-[#444] bg-[#1a1a1a] shadow-[0_2px_4px_rgba(0,0,0,0.5)] group-hover:border-[#666]'}`}
+      style={active ? { backgroundColor: '#e66a53', borderColor: '#ffb29f', boxShadow: '0 0 10px #e66a53' } : undefined}
+    />
+  </button>
+);
+
+const MagneticClaspLink = ({ active, onToggle }) => (
+  <button onClick={onToggle} className="relative flex h-10 w-16 items-center justify-center outline-none" aria-pressed={active} aria-label="Toggle I/O link">
+    <span className="relative flex h-1 w-full items-center rounded-full bg-[#111] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]">
+      <span className={`absolute flex h-4 w-4 items-center justify-end rounded-sm border border-[#555] bg-gradient-to-b from-[#444] via-[#222] to-[#111] pr-0.5 shadow-[0_2px_5px_rgba(0,0,0,0.8)] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${active ? 'left-[16px]' : 'left-0'}`}>
+        <span className={`h-2 w-[2px] rounded-full transition-colors duration-300 ${active ? 'bg-[#df6f5a] shadow-[0_0_4px_#df6f5a]' : 'bg-[#111]'}`} />
+      </span>
+      <span className={`absolute flex h-4 w-4 items-center justify-start rounded-sm border border-[#555] bg-gradient-to-b from-[#444] via-[#222] to-[#111] pl-0.5 shadow-[0_2px_5px_rgba(0,0,0,0.8)] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${active ? 'right-[16px]' : 'right-0'}`}>
+        <span className={`h-2 w-[2px] rounded-full transition-colors duration-300 ${active ? 'bg-[#df6f5a] shadow-[0_0_4px_#df6f5a]' : 'bg-[#111]'}`} />
+      </span>
+    </span>
+  </button>
+);
+
+const ChainLinkControl = ({ active, onToggle }) => (
+  <button onClick={onToggle} className="relative flex h-10 w-16 items-center justify-center outline-none" aria-pressed={active} aria-label="Toggle I/O link">
+    <span className="absolute inset-0 flex items-center justify-center">
+      <span className={`h-4 w-5 rounded-l-full border-[2px] border-r-0 border-[#888] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${active ? 'translate-x-[2px] border-[#df6f5a] drop-shadow-[0_0_3px_rgba(223,111,90,0.5)]' : '-translate-x-[4px]'}`} />
+      <span className={`h-4 w-5 rounded-r-full border-[2px] border-l-0 border-[#888] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${active ? '-translate-x-[2px] border-[#df6f5a] drop-shadow-[0_0_3px_rgba(223,111,90,0.5)]' : 'translate-x-[4px]'}`} />
+    </span>
+  </button>
+);
+
+const NixieBridgeLink = ({ active, onToggle }) => (
+  <button onClick={onToggle} className="group relative flex h-6 w-16 items-center overflow-hidden rounded-md border border-[#222] bg-[#050505] shadow-[inset_0_2px_10px_rgba(0,0,0,1)] outline-none" aria-pressed={active} aria-label="Toggle I/O link">
+    <span className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-b from-[#ffffff10] to-transparent" />
+    <MetalGradient className="absolute left-0 h-full w-1.5" />
+    <MetalGradient className="absolute right-0 h-full w-1.5" />
+    <span className="flex w-full justify-center">
+      <svg width="40" height="10" viewBox="0 0 40 10" className="overflow-visible">
+        <path d="M 0 5 Q 10 0, 20 5 T 40 5" fill="none" stroke={active ? "#ff5500" : "#222"} strokeWidth="1.5" className={`transition-colors duration-300 ${active ? 'anim-nixie' : ''}`} />
+      </svg>
+    </span>
+  </button>
+);
+
+const MicroToggleLink = ({ active, onToggle, handleClassName = 'bg-gradient-to-b from-[#625d57] via-[#34312e] to-[#1e1c1a]' }) => (
+  <button onClick={onToggle} className="relative flex h-10 w-6 items-center justify-center rounded-sm border border-[#43403b] bg-[#262421] shadow-[inset_0_2px_4px_rgba(0,0,0,0.7),0_1px_1px_rgba(255,255,255,0.045)] outline-none" aria-pressed={active} aria-label="Toggle I/O link">
+    <span className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#11100f] shadow-[inset_0_2px_4px_rgba(0,0,0,0.86)]" />
+    <span className={`absolute h-5 w-2.5 rounded-full border border-[#1e1c1a] transition-all duration-200 ease-in-out ${handleClassName} ${active ? 'top-1 shadow-[0_4px_2px_rgba(0,0,0,0.44)]' : 'bottom-1 shadow-[0_-4px_2px_rgba(0,0,0,0.44)]'}`} />
+    <span className={`absolute -right-3 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full transition-colors duration-200 ${active ? 'bg-[#df6f5a] shadow-[0_0_4px_rgba(223,111,90,0.8)]' : 'bg-[#3a3632]'}`} />
+  </button>
+);
+
+const MicroToggleCopperLink = (props) => (
+  <MicroToggleLink
+    {...props}
+    handleClassName="bg-gradient-to-b from-[#d58a5b] via-[#9b5234] to-[#4a2418] shadow-[inset_0_1px_1px_rgba(255,225,190,0.38),inset_0_-2px_3px_rgba(45,18,10,0.78)]"
+  />
+);
+
+const MicroTogglePowerCopperLink = (props) => (
+  <MicroToggleLink
+    {...props}
+    handleClassName="bg-gradient-to-b from-[#f0b080] via-[#d56b4e] to-[#873421] shadow-[inset_0_1px_2px_rgba(255,235,205,0.58),inset_0_-2px_3px_rgba(79,24,12,0.72),0_0_4px_rgba(230,106,83,0.18)]"
+  />
+);
+
+const NodePulseLink = ({ active, onToggle, accent = '#df6f5a' }) => (
+  <button onClick={onToggle} className="relative flex h-10 w-16 items-center justify-center outline-none" aria-pressed={active} aria-label="Toggle I/O link">
+    <span
+      className={`absolute h-0.5 transition-all duration-500 ease-out ${active ? 'w-full opacity-50' : 'w-0 opacity-0'}`}
+      style={{ backgroundColor: accent, boxShadow: active ? `0 0 8px ${accent}` : undefined }}
+    />
+    <span
+      className={`relative flex h-4 w-4 items-center justify-center rounded-full border-2 transition-all duration-300 ${active ? 'bg-[#1a1a1a]' : 'border-[#444] bg-[#2a2a2a] hover:border-[#666]'}`}
+      style={active ? { borderColor: accent } : undefined}
+    >
+      <span
+        className={`h-1.5 w-1.5 rounded-full transition-colors duration-300 ${active ? '' : 'bg-transparent'}`}
+        style={active ? { backgroundColor: accent, boxShadow: `0 0 5px ${accent}` } : undefined}
+      />
+    </span>
+  </button>
+);
+
+const NodePulseCoralLink = (props) => (
+  <NodePulseLink {...props} accent="#e66a53" />
+);
+
+const IO_LINK_COMPONENTS = {
+  fiber: FiberOpticLink,
+  fiberCoral: FiberOpticCoralLink,
+  fiberCoralGreyRing: FiberOpticCoralGreyRingLink,
+  fiberCoralCenter: FiberOpticCoralCenterLink,
+  magnetic: MagneticClaspLink,
+  chain: ChainLinkControl,
+  nixie: NixieBridgeLink,
+  toggle: MicroToggleLink,
+  toggleCopper: MicroToggleCopperLink,
+  togglePowerCopper: MicroTogglePowerCopperLink,
+  pulse: NodePulseLink,
+  pulseCoral: NodePulseCoralLink
+};
+
+const IOLinkButton = ({ styleKey, active, onToggle }) => {
+  if (styleKey === 'none') {
+    return <div className="h-10 w-16" aria-hidden="true" />;
+  }
+  const LinkComponent = IO_LINK_COMPONENTS[styleKey] || FiberOpticLink;
+  return (
+    <div className="flex h-10 w-16 items-center justify-center">
+      <LinkComponent active={active} onToggle={onToggle} />
     </div>
   );
 };
@@ -1397,7 +2733,7 @@ const MiniBottomKnob = ({ label, value, onChange, accent = '#d4af37', labelColor
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        onDoubleClick={() => onChange(label === 'Depth' ? 63 : 75)}
+        onDoubleClick={() => onChange(label.startsWith('Depth') ? 63 : 75)}
         className="relative h-11 w-11 rounded-full border border-black/60 active:scale-95 transition-transform"
         style={{
           background: `radial-gradient(circle at 34% 28%, rgba(255,255,255,0.2), transparent 28%), ${face}`,
@@ -1412,12 +2748,14 @@ const MiniBottomKnob = ({ label, value, onChange, accent = '#d4af37', labelColor
         </span>
         <span className="absolute inset-[15px] rounded-full bg-black/35 shadow-inner" />
       </button>
-      <span className="text-[8px] font-black uppercase tracking-[0.18em]" style={{ color: labelColor }}>{label}</span>
+      <span className="text-[9px] font-black uppercase leading-[8px] tracking-[0.18em]" style={{ color: labelColor }}>
+        {label === 'Phase ◐' ? <>Phase <span className="ml-[2px] text-[10px] leading-none">◐</span></> : label === 'Depth ◍' ? <>Depth <span className="relative -top-[1px] ml-[2px] text-[12px] leading-none">◍</span></> : label}
+      </span>
     </div>
   );
 };
 
-const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, styleIndex }) => {
+const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, styleIndex, lfoActive = true }) => {
   const HiddenRange = ({ value, onChange }) => (
     <input
       type="range"
@@ -1518,7 +2856,9 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
           />
           <HiddenRange value={value} onChange={onChange} />
         </div>
-        <span className="text-[8px] font-black uppercase tracking-[0.22em]" style={{ color: labelColor }}>{label}</span>
+        <span className="text-[9px] font-black uppercase leading-[8px] tracking-[0.22em]" style={{ color: labelColor }}>
+          {label === 'Phase ◐' ? <>Phase <span className="ml-[2px] text-[10px] leading-none">◐</span></> : label === 'Depth ◍' ? <>Depth <span className="relative -top-[1px] ml-[2px] text-[12px] leading-none">◍</span></> : label}
+        </span>
       </div>
     );
   };
@@ -1534,23 +2874,27 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
         </div>
         <HiddenRange value={value} onChange={onChange} />
       </div>
-      <span className="text-[8px] font-black uppercase tracking-[0.2em]" style={{ color: labelColor }}>{label}</span>
+      <span className="text-[9px] font-black uppercase leading-[8px] tracking-[0.2em]" style={{ color: labelColor }}>
+        {label === 'Phase ◐' ? <>Phase <span className="ml-[2px] text-[10px] leading-none">◐</span></> : label === 'Depth ◍' ? <>Depth <span className="relative -top-[1px] ml-[2px] text-[12px] leading-none">◍</span></> : label}
+      </span>
     </div>
   );
 
   const KnobPair = ({ shell, accentA = '#d4af37', accentB = '#e66a53', labelColor = '#d3ba8c', face = '#202020', className = '', children }) => (
     <div className={`absolute bottom-[10.5%] left-[50%] z-10 flex -translate-x-1/2 items-center gap-5 px-5 py-3 ${className}`} style={shell}>
       {children}
-      <MiniBottomKnob label="Depth" value={depth} onChange={setDepth} accent={accentA} face={face} labelColor={labelColor} />
-      <MiniBottomKnob label="Stereo" value={stereoPhase} onChange={setStereoPhase} accent={accentB} face={face} labelColor={labelColor} />
+      <MiniBottomKnob label="Depth ◍" value={depth} onChange={setDepth} accent={accentA} face={face} labelColor={labelColor} />
+      <MiniBottomKnob label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} accent={accentB} face={face} labelColor={labelColor} />
     </div>
   );
 
-  const IlluminatedRubberFader = ({ label, value, onChange }) => {
+  const IlluminatedRubberFader = ({ label, value, onChange, active = true }) => {
     const thumbLeft = `calc(8px + ${value} * (100% - 16px) / 100)`;
     return (
     <div className="relative z-10 flex w-[88px] flex-col gap-1">
-      <div className="flex items-center pl-[8px] pr-0 text-[8px] font-black uppercase tracking-[0.18em] text-[#aaa39a] drop-shadow-md">{label}</div>
+	      <div className="flex h-2 items-center pl-[8px] pr-0 text-[9px] font-black uppercase leading-[8px] tracking-[0.18em] text-[#aaa39a] drop-shadow-md">
+          {label === 'Phase ◐' ? <>Phase <span className="ml-[2px] text-[10px] leading-none">◐</span></> : label === 'Depth ◍' ? <>Depth <span className="relative -top-[1px] ml-[2px] text-[12px] leading-none">◍</span></> : label}
+        </div>
       <div className="relative h-8">
         <div className="absolute left-2 right-2 top-1/2 h-2 -translate-y-1/2 rounded-full border-b border-[#333] bg-[#141414] shadow-[inset_0_3px_5px_rgba(0,0,0,0.8)]" />
         <div
@@ -1561,7 +2905,16 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
           className="absolute top-1/2 h-7 w-5 -translate-x-1/2 -translate-y-1/2 rounded-md border border-black bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.09)]"
           style={{ left: thumbLeft }}
         >
-          <div className="absolute left-1/2 top-1/2 h-3 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#df6f5a] shadow-[0_0_6px_rgba(223,111,90,0.9),inset_0_1px_1px_rgba(255,255,255,0.3)]" />
+          <div
+            className="absolute left-1/2 top-1/2 h-3 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-300"
+            style={{
+              background: active ? '#df6f5a' : '#4a4642',
+              boxShadow: active
+                ? '0 0 6px rgba(223,111,90,0.9), inset 0 1px 1px rgba(255,255,255,0.3)'
+                : 'inset 0 1px 1px rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.7)',
+              opacity: active ? 1 : 0.58
+            }}
+          />
         </div>
         <div className="absolute left-[1px] right-[1px] top-[-7px] bottom-[-7px]">
           <DragSurface onChange={onChange} />
@@ -1574,33 +2927,36 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
   switch (styleIndex) {
     case 0:
       return (
-        <div className="absolute bottom-[12%] left-[50%] z-10 flex w-[248px] -translate-x-1/2 justify-center gap-4 overflow-hidden rounded-full border border-[#1a1a1a] bg-[#282828] px-5 py-3 shadow-[0_8px_14px_rgba(0,0,0,0.22),0_2px_4px_rgba(0,0,0,0.18),inset_0_1px_2px_rgba(255,255,255,0.07),inset_0_-1px_2px_rgba(0,0,0,0.22)]">
-          <div className="absolute inset-0 bg-gradient-to-b from-[#ffffff08] to-transparent pointer-events-none" />
-          <div className="absolute inset-0 opacity-30 mix-blend-overlay pointer-events-none" style={{ backgroundImage: RUBBER_MATTE_NOISE }} />
-          <IlluminatedRubberFader label="Depth" value={depth} onChange={setDepth} />
-          <IlluminatedRubberFader label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} />
+        <div className="absolute bottom-[12%] left-[50%] z-10 -translate-x-1/2">
+          <div className="mb-1.5 text-center text-[10px] font-bold uppercase tracking-[0.32em] text-[#fff8eb] drop-shadow-sm">LFO INTENSITY</div>
+          <div className="relative flex w-[248px] justify-center gap-4 overflow-hidden rounded-full border border-[#1a1a1a] bg-[#282828] px-5 py-3 shadow-[0_8px_14px_rgba(0,0,0,0.22),0_2px_4px_rgba(0,0,0,0.18),inset_0_1px_2px_rgba(255,255,255,0.07),inset_0_-1px_2px_rgba(0,0,0,0.22)]">
+            <div className="absolute inset-0 bg-gradient-to-b from-[#ffffff08] to-transparent pointer-events-none" />
+            <div className="absolute inset-0 opacity-30 mix-blend-overlay pointer-events-none" style={{ backgroundImage: RUBBER_MATTE_NOISE }} />
+            <IlluminatedRubberFader label="Depth ◍" value={depth} onChange={setDepth} active={lfoActive} />
+            <IlluminatedRubberFader label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} active={lfoActive} />
+          </div>
         </div>
       );
     case 1:
       return (
         <div className="absolute bottom-[11.6%] left-[50%] z-10 flex -translate-x-1/2 gap-4 rounded-[1.1rem] border border-black/80 bg-[#181818] px-4 py-3 shadow-[10px_14px_20px_rgba(0,0,0,0.36),inset_0_0_0_1px_rgba(255,255,255,0.06)]">
           <ScrewDots />
-          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={82} accent="#edd39a" labelColor="#cfc0a0" track="#060606" thumb="tab" ticks />
-          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={82} accent="#e66a53" labelColor="#cfc0a0" track="#060606" thumb="tab" ticks />
+          <HardwareRail label="Depth ◍" value={depth} onChange={setDepth} width={82} accent="#edd39a" labelColor="#cfc0a0" track="#060606" thumb="tab" ticks />
+          <HardwareRail label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} width={82} accent="#e66a53" labelColor="#cfc0a0" track="#060606" thumb="tab" ticks />
         </div>
       );
     case 2:
       return (
         <div className="absolute bottom-[11.8%] left-[50%] z-10 flex -translate-x-1/2 gap-5 rounded-[1.8rem] border border-white/15 bg-black/38 px-4 py-3 shadow-[9px_13px_21px_rgba(0,0,0,0.25),inset_0_1px_2px_rgba(255,255,255,0.16)] backdrop-blur-md">
-          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={88} height={7} accent="#edd39a" labelColor="#f0dca8" track="rgba(0,0,0,0.62)" />
-          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={88} height={7} accent="#e66a53" labelColor="#f0dca8" track="rgba(0,0,0,0.62)" />
+          <HardwareRail label="Depth ◍" value={depth} onChange={setDepth} width={88} height={7} accent="#edd39a" labelColor="#f0dca8" track="rgba(0,0,0,0.62)" />
+          <HardwareRail label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} width={88} height={7} accent="#e66a53" labelColor="#f0dca8" track="rgba(0,0,0,0.62)" />
         </div>
       );
     case 3:
       return (
         <div className="absolute bottom-[12%] left-[50%] z-10 flex -translate-x-1/2 gap-5 rounded-[0.8rem] border border-[#050403] bg-[#211d18] px-4 py-3 shadow-[8px_12px_18px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,230,180,0.08)]">
-          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={88} height={11} accent="#d4af37" fill="#6c5418" labelColor="#d3ba8c" track="#080705" thumb="blade" ticks />
-          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={88} height={11} accent="#d4af37" fill="#6c5418" labelColor="#d3ba8c" track="#080705" thumb="blade" ticks />
+          <HardwareRail label="Depth ◍" value={depth} onChange={setDepth} width={88} height={11} accent="#d4af37" fill="#6c5418" labelColor="#d3ba8c" track="#080705" thumb="blade" ticks />
+          <HardwareRail label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} width={88} height={11} accent="#d4af37" fill="#6c5418" labelColor="#d3ba8c" track="#080705" thumb="blade" ticks />
         </div>
       );
     case 4:
@@ -1617,8 +2973,8 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
       return (
         <div className="absolute bottom-[11.8%] left-[50%] z-10 flex -translate-x-1/2 items-center gap-4 rounded-[0.85rem] border border-black/75 bg-[#201f1c] px-4 py-2.5 shadow-[9px_12px_18px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.1)]">
           <span className="h-11 w-[3px] rounded-full bg-[#d4af37] shadow-[0_0_10px_rgba(212,175,55,0.4)]" />
-          <MeterSlider label="Depth" value={depth} onChange={setDepth} accent="#e7c44e" labelColor="#cfc3a9" />
-          <MeterSlider label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} accent="#e66a53" labelColor="#cfc3a9" />
+          <MeterSlider label="Depth ◍" value={depth} onChange={setDepth} accent="#e7c44e" labelColor="#cfc3a9" />
+          <MeterSlider label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} accent="#e66a53" labelColor="#cfc3a9" />
         </div>
       );
     case 6:
@@ -1640,8 +2996,8 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
     case 7:
       return (
         <div className="absolute bottom-[12%] left-[50%] z-10 flex -translate-x-1/2 gap-5 rounded-full border border-[#fff9ed]/80 bg-[#f2e4c8]/90 px-4 py-3 shadow-[7px_11px_17px_rgba(91,65,42,0.18),inset_1px_1px_2px_rgba(255,255,255,0.85),inset_0_-2px_5px_rgba(113,78,44,0.12)]">
-          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={84} height={8} accent="#a88842" labelColor="#73583a" track="#d7c4a1" thumb="tab" />
-          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={84} height={8} accent="#a88842" labelColor="#73583a" track="#d7c4a1" thumb="tab" />
+          <HardwareRail label="Depth ◍" value={depth} onChange={setDepth} width={84} height={8} accent="#a88842" labelColor="#73583a" track="#d7c4a1" thumb="tab" />
+          <HardwareRail label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} width={84} height={8} accent="#a88842" labelColor="#73583a" track="#d7c4a1" thumb="tab" />
         </div>
       );
     case 8:
@@ -1661,33 +3017,33 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
     case 9:
       return (
         <div className="absolute bottom-[11.9%] left-[50%] z-10 flex -translate-x-1/2 gap-4 rounded-[0.9rem] border border-[#d8c09b]/75 bg-[#ead8b8]/86 px-4 py-3 shadow-[6px_10px_15px_rgba(90,63,39,0.16),inset_0_1px_1px_rgba(255,255,255,0.52)]" style={{ backgroundImage: 'repeating-linear-gradient(90deg, rgba(120,92,62,0.06) 0px, rgba(120,92,62,0.06) 1px, transparent 1px, transparent 7px)' }}>
-          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={90} height={6} accent="#8a6a32" labelColor="#60492f" track="#d3bea0" thumb="blade" ticks />
-          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={90} height={6} accent="#8a6a32" labelColor="#60492f" track="#d3bea0" thumb="blade" ticks />
+          <HardwareRail label="Depth ◍" value={depth} onChange={setDepth} width={90} height={6} accent="#8a6a32" labelColor="#60492f" track="#d3bea0" thumb="blade" ticks />
+          <HardwareRail label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} width={90} height={6} accent="#8a6a32" labelColor="#60492f" track="#d3bea0" thumb="blade" ticks />
         </div>
       );
     case 10:
       return (
         <div className="absolute bottom-[11.8%] left-[50%] z-10 flex -translate-x-1/2 gap-2 rounded-[1.25rem] border border-white/75 bg-[#efe0c2]/86 p-2 shadow-[7px_11px_16px_rgba(75,53,35,0.16),inset_1px_1px_2px_rgba(255,255,255,0.72)]">
           <div className="rounded-[0.9rem] bg-white/28 px-2 py-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45)]">
-            <HardwareRail label="Depth" value={depth} onChange={setDepth} width={74} height={8} accent="#b98d3a" labelColor="#755a3a" track="#d8c5a6" thumb="round" />
+            <HardwareRail label="Depth ◍" value={depth} onChange={setDepth} width={74} height={8} accent="#b98d3a" labelColor="#755a3a" track="#d8c5a6" thumb="round" />
           </div>
           <div className="rounded-[0.9rem] bg-white/18 px-2 py-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.35)]">
-            <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={74} height={8} accent="#b98d3a" labelColor="#755a3a" track="#d8c5a6" thumb="round" />
+            <HardwareRail label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} width={74} height={8} accent="#b98d3a" labelColor="#755a3a" track="#d8c5a6" thumb="round" />
           </div>
         </div>
       );
     case 11:
       return (
         <div className="absolute bottom-[11.5%] left-[50%] z-10 flex -translate-x-1/2 gap-5 rounded-[1.55rem] border border-black/80 px-4 py-3 shadow-[0_0_0_1px_#2b170b,0_0_0_2px_#78502a,inset_0_1px_2px_rgba(0,0,0,0.6)]" style={{ backgroundImage: 'linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.12)), url("/textures/walnut.png")', backgroundSize: 'cover' }}>
-          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={82} height={8} accent="#edd39a" labelColor="#ead2a3" track="#160d08" thumb="blade" ticks />
-          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={82} height={8} accent="#edd39a" labelColor="#ead2a3" track="#160d08" thumb="blade" ticks />
+          <HardwareRail label="Depth ◍" value={depth} onChange={setDepth} width={82} height={8} accent="#edd39a" labelColor="#ead2a3" track="#160d08" thumb="blade" ticks />
+          <HardwareRail label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} width={82} height={8} accent="#edd39a" labelColor="#ead2a3" track="#160d08" thumb="blade" ticks />
         </div>
       );
     case 12:
       return (
         <div className="absolute bottom-[12%] left-[50%] z-10 flex -translate-x-1/2 gap-5 rounded-[1.2rem] border border-[#1b2520]/80 px-4 py-3 shadow-[8px_12px_17px_rgba(0,0,0,0.22),inset_0_1px_2px_rgba(255,255,255,0.08)]" style={{ background: 'radial-gradient(circle at 18% 18%, rgba(122,166,120,0.24), transparent 32%), radial-gradient(circle at 84% 76%, rgba(230,106,83,0.18), transparent 34%), linear-gradient(135deg, #24312a, #171b18)' }}>
-          <HardwareRail label="Depth" value={depth} onChange={setDepth} width={86} height={7} accent="#9fc08c" labelColor="#c8d8b8" track="#101511" thumb="tab" ticks />
-          <HardwareRail label="Stereo φ" value={stereoPhase} onChange={setStereoPhase} width={86} height={7} accent="#e66a53" labelColor="#c8d8b8" track="#101511" thumb="tab" ticks />
+          <HardwareRail label="Depth ◍" value={depth} onChange={setDepth} width={86} height={7} accent="#9fc08c" labelColor="#c8d8b8" track="#101511" thumb="tab" ticks />
+          <HardwareRail label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} width={86} height={7} accent="#e66a53" labelColor="#c8d8b8" track="#101511" thumb="tab" ticks />
         </div>
       );
     default:
@@ -1724,6 +3080,169 @@ const DropdownSelect = ({ options, value, onChange, width = 80 }) => (
     {options.map((opt, i) => <option key={i} value={i} className="bg-[#2d2c2b] text-[#edd39a]">{opt}</option>)}
   </select>
 );
+
+const OrbitalLfoControl = ({ active, setActive, sync, setSync, waveIndex, setWaveIndex, rateIndex, setRateIndex }) => {
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [dropdownAnchor, setDropdownAnchor] = useState(null);
+  const dropdownRef = useRef(null);
+  const waveButtonRef = useRef(null);
+  const rateButtonRef = useRef(null);
+
+  useEffect(() => {
+    if (!active) setOpenDropdown(null);
+  }, [active]);
+
+  useEffect(() => {
+    if (!openDropdown) return;
+    const button = openDropdown === 'wave' ? waveButtonRef.current : rateButtonRef.current;
+    const updateAnchor = () => {
+      const rect = button?.getBoundingClientRect();
+      if (!rect) return;
+      setDropdownAnchor({
+        left: rect.left + rect.width / 2,
+        top: rect.bottom + rect.height * 0.1
+      });
+    };
+    updateAnchor();
+    window.addEventListener('resize', updateAnchor);
+    window.addEventListener('scroll', updateAnchor, true);
+    return () => {
+      window.removeEventListener('resize', updateAnchor);
+      window.removeEventListener('scroll', updateAnchor, true);
+    };
+  }, [openDropdown]);
+
+  useEffect(() => {
+    if (!openDropdown) return;
+    const handlePointerDown = (event) => {
+      const target = event.target;
+      const activeButton = openDropdown === 'wave' ? waveButtonRef.current : rateButtonRef.current;
+      if (dropdownRef.current?.contains(target) || activeButton?.contains(target)) return;
+      setOpenDropdown(null);
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, [openDropdown]);
+
+  const positions = {
+    sync: { x: -54, y: 0 },
+    wave: { x: 0, y: 54 },
+    rate: { x: 45, y: 31 }
+  };
+
+  const stopControlDrag = (event) => event.stopPropagation();
+  const wave = SHAPES[waveIndex] || SHAPES[0];
+  const waveSymbol = SHAPE_BUTTON_SYMBOLS[waveIndex] || SHAPE_BUTTON_SYMBOLS[0];
+  const waveSymbolStyle = SHAPE_BUTTON_SYMBOL_STYLES[waveIndex] || SHAPE_BUTTON_SYMBOL_STYLES[0];
+  const rate = SYNC_DIVS[rateIndex] || SYNC_DIVS[0];
+  const textActiveClass = active ? 'text-[#e8d19e]' : 'text-[#666]';
+  const rateActiveClass = active && sync ? 'text-[#e8d19e]' : 'text-[#666]';
+  const renderDropdownPortal = () => {
+    if (!openDropdown || !dropdownAnchor) return null;
+    const isRate = openDropdown === 'rate';
+    const options = isRate ? SYNC_DIVS : SHAPES;
+    const setValue = isRate ? setRateIndex : setWaveIndex;
+    const selectedIndex = isRate ? rateIndex : waveIndex;
+    return createPortal(
+      <div
+        ref={dropdownRef}
+        onPointerDown={stopControlDrag}
+        className={`lfo-scrollbar fixed z-[9999] flex origin-top -translate-x-1/2 flex-col rounded-[16px] border border-[#333] bg-[#1a1a1a] shadow-[0_10px_20px_rgba(0,0,0,0.6)] ${isRate ? 'max-h-[260px] w-[65px] overflow-y-auto overflow-x-hidden' : 'w-[70px] overflow-hidden'}`}
+        style={{ left: dropdownAnchor.left, top: dropdownAnchor.top }}
+      >
+        {options.map((option, i) => {
+          const selected = i === selectedIndex;
+          return (
+          <button
+            key={option}
+            onClick={() => {
+              setValue(i);
+              setOpenDropdown(null);
+            }}
+            className={`${isRate ? 'py-2' : 'px-3 py-2.5'} cursor-pointer text-center text-[10px] font-bold transition-colors hover:bg-[#df6f5a] hover:text-[#111] ${selected ? 'text-[#e8d19e]' : 'text-[#888]'}`}
+          >
+            {option}
+          </button>
+          );
+        })}
+      </div>,
+      document.body
+    );
+  };
+
+  return (
+    <div className="relative z-10 flex h-[46px] w-[46px] items-center justify-center overflow-visible">
+      {renderDropdownPortal()}
+      <svg width="0" height="0" className="absolute pointer-events-none" aria-hidden="true" focusable="false">
+        <defs>
+          <filter id="lfoOrbitalGoo">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo" />
+            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+          </filter>
+        </defs>
+      </svg>
+
+      <div className="pointer-events-none absolute inset-[-100px] z-0 flex items-center justify-center" style={{ filter: 'url(#lfoOrbitalGoo)' }}>
+        <div className="absolute h-[50px] w-[50px] rounded-full bg-[#1a1a1a]" />
+        <div className="absolute h-[37px] w-[37px] rounded-full bg-[#1a1a1a] transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)]" style={{ transform: active ? `translate(${positions.sync.x}px, ${positions.sync.y}px)` : 'translate(0px, 0px)' }} />
+        <div className="absolute h-[37px] w-[37px] rounded-full bg-[#1a1a1a] transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)]" style={{ transform: active ? `translate(${positions.wave.x}px, ${positions.wave.y}px)` : 'translate(0px, 0px)' }} />
+        <div className="absolute h-[37px] w-[37px] rounded-full bg-[#1a1a1a] transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)]" style={{ transform: active ? `translate(${positions.rate.x}px, ${positions.rate.y}px)` : 'translate(0px, 0px)' }} />
+      </div>
+
+      <button
+        onPointerDown={stopControlDrag}
+        onClick={() => setActive(!active)}
+        className={`relative z-30 flex h-[46px] w-[46px] items-center justify-center rounded-full border-b border-r border-[#111] border-l border-t border-[#444] bg-[#2c2c2c] outline-none transition-all duration-300 ${active ? 'shadow-[2px_4px_8px_rgba(0,0,0,0.46),inset_0_-5px_10px_rgba(0,0,0,0.8)]' : 'shadow-[3px_5px_9px_rgba(0,0,0,0.42),0_1px_0_#111,inset_1px_2px_2px_rgba(255,255,255,0.1),inset_-2px_-3px_5px_rgba(0,0,0,0.22)]'}`}
+      >
+        <div className={`flex h-[31px] w-[31px] items-center justify-center rounded-full transition-all duration-500 ${active ? 'bg-[#111] shadow-[inset_0_0_15px_rgba(0,0,0,1)]' : 'bg-[#222] shadow-[inset_0_0_10px_rgba(0,0,0,0.8)]'}`}>
+          <span className={`text-[9px] font-bold tracking-widest transition-colors duration-500 ${active ? 'text-[#df6f5a] drop-shadow-[0_0_6px_rgba(223,111,90,1)]' : 'text-[#666]'}`}>LFO</span>
+        </div>
+      </button>
+
+      <div className={`absolute z-20 transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)] ${active ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} style={{ transform: active ? `translate(${positions.sync.x}px, ${positions.sync.y}px)` : 'translate(0px, 0px)' }}>
+        <button
+          onPointerDown={stopControlDrag}
+          onClick={() => setSync(!sync)}
+          className={`flex h-[37px] w-[37px] items-center justify-center rounded-full outline-none transition-colors shadow-[2px_3px_6px_rgba(0,0,0,0.26),inset_0_2px_2px_rgba(255,255,255,0.16)] ${sync ? 'bg-[#e86b5d]' : 'bg-[#2a2622]'}`}
+        >
+          <span className={`text-[9px] font-black tracking-wider ${sync ? 'text-white drop-shadow-sm' : 'text-[#a4998e]'}`}>SYNC</span>
+        </button>
+      </div>
+
+      <div className={`absolute z-20 transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)] ${active ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} style={{ transform: active ? `translate(${positions.wave.x}px, ${positions.wave.y}px)` : 'translate(0px, 0px)' }}>
+        <div className="relative">
+          <button
+            ref={waveButtonRef}
+            onPointerDown={stopControlDrag}
+            onClick={() => setOpenDropdown(openDropdown === 'wave' ? null : 'wave')}
+            className="flex h-[37px] w-[37px] items-center justify-center rounded-full border border-[#333] bg-[#1a1a1a] outline-none shadow-[2px_3px_6px_rgba(0,0,0,0.28),inset_0_1px_2px_rgba(255,255,255,0.05)] transition-colors hover:bg-[#222]"
+          >
+            <span
+              className={`absolute inset-0 flex items-center justify-center leading-none transition-colors duration-300 ${textActiveClass}`}
+              style={waveSymbolStyle}
+            >
+              {waveSymbol}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div className={`absolute z-20 transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)] ${active ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} style={{ transform: active ? `translate(${positions.rate.x}px, ${positions.rate.y}px)` : 'translate(0px, 0px)' }}>
+        <div className="relative">
+          <button
+            ref={rateButtonRef}
+            onPointerDown={stopControlDrag}
+            onClick={() => setOpenDropdown(openDropdown === 'rate' ? null : 'rate')}
+            className="flex h-[37px] w-[37px] items-center justify-center rounded-full border border-[#333] bg-[#1a1a1a] outline-none shadow-[2px_3px_6px_rgba(0,0,0,0.28),inset_0_1px_2px_rgba(255,255,255,0.05)] transition-colors hover:bg-[#222]"
+          >
+            <span className={`text-[9px] font-bold tracking-wide transition-colors duration-300 ${rateActiveClass}`}>{rate}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const CENTER_DIAL_SHADOWS = [
   { name: 'Original', shadow: '18px 18px 35px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.1), inset -3px -3px 8px rgba(0,0,0,0.8)' },
@@ -2055,7 +3574,138 @@ const CENTER_DIAL_NUMBER_STYLES = [
   { name: 'Compact Label' }
 ];
 
-const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowStyle, surfaceStyle, grooveStyle, markStyleIndex = 0, numberStyleIndex = 0, circlesEnabled = true, numbersEnabled = true, animationStyle = 0, onDoubleClickDrift, onDoubleClickSpread }) => {
+const MIDDLE_KNOB_STYLES = [
+  { name: 'Original Copper' },
+  {
+    name: 'Soft Copper Dome',
+    background: 'radial-gradient(circle at 32% 30%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.12) 19%, transparent 35%), radial-gradient(circle at 50% 50%, transparent 0 66%, rgba(180,163,119,0.16) 74%, rgba(70,56,36,0.42) 89%, rgba(18,13,7,0.58) 100%), conic-gradient(from 180deg at 50% 50%, #91764a 0deg, #c5b07b 45deg, #91764a 90deg, #cbb783 135deg, #8d7247 180deg, #c2ac75 225deg, #8c7045 270deg, #c8b27e 315deg, #91764a 360deg)',
+    shadow: '13px 15px 28px rgba(0,0,0,0.46), inset 3px 3px 7px rgba(255,255,255,0.58), inset -5px -7px 13px rgba(0,0,0,0.48), 0 0 0 1px rgba(33,24,11,0.44)',
+    edgeInset: 5,
+    edgeBorder: '1px solid rgba(201,185,139,0.3)',
+    edgeShadow: 'inset 0 3px 4px rgba(255,255,255,0.22), inset 0 -5px 8px rgba(64,43,17,0.34), 0 1px 2px rgba(0,0,0,0.45)',
+    sheenOpacity: 0.42
+  },
+  {
+    name: 'Brushed Brass Bevel',
+    background: 'radial-gradient(circle at 33% 29%, rgba(255,255,255,0.52), transparent 31%), radial-gradient(circle at 50% 50%, transparent 0 62%, rgba(235,218,166,0.22) 72%, rgba(58,42,20,0.5) 94%), repeating-conic-gradient(from 180deg at 50% 50%, #a18345 0deg 8deg, #d8c07d 10deg 18deg, #96763a 20deg 29deg)',
+    shadow: '13px 15px 28px rgba(0,0,0,0.48), inset 3px 3px 8px rgba(255,255,255,0.58), inset -5px -7px 12px rgba(0,0,0,0.5), 0 0 0 1px rgba(31,23,12,0.48)',
+    edgeInset: 4,
+    edgeBorder: '1px solid rgba(236,214,156,0.34)',
+    edgeShadow: 'inset 0 2px 5px rgba(255,255,255,0.22), inset 0 -6px 9px rgba(50,35,16,0.38), 0 1px 2px rgba(0,0,0,0.5)',
+    sheenOpacity: 0.38
+  },
+  {
+    name: 'Classic Soft Lip',
+    background: 'radial-gradient(circle at 34% 32%, rgba(255,255,255,0.52), rgba(255,255,255,0.1) 20%, transparent 37%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(188,169,121,0.15) 70%, rgba(75,58,34,0.5) 93%), conic-gradient(from 180deg at 50% 50%, #8d7146, #c1ab77, #8b6f44, #cab684, #8d7146, #bfa772, #876b41, #c5af7c, #8d7146)',
+    shadow: '14px 16px 30px rgba(0,0,0,0.48), inset 2px 2px 6px rgba(255,255,255,0.62), inset -5px -6px 12px rgba(0,0,0,0.5)',
+    edgeInset: 7,
+    edgeBorder: '1px solid rgba(203,188,143,0.24)',
+    edgeShadow: 'inset 0 2px 3px rgba(255,255,255,0.2), inset 0 -4px 8px rgba(43,31,14,0.32)',
+    sheenOpacity: 0.34
+  },
+  {
+    name: 'Smoked Champagne',
+    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.48), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(224,210,174,0.16) 75%, rgba(35,31,25,0.42) 96%), conic-gradient(from 180deg at 50% 50%, #74684d, #c2b58a, #776b50, #d1c195, #74684d, #b9aa7d, #6e6249, #c8ba8e, #74684d)',
+    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.42), inset -5px -7px 12px rgba(0,0,0,0.45), 0 0 0 1px rgba(20,18,14,0.5)',
+    edgeInset: 5,
+    edgeBorder: '1px solid rgba(225,214,180,0.26)',
+    edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.16), inset 0 -5px 9px rgba(27,23,18,0.34)',
+    sheenOpacity: 0.3
+  },
+  {
+    name: 'Modern Satin Brass',
+    background: 'linear-gradient(135deg, rgba(255,255,255,0.14), transparent 38%, rgba(0,0,0,0.2)), radial-gradient(circle at 50% 50%, transparent 0 65%, rgba(184,166,118,0.14) 76%, rgba(35,28,17,0.5) 98%), conic-gradient(from 198deg at 50% 50%, #876f49, #bca775, #92784f, #c5b17e, #876f49, #b5a06f, #8a7149, #c0aa78, #876f49)',
+    shadow: '12px 14px 26px rgba(0,0,0,0.48), inset 2px 2px 5px rgba(255,255,255,0.5), inset -6px -7px 12px rgba(0,0,0,0.48)',
+    edgeInset: 6,
+    edgeBorder: '1px solid rgba(197,180,134,0.24)',
+    edgeShadow: 'inset 0 1px 4px rgba(255,255,255,0.18), inset 0 -5px 8px rgba(48,35,16,0.33)',
+    sheenOpacity: 0.26
+  },
+  {
+    name: 'Dark Aged Brass',
+    background: 'radial-gradient(circle at 32% 31%, rgba(255,255,255,0.34), transparent 31%), radial-gradient(circle at 50% 50%, transparent 0 63%, rgba(128,110,76,0.18) 75%, rgba(18,13,8,0.6) 98%), conic-gradient(from 180deg at 50% 50%, #675235, #93805c, #59472c, #a08c67, #675235, #897650, #534126, #97845f, #675235)',
+    shadow: '14px 16px 30px rgba(0,0,0,0.54), inset 3px 3px 6px rgba(255,255,255,0.34), inset -5px -7px 13px rgba(0,0,0,0.58), 0 0 0 1px rgba(16,11,6,0.55)',
+    edgeInset: 5,
+    edgeBorder: '1px solid rgba(151,130,94,0.28)',
+    edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.12), inset 0 -6px 9px rgba(18,12,5,0.42)',
+    sheenOpacity: 0.28
+  },
+  {
+    name: 'Ivory Brass Cap',
+    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.58), transparent 33%), radial-gradient(circle at 50% 50%, transparent 0 61%, rgba(225,202,139,0.18) 74%, rgba(55,39,18,0.45) 98%), conic-gradient(from 180deg at 50% 50%, #a48a55, #d8c796, #a98f58, #e0cf9d, #a48a55, #d4c18f, #9f844e, #ddcb9a, #a48a55)',
+    shadow: '13px 15px 28px rgba(0,0,0,0.46), inset 3px 3px 8px rgba(255,255,255,0.52), inset -5px -6px 12px rgba(0,0,0,0.42)',
+    edgeInset: 4,
+    edgeBorder: '1px solid rgba(240,226,186,0.36)',
+    edgeShadow: 'inset 0 2px 5px rgba(255,255,255,0.2), inset 0 -5px 8px rgba(53,38,18,0.3)',
+    sheenOpacity: 0.32
+  },
+  {
+    name: 'Copper Pewter Blend',
+    background: 'radial-gradient(circle at 33% 30%, rgba(255,255,255,0.46), transparent 31%), radial-gradient(circle at 50% 50%, transparent 0 63%, rgba(201,174,126,0.18) 75%, rgba(45,36,29,0.48) 98%), conic-gradient(from 180deg at 50% 50%, #806d55, #c0aa7e, #887259, #cab486, #806d55, #b8a174, #76634d, #c4ae83, #806d55)',
+    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.38), inset -5px -7px 13px rgba(0,0,0,0.5)',
+    edgeInset: 6,
+    edgeBorder: '1px solid rgba(210,192,155,0.28)',
+    edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.14), inset 0 -5px 9px rgba(37,29,22,0.34)',
+    sheenOpacity: 0.28
+  },
+  {
+    name: 'Inset Soft Bezel',
+    background: 'radial-gradient(circle at 34% 31%, rgba(255,255,255,0.44), transparent 31%), radial-gradient(circle at 50% 50%, transparent 0 55%, rgba(50,40,23,0.16) 58%, transparent 63%, rgba(185,168,120,0.14) 74%, rgba(47,37,21,0.52) 98%), conic-gradient(from 180deg at 50% 50%, #8e7247, #bfa977, #907449, #c8b582, #8e7247, #baa371, #896d43, #c3ad7a, #8e7247)',
+    shadow: '14px 16px 30px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.48), inset -5px -7px 13px rgba(0,0,0,0.5)',
+    edgeInset: 4,
+    edgeBorder: '1px solid rgba(199,181,134,0.24)',
+    edgeShadow: 'inset 0 2px 5px rgba(255,255,255,0.16), inset 0 -5px 10px rgba(44,31,13,0.36)',
+    innerInset: 15,
+    innerOpacity: 0.26,
+    sheenOpacity: 0.3
+  },
+  {
+    name: 'Clean Studio Brass',
+    background: 'radial-gradient(circle at 35% 31%, rgba(255,255,255,0.38), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 66%, rgba(183,168,126,0.12) 76%, rgba(39,31,18,0.48) 98%), conic-gradient(from 180deg at 50% 50%, #8f744b, #baa575, #91764d, #c3af7e, #8f744b, #b39d6d, #8b7047, #bea978, #8f744b)',
+    shadow: '12px 14px 26px rgba(0,0,0,0.46), inset 2px 2px 5px rgba(255,255,255,0.44), inset -5px -6px 11px rgba(0,0,0,0.46), 0 0 0 1px rgba(27,20,10,0.42)',
+    edgeInset: 8,
+    edgeBorder: '1px solid rgba(194,178,136,0.18)',
+    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.12), inset 0 -4px 7px rgba(44,32,15,0.26)',
+    sheenOpacity: 0.24
+  },
+  {
+    name: 'Vintage Nickel Brass',
+    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.5), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(214,202,169,0.16) 76%, rgba(34,32,27,0.46) 98%), conic-gradient(from 180deg at 50% 50%, #77715e, #bfb48e, #7b735f, #c9bd95, #77715e, #b5aa83, #706955, #c2b790, #77715e)',
+    shadow: '13px 15px 28px rgba(0,0,0,0.48), inset 3px 3px 7px rgba(255,255,255,0.4), inset -5px -7px 12px rgba(0,0,0,0.44)',
+    edgeInset: 5,
+    edgeBorder: '1px solid rgba(221,213,186,0.24)',
+    edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.14), inset 0 -5px 8px rgba(31,29,24,0.3)',
+    sheenOpacity: 0.26
+  }
+];
+
+const normalizeMiddleKnobStyle = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(MIDDLE_KNOB_STYLES.length - 1, numericValue));
+};
+
+const SPREAD_POINTER_STYLES = [
+  { name: 'Original Coral Pill' },
+  { name: 'Edge Coral Tab' },
+  { name: 'Fine Brass Edge' },
+  { name: 'Ivory Edge Paint' },
+  { name: 'Copper Knife Mark' },
+  { name: 'Smoked Rubber Tab' },
+  { name: 'Amber Edge Pip' },
+  { name: 'Black Cut Notch' },
+  { name: 'Coral Enamel Dash' },
+  { name: 'Brass Rivet Tick' },
+  { name: 'Double Hairline Edge' }
+];
+
+const normalizeSpreadPointerStyle = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(SPREAD_POINTER_STYLES.length - 1, numericValue));
+};
+
+const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowStyle, surfaceStyle, grooveStyle, markStyleIndex = 0, numberStyleIndex = 0, circlesEnabled = true, numbersEnabled = true, guideRings = CENTER_DIAL_GUIDE_RING_DEFAULTS, middleKnobStyle = 0, spreadPointerStyle = 0, animationStyle = 0, onDoubleClickDrift, onDoubleClickSpread }) => {
   const [isDraggingDrift, setIsDraggingDrift] = useState(false);
   const [isDraggingSpread, setIsDraggingSpread] = useState(false);
   const driftY = useRef(0), driftStart = useRef(0), spreadY = useRef(0), spreadStart = useRef(0);
@@ -2076,6 +3726,18 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
   const guardedOuterShadow = surface.outerRim ? (surface.allowOuterShadow ? outerShadow : 'none') : outerShadow;
   const spreadIndicator = surface.indicator || { width: 8, height: 24, top: '8%', background: '#e66a53', boxShadow: '0 0 10px #e66a53' };
   const indicatorPosition = spreadIndicator.bottom ? { bottom: spreadIndicator.bottom } : { top: spreadIndicator.top || '8%' };
+  const guideRingSettings = {
+    large: { ...CENTER_DIAL_GUIDE_RING_DEFAULTS.large, ...(guideRings?.large || {}) },
+    small: { ...CENTER_DIAL_GUIDE_RING_DEFAULTS.small, ...(guideRings?.small || {}) }
+  };
+  const activeSpreadPointerStyle = normalizeSpreadPointerStyle(spreadPointerStyle);
+  const activeMiddleKnobStyle = MIDDLE_KNOB_STYLES[normalizeMiddleKnobStyle(middleKnobStyle)] || MIDDLE_KNOB_STYLES[0];
+  const insetPointerTop = surface.outerRim ? rimInnerInset + 4 : Math.round(outerSize * 0.085);
+  const pointerBaseStyle = {
+    top: insetPointerTop,
+    left: '50%',
+    transform: 'translateX(-50%)'
+  };
   const dialMarkScale = outerSize / 320;
   const dialMarkCenter = outerSize / 2;
   const dialMarkOuterRadius = 140 * dialMarkScale;
@@ -2253,7 +3915,236 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
         return null;
     }
   };
+  const renderDialLabels = () => {
+    const spreadY = outerSize - (surface.outerRim ? Math.max(19.5, rimInnerInset * 0.76 - 1.5) : 30.5);
+    const driftY = dialMarkCenter + 79 * dialMarkScale;
+    return (
+      <g aria-hidden="true">
+        <defs>
+          <path
+            id="spreadLabelArc"
+            d={`M ${dialMarkCenter - 58 * dialMarkScale} ${spreadY - 1 * dialMarkScale} Q ${dialMarkCenter} ${spreadY + 13 * dialMarkScale} ${dialMarkCenter + 58 * dialMarkScale} ${spreadY - 1 * dialMarkScale}`}
+          />
+          <path
+            id="driftLabelArc"
+            d={`M ${dialMarkCenter - 43 * dialMarkScale} ${driftY - 3 * dialMarkScale} Q ${dialMarkCenter} ${driftY + 11 * dialMarkScale} ${dialMarkCenter + 43 * dialMarkScale} ${driftY - 3 * dialMarkScale}`}
+          />
+          <filter id="dialLabelPressedShadow" x="-40%" y="-40%" width="180%" height="180%">
+            <feDropShadow dx="0" dy="1" stdDeviation="0.35" floodColor="#000000" floodOpacity="0.9" />
+          </filter>
+          <filter id="driftLabelWarmShadow" x="-40%" y="-40%" width="180%" height="180%">
+            <feDropShadow dx="0" dy="1" stdDeviation="0.6" floodColor="#000000" floodOpacity="0.58" />
+            <feDropShadow dx="0" dy="0" stdDeviation="1.3" floodColor="#e66a53" floodOpacity="0.24" />
+          </filter>
+        </defs>
+        <text
+          fill="#d3ba8c"
+          fillOpacity="1"
+          fontSize={11 * dialMarkScale}
+          fontFamily="Arial, sans-serif"
+          fontWeight="900"
+          letterSpacing={4.2 * dialMarkScale}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          filter="url(#dialLabelPressedShadow)"
+          style={{ paintOrder: 'stroke', stroke: 'rgba(38,22,12,0.26)', strokeWidth: 0.65 * dialMarkScale }}
+        >
+          <textPath href="#spreadLabelArc" startOffset="50%">SPREAD</textPath>
+        </text>
+        <text
+          fill="#e66a53"
+          fillOpacity="0.92"
+          fontSize={10.4 * dialMarkScale}
+          fontFamily="Arial, sans-serif"
+          fontWeight="900"
+          letterSpacing={3.2 * dialMarkScale}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          filter="url(#driftLabelWarmShadow)"
+          style={{ paintOrder: 'stroke', stroke: 'rgba(30,12,8,0.22)', strokeWidth: 0.5 * dialMarkScale }}
+        >
+          <textPath href="#driftLabelArc" startOffset="50%">DRIFT</textPath>
+        </text>
+      </g>
+    );
+  };
+  const renderSpreadPointer = () => {
+    if (activeSpreadPointerStyle === 0) {
+      return (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 rounded-full"
+          style={{
+            ...indicatorPosition,
+            width: spreadIndicator.width,
+            height: spreadIndicator.height,
+            background: spreadIndicator.background,
+            boxShadow: spreadIndicator.boxShadow,
+            opacity: spreadIndicator.opacity ?? 1,
+            border: spreadIndicator.border
+          }}
+        />
+      );
+    }
+
+    switch (activeSpreadPointerStyle) {
+      case 1:
+        return (
+          <div
+            className="absolute rounded-full"
+            style={{
+              ...pointerBaseStyle,
+              width: 10,
+              height: 24,
+              background: 'linear-gradient(90deg, #bd4536 0%, #f06b55 48%, #8d2d25 100%)',
+              border: '1px solid rgba(255,170,150,0.24)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.58), inset 0 1px 1px rgba(255,210,190,0.28), 0 0 7px rgba(230,106,83,0.42)'
+            }}
+          />
+        );
+      case 2:
+        return (
+          <div
+            className="absolute rounded-full"
+            style={{
+              ...pointerBaseStyle,
+              width: 5,
+              height: 25,
+              background: 'linear-gradient(90deg, #6a4b1e, #d8b24f 48%, #74501f)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.56), inset 1px 0 1px rgba(255,235,170,0.38), 0 0 5px rgba(212,175,55,0.2)'
+            }}
+          />
+        );
+      case 3:
+        return (
+          <div
+            className="absolute rounded-full"
+            style={{
+              ...pointerBaseStyle,
+              width: 6,
+              height: 23,
+              background: 'linear-gradient(90deg, #c8b884, #f4ead6 52%, #a99460)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.48), inset 0 -1px 1px rgba(90,66,42,0.26)',
+              opacity: 0.86
+            }}
+          />
+        );
+      case 4:
+        return (
+          <div
+            className="absolute rounded-full"
+            style={{
+              ...pointerBaseStyle,
+              width: 7,
+              height: 27,
+              background: 'linear-gradient(90deg, #67301f, #c87951 48%, #5c251b)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.58), inset 1px 0 1px rgba(255,202,160,0.2), 0 0 4px rgba(198,105,72,0.2)'
+            }}
+          />
+        );
+      case 5:
+        return (
+          <div
+            className="absolute rounded-[5px]"
+            style={{
+              ...pointerBaseStyle,
+              width: 12,
+              height: 22,
+              background: 'linear-gradient(180deg, rgba(41,39,35,0.98), rgba(6,6,5,0.96))',
+              border: '1px solid rgba(255,255,255,0.065)',
+              boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.09), inset 0 -3px 5px rgba(0,0,0,0.86), 0 1px 2px rgba(0,0,0,0.56)'
+            }}
+          />
+        );
+      case 6:
+        return (
+          <div
+            className="absolute rounded-full"
+            style={{
+              ...pointerBaseStyle,
+              width: 11,
+              height: 11,
+              top: insetPointerTop + 7,
+              background: 'radial-gradient(circle at 35% 30%, #ffe0a0 0%, #c89634 38%, #633116 78%, #120906 100%)',
+              border: '1px solid rgba(255,218,150,0.34)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.58), inset 0 1px 1px rgba(255,255,255,0.36), 0 0 6px rgba(212,175,55,0.24)'
+            }}
+          />
+        );
+      case 7:
+        return (
+          <div
+            className="absolute rounded-full"
+            style={{
+              ...pointerBaseStyle,
+              width: 9,
+              height: 23,
+              background: 'linear-gradient(180deg, #020202, #151311 56%, #030303)',
+              border: '1px solid rgba(255,255,255,0.035)',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.96), inset 0 -1px 1px rgba(255,255,255,0.06), 0 1px 1px rgba(255,255,255,0.035)'
+            }}
+          />
+        );
+      case 8:
+        return (
+          <div
+            className="absolute rounded-full"
+            style={{
+              ...pointerBaseStyle,
+              width: 18,
+              height: 7,
+              top: insetPointerTop + 7,
+              background: 'linear-gradient(180deg, #ff9b86, #e66a53 58%, #8e2c24)',
+              border: '1px solid rgba(255,180,160,0.2)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.58), inset 0 1px 1px rgba(255,220,200,0.25), 0 0 6px rgba(230,106,83,0.36)'
+            }}
+          />
+        );
+      case 9:
+        return (
+          <div
+            className="absolute flex items-center justify-center rounded-full"
+            style={{
+              ...pointerBaseStyle,
+              width: 14,
+              height: 14,
+              top: insetPointerTop + 5,
+              background: 'radial-gradient(circle at 35% 30%, #ddc074, #7d5b23 55%, #17100a 100%)',
+              border: '1px solid rgba(237,211,154,0.28)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,240,190,0.25)'
+            }}
+          >
+            <span className="h-[2px] w-[8px] rounded-full bg-[#120c07]/70" />
+          </div>
+        );
+      case 10:
+        return (
+          <div className="absolute" style={{ ...pointerBaseStyle, width: 14, height: 24 }}>
+            <span className="absolute left-[3px] top-0 h-full w-[2px] rounded-full bg-[#d4af37]/90 shadow-[0_1px_2px_rgba(0,0,0,0.52)]" />
+            <span className="absolute right-[3px] top-0 h-full w-[2px] rounded-full bg-[#e66a53]/82 shadow-[0_0_4px_rgba(230,106,83,0.28),0_1px_2px_rgba(0,0,0,0.52)]" />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
   const renderSurfaceDecoration = () => {
+    const renderGuideRing = (ringKey, fallbackInset, borderColor) => {
+      const ring = guideRingSettings[ringKey];
+      if (!ring?.enabled) return null;
+      const fallbackSize = outerSize - fallbackInset * 2;
+      const ringSize = Math.max(40, Math.min(outerSize, Number(ring.size) || fallbackSize));
+      const ringInset = (outerSize - ringSize) / 2;
+      return (
+        <div
+          className="absolute rounded-full border pointer-events-none"
+          style={{
+            inset: ringInset,
+            borderColor
+          }}
+        />
+      );
+    };
+
     switch (surface.decoration) {
       case 'concentric-ribs':
         return (
@@ -2338,8 +4229,8 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
                 mask: 'radial-gradient(circle, transparent 0 77%, #000 78% 82%, transparent 83%)'
               }}
             />
-            <div className="absolute inset-[34px] rounded-full border pointer-events-none" style={{ borderColor: surface.softNocturneRings ? 'rgba(212,175,55,0.2)' : 'rgba(212,175,55,0.25)' }} />
-            <div className="absolute inset-[76px] rounded-full border pointer-events-none" style={{ borderColor: surface.softNocturneRings ? 'rgba(212,175,55,0.16)' : 'rgba(212,175,55,0.18)' }} />
+            {renderGuideRing('large', 34, surface.softNocturneRings ? 'rgba(212,175,55,0.2)' : 'rgba(212,175,55,0.25)')}
+            {renderGuideRing('small', 76, surface.softNocturneRings ? 'rgba(212,175,55,0.16)' : 'rgba(212,175,55,0.18)')}
             <div className="absolute inset-[104px] rounded-full border pointer-events-none" style={{ borderColor: surface.softNocturneRings ? 'rgba(212,175,55,0.11)' : 'rgba(212,175,55,0.12)' }} />
           </>
         );
@@ -2425,6 +4316,12 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
     }
   };
 
+  const originalMiddleKnobBackground = 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 20%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #a88842 0deg, #edd39a 45deg, #a88842 90deg, #edd39a 135deg, #a88842 180deg, #edd39a 225deg, #a88842 270deg, #edd39a 315deg, #a88842 360deg)';
+  const originalMiddleKnobShadow = '15px 15px 30px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.9), inset -4px -4px 8px rgba(0,0,0,0.6)';
+  const middleKnobBackground = activeMiddleKnobStyle.background || originalMiddleKnobBackground;
+  const middleKnobShadow = activeMiddleKnobStyle.shadow || originalMiddleKnobShadow;
+  const middleKnobIsOriginal = !activeMiddleKnobStyle.background;
+
   return (
     <div className="relative flex justify-center items-center z-20" style={{ width: 340, height: 340 }}>
       <WobblyAura drift={drift} spread={spread} active={auraActive} rate={rate} animationStyle={animationStyle} />
@@ -2456,32 +4353,49 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, shadowS
         <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${outerSize} ${outerSize}`}>
           {renderDialMarkStyle()}
           {renderDialNumberStyle()}
+          {renderDialLabels()}
         </svg>
         <div className="absolute inset-0 transition-transform duration-75 pointer-events-none" style={{ transform: `rotate(${spreadRot}deg)` }}>
-          <div
-            className="absolute left-1/2 -translate-x-1/2 rounded-full"
-            style={{
-              ...indicatorPosition,
-              width: spreadIndicator.width,
-              height: spreadIndicator.height,
-              background: spreadIndicator.background,
-              boxShadow: spreadIndicator.boxShadow,
-              opacity: spreadIndicator.opacity ?? 1,
-              border: spreadIndicator.border
-            }}
-          />
+          {renderSpreadPointer()}
         </div>
-        <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center hover:brightness-110 transition-all z-20" style={{ width: 140, height: 140, background: 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 20%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #a88842 0deg, #edd39a 45deg, #a88842 90deg, #edd39a 135deg, #a88842 180deg, #edd39a 225deg, #a88842 270deg, #edd39a 315deg, #a88842 360deg)', boxShadow: '15px 15px 30px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.9), inset -4px -4px 8px rgba(0,0,0,0.6)' }}
+        <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center hover:brightness-110 transition-all z-20" style={{ width: 140, height: 140, background: middleKnobBackground, boxShadow: middleKnobShadow }}
           onPointerDown={handleDriftDown} onPointerMove={handleDriftMove} onPointerUp={handleDriftUp} onPointerCancel={handleDriftUp} onDoubleClick={onDoubleClickDrift}>
-          <div className="absolute inset-2 rounded-full pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(255,255,255,0.2) 100%)', boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.8), 0 1px 1px rgba(255,255,255,0.5)' }} />
+          {middleKnobIsOriginal && (
+            <div className="absolute inset-2 rounded-full pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(255,255,255,0.2) 100%)', boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.8), 0 1px 1px rgba(255,255,255,0.5)' }} />
+          )}
+          {!middleKnobIsOriginal && (
+            <>
+              <div
+                className="absolute rounded-full pointer-events-none"
+                style={{
+                  inset: activeMiddleKnobStyle.edgeInset ?? 5,
+                  border: activeMiddleKnobStyle.edgeBorder,
+                  boxShadow: activeMiddleKnobStyle.edgeShadow
+                }}
+              />
+              {activeMiddleKnobStyle.innerInset && (
+                <div
+                  className="absolute rounded-full pointer-events-none"
+                  style={{
+                    inset: activeMiddleKnobStyle.innerInset,
+                    border: '1px solid rgba(42,31,15,0.22)',
+                    opacity: activeMiddleKnobStyle.innerOpacity ?? 0.24
+                  }}
+                />
+              )}
+              <div
+                className="absolute inset-[13px] rounded-full pointer-events-none"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.12), rgba(0,0,0,0.13))',
+                  opacity: activeMiddleKnobStyle.sheenOpacity ?? 0.34
+                }}
+              />
+            </>
+          )}
           <div className="absolute inset-0 transition-transform duration-75 pointer-events-none" style={{ transform: `rotate(${driftRot}deg)` }}>
             <div className="absolute top-[12%] left-1/2 -translate-x-1/2 w-1.5 h-7 bg-[#1a1a1a] rounded-full opacity-95 shadow-[inset_0_2px_4px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.4)]" />
           </div>
         </div>
-      </div>
-      <div className="absolute -bottom-8 text-center pointer-events-none">
-        <div className="text-[11px] font-black tracking-[0.3em] text-[#2d2c2b]">DRIFT CORE</div>
-        <div className="text-[9px] font-bold tracking-[0.2em] text-[#f4ead6] drop-shadow-sm mt-1">SPREAD MATRIX</div>
       </div>
     </div>
   );
@@ -2561,7 +4475,6 @@ const DesignGridOverlay = ({ mode }) => {
 //   drift        (0-100, maps to detune 0-1)
 //   spread       (0-100, maps to driftSpread 0-1)
 //   character    (0-100, maps to character 0-1)    — labeled "Filter"
-//   charFilter   (0 or 1)                          — 6dB / 12dB toggle
 //   sweeten      (0-100, maps to sweeten 0-1)
 //   biasHF       (0-100, maps to biasHF 0-1)       — labeled "Sat"
 //   noise        (0-100, maps to noise 0-1)
@@ -2577,7 +4490,13 @@ const DesignGridOverlay = ({ mode }) => {
 //   power        (true/false, UI-only bypass)
 //
 
-const SHAPES = ['Sine', 'Triangle', 'Drift'];
+const SHAPES = ['Sine', 'Triangle', 'Square'];
+const SHAPE_BUTTON_SYMBOLS = ['∿', '△', '□'];
+const SHAPE_BUTTON_SYMBOL_STYLES = [
+  { fontSize: 31, fontWeight: 400, fontFamily: 'Georgia, serif', transform: 'translateY(-5px) scaleX(1.14)' },
+  { fontSize: 19, fontWeight: 400, fontFamily: 'Arial, sans-serif', transform: 'translateY(-1px) scaleX(1.02)' },
+  { fontSize: 27, fontWeight: 700, fontFamily: 'Arial, sans-serif', transform: 'translateY(-3px)' }
+];
 const SYNC_DIVS = ['4/1', '2/1', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/4T', '1/8T', '1/16T', '1/4D', '1/8D', '1/16D'];
 const DEMO_PRESETS = ['Subtle Warmth', 'Vinyl Drift', 'Tape Machine', 'Broken Cassette', 'Chorus Width', 'Slow Swirl', 'Synced Wobble', 'Sweet Dream', 'Subtle Detune', 'Broken Radio', 'Drum Saturator', 'Lush & Full'];
 
@@ -2636,6 +4555,9 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
   const label = (m, active, extra = '') => (
     <span className={`text-[8px] font-black tracking-[0.18em] uppercase transition-colors ${extra}`} style={{ color: active ? tone[m].color : '#8a7e6b' }}>{m}</span>
   );
+  const unstableLedFlicker = (m) => power && mode === m && m === 'unstable' ? 'anim-unstable-led-flicker' : '';
+  const vintageLedFlicker = (m) => power && mode === m && m === 'vintage' ? 'anim-vintage-led-flicker' : '';
+  const modeLedFlicker = (m) => `${unstableLedFlicker(m)} ${vintageLedFlicker(m)}`;
   const FlavorLabel = () => (
     <div
       className="absolute left-[calc(50%+3px)] top-[-28px] -translate-x-1/2 text-[11px] font-black uppercase tracking-[0.14em]"
@@ -2724,7 +4646,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
                   ${power && mode === m ? 'bg-[#111] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.9)] scale-95' : 'bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.1)]'}
                 `}>
                   <div 
-                    className={`w-3 h-[3px] rounded-full ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
+                    className={`w-3 h-[3px] rounded-full ${modeLedFlicker(m)} ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
                     style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
                   />
                 </button>
@@ -2878,7 +4800,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
                   ${power && mode === m ? 'bg-[#111] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.9)] scale-95' : 'bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.1)]'}
                 `}>
                   <div 
-                    className={`w-3 h-[3px] rounded-full ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
+                    className={`w-3 h-[3px] rounded-full ${modeLedFlicker(m)} ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
                     style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
                   />
                 </button>
@@ -2905,7 +4827,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
                   ${power && mode === m ? 'bg-[#111] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.9)] scale-95' : 'bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.1)]'}
                 `}>
                   <div 
-                    className={`w-3 h-[3px] rounded-full ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
+                    className={`w-3 h-[3px] rounded-full ${modeLedFlicker(m)} ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
                     style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
                   />
                 </button>
@@ -2932,7 +4854,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
                   ${power && mode === m ? 'bg-[#111] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.9)] scale-95' : 'bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.1)]'}
                 `}>
                   <div 
-                    className={`w-3 h-[3px] rounded-full ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
+                    className={`w-3 h-[3px] rounded-full ${modeLedFlicker(m)} ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
                     style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
                   />
                 </button>
@@ -3086,87 +5008,6 @@ const FRAMES = [
     }
   }
 ];
-
-const FILTER_SWITCH_NAMES = [
-  'Original Pill',
-  'Metal Toggle',
-  'Studio Push',
-  'Bakelite Slider',
-  'LED Tactile',
-  'Minimalist Engraved',
-  'Brass Rocker',
-  'Japandi Wood'
-];
-
-const FilterSwitchEngine = ({ value, onChange, styleIndex }) => {
-  const is12 = value === 1;
-  const label = is12 ? '12dB' : '6dB';
-
-  switch (styleIndex) {
-    case 0:
-      return (
-        <button onClick={() => onChange(is12 ? 0 : 1)} className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/30 text-[#edd39a] border border-white/10 hover:bg-black/50 transition-colors shadow-sm">
-          {label}
-        </button>
-      );
-    case 1:
-      return (
-        <div className="flex flex-col items-center gap-1 cursor-pointer group" onClick={() => onChange(is12 ? 0 : 1)}>
-          <div className="w-3.5 h-6 rounded-sm bg-gradient-to-b from-[#888] to-[#444] shadow-[inset_0_1px_2px_rgba(255,255,255,0.5),2px_2px_4px_rgba(0,0,0,0.8)] relative flex justify-center border border-[#222]">
-            <div className={`w-2 h-3.5 rounded-full bg-gradient-to-b from-[#ddd] to-[#999] absolute transition-all duration-150 shadow-[0_2px_3px_rgba(0,0,0,0.6)] ${is12 ? 'top-[1px]' : 'bottom-[1px]'}`} />
-          </div>
-          <span className="text-[7px] font-bold text-[#edd39a] drop-shadow-md">{label}</span>
-        </div>
-      );
-    case 2:
-      return (
-        <button onClick={() => onChange(is12 ? 0 : 1)} className="w-7 h-7 rounded-full bg-[#1a1a1a] border-2 border-[#333] shadow-[0_3px_6px_rgba(0,0,0,0.8)] relative flex justify-center items-center overflow-hidden active:scale-95 transition-transform group">
-          <div className={`absolute inset-1 rounded-full transition-colors duration-200 ${is12 ? 'bg-[#e66a53] shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_0_8px_#e66a53]' : 'bg-[#2a2a2a] shadow-[inset_0_2px_4px_rgba(0,0,0,0.9)]'}`} />
-          <span className="relative z-10 text-[7px] font-black tracking-tighter text-white drop-shadow-md">{label}</span>
-        </button>
-      );
-    case 3:
-      return (
-        <div className="flex flex-col items-center cursor-pointer group" onClick={() => onChange(is12 ? 0 : 1)}>
-          <div className="w-7 h-3.5 rounded bg-[#1a110b] border border-black/80 shadow-[inset_0_2px_4px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.1)] relative">
-            <div className={`w-3.5 h-full rounded-[2px] bg-gradient-to-b from-[#4a2e22] to-[#2c1a12] absolute top-0 transition-all duration-200 border-t border-white/20 shadow-[1px_0_3px_rgba(0,0,0,0.9)] ${is12 ? 'right-0' : 'left-0'}`} />
-          </div>
-          <span className="text-[7px] font-bold text-[#edd39a] mt-0.5">{label}</span>
-        </div>
-      );
-    case 4:
-      return (
-        <button onClick={() => onChange(is12 ? 0 : 1)} className="w-6 h-6 rounded bg-gradient-to-b from-[#333] to-[#111] border border-[#111] shadow-[2px_2px_5px_rgba(0,0,0,0.8),inset_1px_1px_2px_rgba(255,255,255,0.1)] flex flex-col justify-center gap-0.5 items-center active:scale-95 transition-transform group">
-          <div className={`w-1.5 h-1.5 rounded-full ${is12 ? 'bg-[#ff4444] shadow-[0_0_6px_#ff4444]' : 'bg-[#ffaa00] shadow-[0_0_6px_#ffaa00]'}`} />
-          <span className="text-[6px] font-bold text-[#aaa]">{label}</span>
-        </button>
-      );
-    case 5:
-      return (
-        <button onClick={() => onChange(is12 ? 0 : 1)} className="px-2 py-1 bg-gradient-to-br from-[#dfd5c5] to-[#bca68e] rounded-sm shadow-[1px_1px_4px_rgba(0,0,0,0.5),inset_1px_1px_2px_rgba(255,255,255,0.6)] border border-[#9a8670] active:shadow-[inset_1px_1px_4px_rgba(0,0,0,0.5)] transition-all">
-          <span className="text-[8px] font-black text-[#4a3e2e] mix-blend-multiply opacity-80">{label}</span>
-        </button>
-      );
-    case 6:
-      return (
-        <div className="w-7 h-5 rounded-sm bg-[#111] p-[1.5px] shadow-[0_2px_5px_rgba(0,0,0,0.8)] cursor-pointer group" onClick={() => onChange(is12 ? 0 : 1)}>
-          <div className={`w-full h-full rounded-[1px] bg-gradient-to-b from-[#ffe082] to-[#c79121] shadow-[inset_0_1px_2px_rgba(255,255,255,0.8),inset_0_-1px_2px_rgba(0,0,0,0.5)] border border-[#6a4c0a] flex items-center justify-center transition-transform duration-150 ${is12 ? 'rotate-x-12' : '-rotate-x-12'}`} style={{ perspective: '100px' }}>
-             <span className="text-[6px] font-black text-[#4a2e05] opacity-80">{label}</span>
-          </div>
-        </div>
-      );
-    case 7:
-      return (
-        <div className="flex items-center gap-1.5 cursor-pointer group" onClick={() => onChange(is12 ? 0 : 1)}>
-           <div className={`w-4 h-4 rounded-full bg-gradient-to-br from-[#d4b998] to-[#b89873] border border-[#8a6e51] shadow-[2px_2px_5px_rgba(0,0,0,0.5),inset_1px_1px_3px_rgba(255,255,255,0.5)] flex justify-center items-center transition-transform duration-200 ${is12 ? 'rotate-90' : 'rotate-0'}`}>
-             <div className="w-2.5 h-0.5 bg-[#4a3521] shadow-inner rounded-full" />
-           </div>
-           <span className="text-[7px] font-bold text-[#e66a53] tracking-wider drop-shadow-sm">{label}</span>
-        </div>
-      );
-    default: return null;
-  }
-};
 
 const IO_SCALE_NAMES = [
   "None", 
@@ -3347,10 +5188,13 @@ export default function App() {
   const [power, setPower] = useState(() => initial('power', CODE_DEFAULT_DESIGN.power));
   const [input, setInput] = useState(() => initial('input', CODE_DEFAULT_DESIGN.input));
   const [output, setOutput] = useState(() => initial('output', CODE_DEFAULT_DESIGN.output));
+  const [ioLinkStyle, setIoLinkStyle] = useState(() => initial('ioLinkStyle', CODE_DEFAULT_DESIGN.ioLinkStyle));
+  const [ioLinked, setIoLinked] = useState(() => initial('ioLinked', CODE_DEFAULT_DESIGN.ioLinked));
+  const inputValueRef = useRef(input);
+  const outputValueRef = useRef(output);
   const [drift, setDrift] = useState(() => initial('drift', CODE_DEFAULT_DESIGN.drift));
   const [spread, setSpread] = useState(() => initial('spread', CODE_DEFAULT_DESIGN.spread));
   const [character, setCharacter] = useState(() => initial('character', CODE_DEFAULT_DESIGN.character));
-  const [charFilter, setCharFilter] = useState(() => initial('charFilter', CODE_DEFAULT_DESIGN.charFilter));
   const [sweeten, setSweeten] = useState(() => initial('sweeten', CODE_DEFAULT_DESIGN.sweeten));
   const [biasHF, setBiasHF] = useState(() => initial('biasHF', CODE_DEFAULT_DESIGN.biasHF));
   const [noise, setNoise] = useState(() => initial('noise', CODE_DEFAULT_DESIGN.noise));
@@ -3368,13 +5212,16 @@ export default function App() {
   const [modeStyle, setModeStyle] = useState(() => initial('modeStyle', CODE_DEFAULT_DESIGN.modeStyle));
   const [knobStyle, setKnobStyle] = useState(() => initial('knobStyle', CODE_DEFAULT_DESIGN.knobStyle));
   const [centerDialStyle, setCenterDialStyle] = useState(() => initial('centerDialStyle', CODE_DEFAULT_DESIGN.centerDialStyle));
+  const [middleKnobStyle, setMiddleKnobStyle] = useState(() => normalizeMiddleKnobStyle(initial('middleKnobStyle', CODE_DEFAULT_DESIGN.middleKnobStyle)));
   const [centerDialSurfaceStyle, setCenterDialSurfaceStyle] = useState(() => initial('centerDialSurfaceStyle', CODE_DEFAULT_DESIGN.centerDialSurfaceStyle));
   const [centerDialGrooveStyle, setCenterDialGrooveStyle] = useState(() => initial('centerDialGrooveStyle', CODE_DEFAULT_DESIGN.centerDialGrooveStyle));
   const [centerDialMarkStyle, setCenterDialMarkStyle] = useState(() => initial('centerDialMarkStyle', CODE_DEFAULT_DESIGN.centerDialMarkStyle));
   const [centerDialNumberStyle, setCenterDialNumberStyle] = useState(() => initial('centerDialNumberStyle', CODE_DEFAULT_DESIGN.centerDialNumberStyle));
   const [centerDialCirclesEnabled, setCenterDialCirclesEnabled] = useState(() => initial('centerDialCirclesEnabled', CODE_DEFAULT_DESIGN.centerDialCirclesEnabled));
   const [centerDialNumbersEnabled, setCenterDialNumbersEnabled] = useState(() => initial('centerDialNumbersEnabled', CODE_DEFAULT_DESIGN.centerDialNumbersEnabled));
-  const [driftAnimation, setDriftAnimation] = useState(() => initial('driftAnimation', CODE_DEFAULT_DESIGN.driftAnimation));
+  const [centerDialGuideRings, setCenterDialGuideRings] = useState(() => initial('centerDialGuideRings', CENTER_DIAL_GUIDE_RING_DEFAULTS));
+  const [spreadPointerStyle, setSpreadPointerStyle] = useState(() => normalizeSpreadPointerStyle(initial('spreadPointerStyle', CODE_DEFAULT_DESIGN.spreadPointerStyle)));
+  const [driftAnimation, setDriftAnimation] = useState(() => normalizeDriftAnimationStyle(initial('driftAnimation', CODE_DEFAULT_DESIGN.driftAnimation)));
   const [bgIndex, setBgIndex] = useState(() => initial('bgIndex', CODE_DEFAULT_DESIGN.bgIndex));
   const [showOutputs, setShowOutputs] = useState(() => initial('showOutputs', CODE_DEFAULT_DESIGN.showOutputs));
   const [parallelCables, setParallelCables] = useState(() => initial('parallelCables', CODE_DEFAULT_DESIGN.parallelCables));
@@ -3385,6 +5232,7 @@ export default function App() {
   const [faceTextureOpacity, setFaceTextureOpacity] = useState(() => initial('faceTextureOpacity', CODE_DEFAULT_DESIGN.faceTextureOpacity));
   const [panelFaceColor, setPanelFaceColor] = useState(() => initial('panelFaceColor', CODE_DEFAULT_DESIGN.panelFaceColor));
   const [useDefaultPanelFaceColor, setUseDefaultPanelFaceColor] = useState(() => initial('useDefaultPanelFaceColor', CODE_DEFAULT_DESIGN.useDefaultPanelFaceColor));
+  const [brandTextStyle, setBrandTextStyle] = useState(() => normalizeBrandTextStyle(initial('brandTextStyle', CODE_DEFAULT_DESIGN.brandTextStyle)));
   const [screwsEnabled, setScrewsEnabled] = useState(() => initial('screwsEnabled', CODE_DEFAULT_DESIGN.screwsEnabled));
   const [screwStyle, setScrewStyle] = useState(() => initial('screwStyle', CODE_DEFAULT_DESIGN.screwStyle));
   const [lfoImageState, setLfoImageState] = useState(() => initial('lfoImageState', CODE_DEFAULT_DESIGN.lfoImageState));
@@ -3395,7 +5243,6 @@ export default function App() {
   const [selectedCircle, setSelectedCircle] = useState(null);
   const [auraShapes, setAuraShapes] = useState(() => initial('auraShapes', createDefaultAuraShapes()));
   const [selectedAuraShape, setSelectedAuraShape] = useState(null);
-  const [filterSwitchStyle, setFilterSwitchStyle] = useState(() => initial('filterSwitchStyle', CODE_DEFAULT_DESIGN.filterSwitchStyle));
   const [ioScaleStyle, setIoScaleStyle] = useState(() => initial('ioScaleStyle', CODE_DEFAULT_DESIGN.ioScaleStyle));
   const [bottomSectionStyle, setBottomSectionStyle] = useState(() => initial('bottomSectionStyle', CODE_DEFAULT_DESIGN.bottomSectionStyle));
   const [defaultSaveMessage, setDefaultSaveMessage] = useState('');
@@ -3410,6 +5257,7 @@ export default function App() {
   );
   const selectedFaceTexture = FACE_TEXTURES[faceTextureStyle] || FACE_TEXTURES[0];
   const activePanelFaceColor = useDefaultPanelFaceColor ? DEFAULT_PANEL_FACE_COLOR : panelFaceColor;
+  const activeBrandTextStyle = BRAND_TEXT_STYLES[normalizeBrandTextStyle(brandTextStyle)] || BRAND_TEXT_STYLES[0];
   const lfoImageSettings = { ...LFO_IMAGE_PRESET, ...lfoImageState };
 
   const updateSakuraImage = (id, patch) => {
@@ -3421,6 +5269,17 @@ export default function App() {
   };
   const updateLfoImage = (patch) => {
     setLfoImageState(current => ({ ...LFO_IMAGE_PRESET, ...current, ...patch }));
+  };
+  const updateCenterDialGuideRing = (ringKey, patch) => {
+    setCenterDialGuideRings(current => ({
+      ...CENTER_DIAL_GUIDE_RING_DEFAULTS,
+      ...current,
+      [ringKey]: {
+        ...CENTER_DIAL_GUIDE_RING_DEFAULTS[ringKey],
+        ...(current?.[ringKey] || {}),
+        ...patch
+      }
+    }));
   };
   const updateDecorativeCircle = (id, patch) => {
     setDecorativeCircles(current => ({
@@ -3441,6 +5300,46 @@ export default function App() {
       const merged = { ...DECORATIVE_CIRCLE_PRESETS, ...current };
       return Object.fromEntries(Object.entries(merged).map(([id, circle]) => [id, { ...circle, ...patch }]));
     });
+  };
+
+  const clampControlValue = (value) => Math.max(0, Math.min(100, value));
+  const handleInputChange = (nextInput) => {
+    const previousInput = inputValueRef.current;
+    const inputDelta = nextInput - previousInput;
+    inputValueRef.current = nextInput;
+    setInput(nextInput);
+    if (ioLinked && ioLinkStyle !== 'none') {
+      setOutput(currentOutput => {
+        const nextOutput = clampControlValue(currentOutput - inputDelta);
+        outputValueRef.current = nextOutput;
+        return nextOutput;
+      });
+    }
+  };
+  const handleOutputChange = (nextOutput) => {
+    outputValueRef.current = nextOutput;
+    setOutput(nextOutput);
+  };
+  const handleInputReset = () => {
+    const previousInput = inputValueRef.current;
+    const inputDelta = 50 - previousInput;
+    inputValueRef.current = 50;
+    setInput(50);
+    if (ioLinked && ioLinkStyle !== 'none') {
+      setOutput(currentOutput => {
+        const nextOutput = clampControlValue(currentOutput - inputDelta);
+        outputValueRef.current = nextOutput;
+        return nextOutput;
+      });
+    }
+  };
+  const handleOutputReset = () => {
+    outputValueRef.current = 50;
+    setOutput(50);
+  };
+  const handleIOLinkStyleChange = (nextStyle) => {
+    setIoLinkStyle(nextStyle);
+    if (nextStyle === 'none') setIoLinked(false);
   };
 
   const addAuraShape = () => {
@@ -3487,10 +5386,11 @@ export default function App() {
       power,
       input,
       output,
+      ioLinkStyle,
+      ioLinked,
       drift,
       spread,
       character,
-      charFilter,
       sweeten,
       biasHF,
       noise,
@@ -3508,12 +5408,15 @@ export default function App() {
       modeStyle,
       knobStyle,
       centerDialStyle,
+      middleKnobStyle,
       centerDialSurfaceStyle,
       centerDialGrooveStyle,
       centerDialMarkStyle,
       centerDialNumberStyle,
       centerDialCirclesEnabled,
       centerDialNumbersEnabled,
+      centerDialGuideRings,
+      spreadPointerStyle,
       driftAnimation,
       bgIndex,
       showOutputs,
@@ -3525,6 +5428,7 @@ export default function App() {
       faceTextureOpacity,
       panelFaceColor,
       useDefaultPanelFaceColor,
+      brandTextStyle,
       screwsEnabled,
       screwStyle,
       lfoImageState,
@@ -3532,7 +5436,6 @@ export default function App() {
       decorativeCircles,
       hardwarePositions,
       auraShapes,
-      filterSwitchStyle,
       ioScaleStyle,
       bottomSectionStyle
     });
@@ -3656,12 +5559,12 @@ export default function App() {
             </div>
 
             <div className="absolute top-[6%] right-[10%] z-10 flex flex-col items-center">
-              <div className="text-[12px] font-black tracking-[0.2em] text-[#e66a53] mb-4 drop-shadow-sm">POLARIS DSP</div>
+              <div className="text-[12px] font-black tracking-[0.2em] mb-4 drop-shadow-sm" style={{ color: activeBrandTextStyle.polarisColor }}>POLARIS DSP</div>
               <div className="relative top-[5px] flex flex-col items-center">
                 <button onClick={() => setPower(!power)} className="relative w-8 h-14 bg-[#111] rounded-md border border-white/10 shadow-[inset_0_2px_5px_rgba(0,0,0,0.8),10px_10px_20px_rgba(0,0,0,0.4)] flex justify-center items-center">
                   <div className="w-3 h-8 rounded-full bg-gradient-to-b from-[#edd39a] to-[#a88842] shadow-[0_5px_10px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(255,255,255,0.9)] transition-transform duration-200" style={{ transform: power ? 'translateY(-8px)' : 'translateY(8px)' }} />
                 </button>
-                <div className="mt-3 text-[9px] font-black tracking-[0.24em] text-[#3a352d]/70 drop-shadow-[0_1px_0_rgba(255,255,255,0.18)]">POWER</div>
+                <div className="mt-3 text-[9px] font-black tracking-[0.24em]" style={{ color: activeBrandTextStyle.powerColor, textShadow: activeBrandTextStyle.powerShadow }}>POWER</div>
               </div>
             </div>
 
@@ -3675,14 +5578,24 @@ export default function App() {
               onUpdate={updateHardwarePosition}
               stageRef={pluginStageRef}
             >
-              <div className="flex gap-[68px]">
+              <div className="flex items-start gap-[18px]">
                 <div className="relative">
                   <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
-                  <MatteKnob label="Input" value={input} onChange={setInput} onDoubleClick={() => setInput(50)} size={55} />
+                  <MatteKnob label="Input" value={input} onChange={handleInputChange} onDoubleClick={handleInputReset} size={55} />
+                </div>
+                <div className="mt-[13px] flex flex-col items-center">
+                  <IOLinkButton
+                    styleKey={ioLinkStyle}
+                    active={ioLinked && ioLinkStyle !== 'none'}
+                    onToggle={() => {
+                      if (ioLinkStyle === 'none') return;
+                      setIoLinked(!ioLinked);
+                    }}
+                  />
                 </div>
                 <div className="relative">
                   <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
-                  <MatteKnob label="Output" value={output} onChange={setOutput} onDoubleClick={() => setOutput(50)} size={55} />
+                  <MatteKnob label="Output" value={output} onChange={handleOutputChange} onDoubleClick={handleOutputReset} size={55} />
                 </div>
               </div>
             </EditableHardwareWrapper>
@@ -3699,6 +5612,9 @@ export default function App() {
                 numberStyleIndex={centerDialNumberStyle}
                 circlesEnabled={centerDialCirclesEnabled}
                 numbersEnabled={centerDialNumbersEnabled}
+                guideRings={centerDialGuideRings}
+                middleKnobStyle={middleKnobStyle}
+                spreadPointerStyle={spreadPointerStyle}
                 animationStyle={driftAnimation}
               />
             </div>
@@ -3727,9 +5643,6 @@ export default function App() {
               </div>
               <div className="relative">
                 <MatteKnob label="Filter" value={character} onChange={setCharacter} onDoubleClick={() => setCharacter(0)} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
-                <div className="absolute -top-3 -right-6 z-40">
-                  <FilterSwitchEngine value={charFilter} onChange={setCharFilter} styleIndex={filterSwitchStyle} />
-                </div>
               </div>
             </div>
 
@@ -3747,7 +5660,7 @@ export default function App() {
                 <div className="relative w-[148px] h-9 rounded-lg bg-[#2d2c2b]/78 border border-white/15 shadow-[8px_10px_18px_rgba(0,0,0,0.28),inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-md">
                   <select
                     value={driftAnimation}
-                    onChange={e => setDriftAnimation(Number(e.target.value))}
+                    onChange={e => setDriftAnimation(normalizeDriftAnimationStyle(e.target.value))}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   >
                     {DRIFT_ANIMATION_STYLES.map((name, i) => <option key={i} value={i} className="bg-[#2d2c2b] text-[#edd39a]">{name}</option>)}
@@ -3772,7 +5685,7 @@ export default function App() {
               stageRef={pluginStageRef}
             >
               <div className="flex flex-col items-center gap-3">
-                <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} shadingStyle={KNOB_STYLES[knobStyle]} labelOffsetY={5} />
+                <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} shadingStyle={KNOB_STYLES[knobStyle]} labelOffsetY={5} indicatorActive={lfoEnabled && !lfoSync} />
               </div>
             </EditableHardwareWrapper>
 
@@ -3786,16 +5699,16 @@ export default function App() {
               onUpdate={updateHardwarePosition}
               stageRef={pluginStageRef}
             >
-              <div className="relative h-12 w-12">
-                <RetroCircleToggle label="LFO" active={lfoEnabled} onClick={() => setLfoEnabled(!lfoEnabled)} />
-                {lfoEnabled && (
-                  <div className="absolute left-1/2 top-[calc(100%+10px)] flex -translate-x-1/2 flex-col items-center gap-2">
-                    <MiniToggle label="Sync" active={lfoSync} onClick={() => setLfoSync(!lfoSync)} />
-                    <DropdownSelect options={SHAPES} value={lfoShape} onChange={setLfoShape} width={70} />
-                    {lfoSync && <DropdownSelect options={SYNC_DIVS} value={lfoSyncDiv} onChange={setLfoSyncDiv} width={60} />}
-                  </div>
-                )}
-              </div>
+              <OrbitalLfoControl
+                active={lfoEnabled}
+                setActive={setLfoEnabled}
+                sync={lfoSync}
+                setSync={setLfoSync}
+                waveIndex={lfoShape}
+                setWaveIndex={setLfoShape}
+                rateIndex={lfoSyncDiv}
+                setRateIndex={setLfoSyncDiv}
+              />
             </EditableHardwareWrapper>
 
             <BottomSectionEngine
@@ -3804,6 +5717,7 @@ export default function App() {
               stereoPhase={stereoPhase}
               setStereoPhase={setStereoPhase}
               styleIndex={bottomSectionStyle}
+              lfoActive={lfoEnabled}
             />
 
             <EditableHardwareWrapper 
@@ -3875,6 +5789,16 @@ export default function App() {
               <div className="relative w-full h-11">
                 <select value={bottomSectionStyle} onChange={e => setBottomSectionStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
                   {BOTTOM_SECTION_STYLE_NAMES.map((name, i) => <option key={i} value={i}>{name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Brand Text Color</span>
+              <div className="relative w-full h-11">
+                <select value={brandTextStyle} onChange={e => setBrandTextStyle(normalizeBrandTextStyle(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {BRAND_TEXT_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
               </div>
@@ -4150,6 +6074,16 @@ export default function App() {
             </div>
 
             <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Middle Knob Style</span>
+              <div className="relative w-full h-11">
+                <select value={middleKnobStyle} onChange={e => setMiddleKnobStyle(normalizeMiddleKnobStyle(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {MIDDLE_KNOB_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
               <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Center Dial Surface</span>
               <div className="relative w-full h-11">
                 <select value={centerDialSurfaceStyle} onChange={e => setCenterDialSurfaceStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
@@ -4167,6 +6101,51 @@ export default function App() {
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
               </div>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Subtle Dial Rings</span>
+              {[
+                { key: 'large', label: 'Large Ring', min: 190, max: 286 },
+                { key: 'small', label: 'Small Ring', min: 112, max: 220 }
+              ].map(({ key, label, min, max }) => {
+                const ring = { ...CENTER_DIAL_GUIDE_RING_DEFAULTS[key], ...(centerDialGuideRings?.[key] || {}) };
+                return (
+                  <div key={key} className="flex flex-col gap-2 rounded-lg border border-white/10 bg-black/10 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[9px] font-black uppercase tracking-[0.16em] text-[#edd39a]">{label}</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => updateCenterDialGuideRing(key, { enabled: !ring.enabled })}
+                          className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] transition-all ${ring.enabled ? 'border-[#d4af37]/40 bg-[#d4af37]/15 text-[#edd39a]' : 'border-white/15 bg-white/5 text-white/45'}`}
+                        >
+                          {ring.enabled ? 'On' : 'Off'}
+                        </button>
+                        <button
+                          onClick={() => updateCenterDialGuideRing(key, { locked: !ring.locked })}
+                          className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.12em] transition-all ${ring.locked ? 'border-white/15 bg-white/5 text-white/45' : 'border-[#e66a53]/40 bg-[#e66a53]/15 text-[#e66a53]'}`}
+                        >
+                          {ring.locked ? 'Locked' : 'Resize'}
+                        </button>
+                      </div>
+                    </div>
+                    <label className="grid grid-cols-[34px_1fr_34px] items-center gap-2">
+                      <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-white/70">Size</span>
+                      <input
+                        type="range"
+                        min={min}
+                        max={max}
+                        step="1"
+                        value={ring.size}
+                        disabled={ring.locked || !ring.enabled}
+                        onChange={e => updateCenterDialGuideRing(key, { size: Number(e.target.value) })}
+                        className={`w-full accent-white ${ring.locked || !ring.enabled ? 'opacity-35' : ''}`}
+                      />
+                      <span className="text-right text-[9px] font-bold tabular-nums text-white/70">{ring.size}</span>
+                    </label>
+                  </div>
+                );
+              })}
             </div>
 
             <div className="flex flex-col gap-2">
@@ -4205,6 +6184,20 @@ export default function App() {
               </div>
             </div>
 
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Spread Pointer</span>
+              <div className="relative w-full h-11">
+                <select
+                  value={spreadPointerStyle}
+                  onChange={e => setSpreadPointerStyle(normalizeSpreadPointerStyle(e.target.value))}
+                  className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none"
+                >
+                  {SPREAD_POINTER_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-3">
                 <span className="text-white/50 text-[9px] font-bold tracking-[0.18em] uppercase">Dial Circles</span>
@@ -4225,6 +6218,20 @@ export default function App() {
               <div className="relative w-full h-11">
                 <select value={ioScaleStyle} onChange={e => setIoScaleStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
                   {IO_SCALE_NAMES.map((name, i) => <option key={i} value={i}>{name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">I/O Link Button</span>
+              <div className="relative w-full h-11">
+                <select
+                  value={ioLinkStyle}
+                  onChange={e => handleIOLinkStyleChange(e.target.value)}
+                  className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none"
+                >
+                  {IO_LINK_STYLE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
               </div>
@@ -4382,7 +6389,32 @@ export default function App() {
       </div>
 
       <style dangerouslySetInnerHTML={{__html: `
+        @keyframes nixie-flicker {
+          0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(255,85,0,0.8)); }
+          20%, 22%, 24%, 55% { opacity: 0.5; filter: drop-shadow(0 0 1px rgba(255,85,0,0.3)); }
+        }
+        .anim-nixie { animation: nixie-flicker 4s infinite alternate; }
+        @keyframes unstable-led-flicker {
+          0%, 17%, 20%, 23%, 51%, 55%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(239,68,68,0.74)); }
+          18%, 22%, 53% { opacity: 0.76; filter: drop-shadow(0 0 2px rgba(239,68,68,0.32)); }
+        }
+        .anim-unstable-led-flicker { animation: unstable-led-flicker 4.6s infinite alternate; }
+        @keyframes vintage-led-flicker {
+          0%, 20%, 23%, 56%, 60%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(251,146,60,0.57)); }
+          21%, 58% { opacity: 0.9; filter: drop-shadow(0 0 3px rgba(251,146,60,0.31)); }
+        }
+        .anim-vintage-led-flicker { animation: vintage-led-flicker 6.8s infinite alternate; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .knob-drift-spin {
+          animation-name: spin;
+          animation-timing-function: linear;
+          animation-iteration-count: infinite;
+          transform-origin: center;
+        }
+        .knob-drift-needle {
+          transform-origin: center;
+          transition: opacity 140ms ease-out, filter 140ms ease-out, box-shadow 140ms ease-out;
+        }
         .drift-aurora-sheet {
           transform: translate(-50%, -50%);
           transform-origin: center;
@@ -4424,6 +6456,10 @@ export default function App() {
         * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         body { overflow: hidden; touch-action: none; }
         input[type="range"] { -webkit-user-select: auto; user-select: auto; }
+        .lfo-scrollbar::-webkit-scrollbar { width: 3px; }
+        .lfo-scrollbar::-webkit-scrollbar-track { background: transparent; margin-block: 14px; }
+        .lfo-scrollbar::-webkit-scrollbar-thumb { background: rgba(223,111,90,0.4); border-radius: 4px; }
+        .lfo-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(223,111,90,0.8); }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.35); border-radius: 10px; }

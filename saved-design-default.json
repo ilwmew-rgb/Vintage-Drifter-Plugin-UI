@@ -2,32 +2,49 @@
   "power": true,
   "input": 50,
   "output": 50,
-  "drift": 0,
-  "spread": 0,
-  "character": 22.778125,
-  "charFilter": 0,
+  "ioLinkStyle": "fiberCoralCenter",
+  "ioLinked": false,
+  "drift": 0.65625,
+  "spread": 100,
+  "character": 100,
   "sweeten": 0,
-  "biasHF": 11.3375,
+  "biasHF": 0,
   "noise": 0,
-  "rate": 11.43125,
-  "depth": 5,
-  "stereoPhase": 0,
+  "rate": 28.749999999999993,
+  "depth": 100,
+  "stereoPhase": 100,
   "mode": "vintage",
   "autoGain": true,
-  "lfoEnabled": false,
-  "lfoSync": true,
+  "lfoEnabled": true,
+  "lfoSync": false,
   "lfoShape": 0,
-  "lfoSyncDiv": 4,
-  "currentPreset": 5,
+  "lfoSyncDiv": 6,
+  "currentPreset": 4,
   "frameStyle": 8,
   "modeStyle": 13,
   "knobStyle": 0,
   "centerDialStyle": 1,
-  "centerDialSurfaceStyle": 15,
-  "centerDialGrooveStyle": 1,
-  "centerDialCirclesEnabled": false,
-  "centerDialNumbersEnabled": false,
-  "driftAnimation": 3,
+  "middleKnobStyle": 4,
+  "centerDialSurfaceStyle": 14,
+  "centerDialGrooveStyle": 0,
+  "centerDialMarkStyle": 0,
+  "centerDialNumberStyle": 0,
+  "centerDialCirclesEnabled": true,
+  "centerDialNumbersEnabled": true,
+  "centerDialGuideRings": {
+    "large": {
+      "enabled": true,
+      "locked": true,
+      "size": 245
+    },
+    "small": {
+      "enabled": true,
+      "locked": true,
+      "size": 161
+    }
+  },
+  "spreadPointerStyle": 0,
+  "driftAnimation": 8,
   "bgIndex": 2,
   "showOutputs": true,
   "parallelCables": true,
@@ -38,38 +55,222 @@
   "faceTextureOpacity": 29,
   "panelFaceColor": "#e8dfcc",
   "useDefaultPanelFaceColor": true,
+  "brandTextStyle": 1,
   "screwsEnabled": true,
-  "screwStyle": 5,
-  "lfoImageState": { "enabled": true, "locked": true, "x": 131, "y": 710, "size": 155, "rotate": 6 },
+  "screwStyle": 0,
+  "lfoImageState": {
+    "enabled": true,
+    "locked": true,
+    "x": 131,
+    "y": 710,
+    "size": 155,
+    "rotate": 6
+  },
   "sakuraImageState": {
-    "sakura": { "enabled": true, "x": 841, "y": 277, "size": 300, "rotate": 6 },
-    "sakura2": { "enabled": true, "x": 8, "y": 271, "size": 335, "rotate": 1 },
-    "sakura3": { "enabled": true, "x": 872, "y": 774, "size": 338, "rotate": 34 }
+    "sakura": {
+      "enabled": true,
+      "x": 841,
+      "y": 277,
+      "size": 300,
+      "rotate": 6
+    },
+    "sakura2": {
+      "enabled": true,
+      "x": 8,
+      "y": 271,
+      "size": 335,
+      "rotate": 1
+    },
+    "sakura3": {
+      "enabled": true,
+      "x": 872,
+      "y": 774,
+      "size": 338,
+      "rotate": 34
+    }
   },
   "decorativeCircles": {
-    "circle1": { "enabled": false, "locked": true, "x": 612, "y": 734, "size": 655, "rotate": 0, "color": "#e66a53", "opacity": 0.9 },
-    "circle2": { "enabled": false, "locked": true, "x": 59, "y": 504, "size": 334, "rotate": 0, "color": "#e0a96d", "opacity": 0.7 },
-    "circle3": { "enabled": false, "locked": true, "x": 643, "y": 306, "size": 236, "rotate": 0, "color": "#b04a4a", "opacity": 0.5 },
-    "leaf1": { "enabled": false, "locked": true, "x": 105, "y": 757, "size": 320, "rotate": -3, "color": "#2c3e35", "opacity": 0.82 },
-    "leaf2": { "enabled": false, "locked": true, "x": 180, "y": 720, "size": 280, "rotate": 15, "color": "#1e2a24", "opacity": 0.6 }
+    "circle1": {
+      "enabled": false,
+      "locked": true,
+      "x": 635,
+      "y": 777,
+      "size": 733,
+      "rotate": 0,
+      "color": "#e66a53",
+      "opacity": 0.92
+    },
+    "circle2": {
+      "enabled": false,
+      "locked": true,
+      "x": 59,
+      "y": 504,
+      "size": 334,
+      "rotate": 0,
+      "color": "#e0a96d",
+      "opacity": 0.7
+    },
+    "circle3": {
+      "enabled": false,
+      "locked": true,
+      "x": 590,
+      "y": 330,
+      "size": 225,
+      "rotate": 0,
+      "color": "#b04a4a",
+      "opacity": 0.5
+    },
+    "leaf1": {
+      "enabled": false,
+      "locked": true,
+      "x": 105,
+      "y": 757,
+      "size": 320,
+      "rotate": -3,
+      "color": "#2c3e35",
+      "opacity": 0.82
+    },
+    "leaf2": {
+      "enabled": false,
+      "locked": true,
+      "x": 180,
+      "y": 720,
+      "size": 280,
+      "rotate": 15,
+      "color": "#1e2a24",
+      "opacity": 0.6
+    }
   },
   "hardwarePositions": {
-    "io": { "x": 420, "y": 204, "locked": true },
-    "mode": { "x": 79, "y": 440, "locked": true },
-    "driftVisual": { "x": 705, "y": 564, "locked": true },
-    "rate": { "x": 132, "y": 720, "locked": true },
-    "lfo": { "x": 238, "y": 637, "locked": true },
-    "autoGain": { "x": 691, "y": 710, "locked": true }
+    "io": {
+      "x": 420,
+      "y": 204,
+      "locked": true
+    },
+    "mode": {
+      "x": 79,
+      "y": 440,
+      "locked": true
+    },
+    "driftVisual": {
+      "x": 696,
+      "y": 564,
+      "locked": true
+    },
+    "rate": {
+      "x": 132,
+      "y": 721,
+      "locked": true
+    },
+    "lfo": {
+      "x": 234,
+      "y": 630,
+      "locked": true
+    },
+    "autoGain": {
+      "x": 691,
+      "y": 710,
+      "locked": true
+    }
   },
   "auraShapes": [
-    { "id": "aura-1", "enabled": true, "x": 66, "y": 472, "size": 326, "blur": 0, "opacity": 1, "gradientAngle": 0, "color1": "#d5a981", "color2": "#eca57e", "isAnimated": true, "locked": true, "rotate": 0, "blobRadius": "51% 48% 61% 28% / 67% 69% 40% 31%" },
-    { "id": "aura-1777944917420", "enabled": true, "locked": true, "x": 95, "y": 759, "size": 304, "rotate": 82.00053901898676, "opacity": 0, "blur": 0, "color1": "#324d39", "color2": "#2c4939", "gradientAngle": 295, "isAnimated": true, "blobRadius": "70% 62% 43% 75% / 67% 50% 33% 41%" },
-    { "id": "aura-1777948941070", "enabled": true, "locked": true, "x": 741, "y": 448, "size": 334, "rotate": -2, "opacity": 0, "blur": 0, "color1": "#b04a4a", "color2": "#7aa678", "gradientAngle": 343, "isAnimated": true, "blobRadius": "57% 36% 70% 61% / 38% 44% 42% 37%" },
-    { "id": "aura-1777948979946", "enabled": true, "locked": true, "x": 727, "y": 437, "size": 354, "rotate": -2, "opacity": 0, "blur": 0, "color1": "#b04a4a", "color2": "#edd39a", "gradientAngle": 182, "isAnimated": true, "blobRadius": "50% 53% 60% 71% / 66% 47% 53% 35%" },
-    { "id": "aura-1778074211761", "enabled": true, "locked": true, "x": 630, "y": 721, "size": 641, "rotate": 193, "opacity": 0.95, "blur": 0, "color1": "#d77665", "color2": "#cd8e5b", "gradientAngle": 114, "isAnimated": true, "blobRadius": "41% 29% 68% 42% / 33% 59% 50% 61%" },
-    { "id": "aura-1778074515921", "enabled": true, "locked": true, "x": 921, "y": 221, "size": 332, "rotate": 312.2433963601078, "opacity": 0, "blur": 0, "color1": "#d27441", "color2": "#b5723b", "gradientAngle": 360, "isAnimated": true, "blobRadius": "63% 31% 51% 47% / 35% 64% 38% 56%" }
+    {
+      "id": "aura-1",
+      "enabled": true,
+      "x": 65,
+      "y": 470,
+      "size": 318,
+      "blur": 0,
+      "opacity": 1,
+      "gradientAngle": 0,
+      "color1": "#d5a981",
+      "color2": "#eca57e",
+      "isAnimated": true,
+      "locked": true,
+      "rotate": 0,
+      "blobRadius": "51% 48% 61% 28% / 67% 69% 40% 31%"
+    },
+    {
+      "id": "aura-1777944917420",
+      "enabled": true,
+      "locked": true,
+      "x": 95,
+      "y": 759,
+      "size": 304,
+      "rotate": 82.00053901898676,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#324d39",
+      "color2": "#2c4939",
+      "gradientAngle": 295,
+      "isAnimated": true,
+      "blobRadius": "70% 62% 43% 75% / 67% 50% 33% 41%"
+    },
+    {
+      "id": "aura-1777948941070",
+      "enabled": true,
+      "locked": true,
+      "x": 295,
+      "y": 822,
+      "size": 50,
+      "rotate": 11,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#d77058",
+      "color2": "#ca6c59",
+      "gradientAngle": 343,
+      "isAnimated": true,
+      "blobRadius": "45% 65% 63% 36% / 56% 53% 53% 33%"
+    },
+    {
+      "id": "aura-1777948979946",
+      "enabled": true,
+      "locked": true,
+      "x": 622,
+      "y": 731,
+      "size": 621,
+      "rotate": -2,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#b04a4a",
+      "color2": "#edd39a",
+      "gradientAngle": 182,
+      "isAnimated": true,
+      "blobRadius": "51% 27% 59% 55% / 56% 27% 64% 33%"
+    },
+    {
+      "id": "aura-1778074211761",
+      "enabled": true,
+      "locked": true,
+      "x": 633,
+      "y": 720,
+      "size": 641,
+      "rotate": 193,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#de6c58",
+      "color2": "#de6c59",
+      "gradientAngle": 114,
+      "isAnimated": true,
+      "blobRadius": "41% 29% 68% 42% / 33% 59% 50% 61%"
+    },
+    {
+      "id": "aura-1778074515921",
+      "enabled": true,
+      "locked": true,
+      "x": 658,
+      "y": 714,
+      "size": 634,
+      "rotate": -38,
+      "opacity": 0.97,
+      "blur": 0,
+      "color1": "#de6c59",
+      "color2": "#de7058",
+      "gradientAngle": 360,
+      "isAnimated": true,
+      "blobRadius": "38% 70% 60% 56% / 26% 64% 40% 72%"
+    }
   ],
-  "filterSwitchStyle": 0,
   "ioScaleStyle": 6,
   "bottomSectionStyle": 0
 }
