@@ -4,6 +4,26 @@ import sakuraSrc from './Images/Sakura.png';
 import sakura2Src from './Images/Sakura2.png';
 import lfoSrc from './Images/LFO.png';
 
+const SATURATION_MODULE_STYLES = [
+  'Hidden (Disabled)',
+  'Walnut Twin Push',
+  'Anodized Rocker',
+  'Ivory & Brass Tabs',
+  'Glowing Soft Silicone',
+  'Bakelite Horizontal Slider',
+  'Stealth Glass Panel',
+  'Chrome Lever Switch',
+  'Industrial Amber Grid',
+  'Porcelain & Gold',
+  'Raw Steel & Red'
+];
+
+const normalizeSaturationStyle = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(SATURATION_MODULE_STYLES.length - 1, numericValue));
+};
+
 const DRIFT_ANIMATION_STYLES = [
   'Original Flutter',
   'Aurora Veil',
@@ -20,6 +40,9 @@ const DRIFT_ANIMATION_STYLES = [
   'Coral Dual Outer Flutter Clean',
   'Knob Flutter Coral Filled'
 ];
+
+const SAT_MODES = ['Tape Saturation', 'Tube Saturation'];
+const FLUTTER_ANIMATION_EPOCH = Date.now();
 
 const normalizeDriftAnimationStyle = (value) => {
   const numericValue = Number(value);
@@ -82,280 +105,605 @@ const DECORATIVE_CIRCLE_LABELS = {
 const CONTROL_SECTION_PRESETS = {
   io: { x: 424, y: 207, locked: true },
   mode: { x: 143, y: 421, locked: true },
-  driftVisual: { x: 705, y: 564, locked: true },
+  driftVisual: { x: 703, y: 580, locked: true },
   rate: { x: 150, y: 720, locked: true },
   lfo: { x: 250, y: 636, locked: true },
   autoGain: { x: 694, y: 710, locked: true }
 };
 
 const CODE_DEFAULT_DESIGN = {
-  power: true,
-  input: 50,
-  output: 50,
-  ioLinkStyle: "fiberCoralCenter",
-  ioLinked: false,
-  drift: 0.65625,
-  spread: 100,
-  character: 100,
-  sweeten: 0,
-  biasHF: 0,
-  noise: 0,
-  rate: 28.749999999999993,
-  depth: 100,
-  stereoPhase: 100,
-  mode: "vintage",
-  autoGain: true,
-  lfoEnabled: true,
-  lfoSync: false,
-  lfoShape: 0,
-  lfoSyncDiv: 6,
-  currentPreset: 4,
-  frameStyle: 8,
-  modeStyle: 13,
-  knobStyle: 0,
-  centerDialStyle: 1,
-  middleKnobStyle: 4,
-  centerDialSurfaceStyle: 14,
-  centerDialGrooveStyle: 0,
-  centerDialMarkStyle: 0,
-  centerDialNumberStyle: 0,
-  centerDialCirclesEnabled: true,
-  centerDialNumbersEnabled: true,
-  centerDialGuideRings: {
-    large: { enabled: true, locked: true, size: 245 },
-    small: { enabled: true, locked: true, size: 161 }
-  },
-  spreadPointerStyle: 0,
-  driftAnimation: 8,
-  bgIndex: 2,
-  showOutputs: true,
-  parallelCables: true,
-  showStems: false,
-  showFerns: false,
-  faceTextureEnabled: true,
-  faceTextureStyle: 0,
-  faceTextureOpacity: 29,
-  panelFaceColor: "#e8dfcc",
-  useDefaultPanelFaceColor: true,
-  brandTextStyle: 1,
-  screwsEnabled: true,
-  screwStyle: 0,
-  lfoImageState: {
-    enabled: true,
-    locked: true,
-    x: 131,
-    y: 710,
-    size: 155,
-    rotate: 6
-  },
-  sakuraImageState: {
-    sakura: {
-      enabled: true,
-      x: 841,
-      y: 277,
-      size: 300,
-      rotate: 6
+  "power": true,
+  "input": 37.0497314453125,
+  "output": 62.95026855468748,
+  "ioLinkStyle": "fiberCoralCenter",
+  "ioLinked": true,
+  "drift": 32.778808593750014,
+  "spread": 0,
+  "character": 82.90488281249999,
+  "sweeten": 80.14729003906251,
+  "biasHF": 100,
+  "noise": 100,
+  "rate": 27.302001953124986,
+  "depth": 100,
+  "stereoPhase": 100,
+  "mode": "vintage",
+  "autoGain": true,
+  "lfoEnabled": true,
+  "lfoSync": false,
+  "lfoShape": 0,
+  "lfoSyncDiv": 6,
+  "currentPreset": 9,
+  "frameStyle": 8,
+  "modeStyle": 13,
+  "knobStyle": 0,
+  "centerDialStyle": 1,
+  "middleKnobStyle": 0,
+  "centerDialSurfaceStyle": 14,
+  "centerDialGrooveStyle": 0,
+  "centerDialMarkStyle": 0,
+  "centerDialNumberStyle": 0,
+  "centerDialCirclesEnabled": true,
+  "centerDialNumbersEnabled": true,
+  "centerDialGuideRings": {
+    "large": {
+      "enabled": true,
+      "locked": true,
+      "size": 245
     },
-    sakura2: {
-      enabled: true,
-      x: 8,
-      y: 271,
-      size: 335,
-      rotate: 1
-    },
-    sakura3: {
-      enabled: true,
-      x: 872,
-      y: 774,
-      size: 338,
-      rotate: 34
+    "small": {
+      "enabled": true,
+      "locked": true,
+      "size": 161
     }
   },
-  decorativeCircles: {
-    circle1: {
-      enabled: false,
-      locked: true,
-      x: 635,
-      y: 777,
-      size: 733,
-      rotate: 0,
-      color: "#e66a53",
-      opacity: 0.92
+  "spreadPointerStyle": 0,
+  "outerRingScaleStyle": 0,
+  "driftAnimation": 13,
+  "bgIndex": 3,
+  "showOutputs": true,
+  "showWabiSabi": true,
+  "parallelCables": true,
+  "showStems": false,
+  "showFerns": false,
+  "faceTextureEnabled": true,
+  "faceTextureStyle": 0,
+  "faceTextureOpacity": 29,
+  "panelFaceColor": "#e8dfcc",
+  "useDefaultPanelFaceColor": true,
+  "brandTextStyle": 1,
+  "screwsEnabled": false,
+  "screwStyle": 0,
+  "lfoImageState": {
+    "enabled": true,
+    "locked": true,
+    "x": 131,
+    "y": 710,
+    "size": 155,
+    "rotate": 6
+  },
+  "sakuraImageState": {
+    "sakura": {
+      "enabled": true,
+      "x": 841,
+      "y": 277,
+      "size": 300,
+      "rotate": 6
     },
-    circle2: {
-      enabled: false,
-      locked: true,
-      x: 59,
-      y: 504,
-      size: 334,
-      rotate: 0,
-      color: "#e0a96d",
-      opacity: 0.7
+    "sakura2": {
+      "enabled": true,
+      "x": 8,
+      "y": 271,
+      "size": 335,
+      "rotate": 1
     },
-    circle3: {
-      enabled: false,
-      locked: true,
-      x: 590,
-      y: 330,
-      size: 225,
-      rotate: 0,
-      color: "#b04a4a",
-      opacity: 0.5
-    },
-    leaf1: {
-      enabled: false,
-      locked: true,
-      x: 105,
-      y: 757,
-      size: 320,
-      rotate: -3,
-      color: "#2c3e35",
-      opacity: 0.82
-    },
-    leaf2: {
-      enabled: false,
-      locked: true,
-      x: 180,
-      y: 720,
-      size: 280,
-      rotate: 15,
-      color: "#1e2a24",
-      opacity: 0.6
+    "sakura3": {
+      "enabled": true,
+      "x": 872,
+      "y": 774,
+      "size": 338,
+      "rotate": 34
     }
   },
-  hardwarePositions: {
-    io: {
-      x: 420,
-      y: 204,
-      locked: true
+  "decorativeCircles": {
+    "circle1": {
+      "enabled": false,
+      "locked": true,
+      "x": 635,
+      "y": 777,
+      "size": 733,
+      "rotate": 0,
+      "color": "#e66a53",
+      "opacity": 0.92
     },
-    mode: {
-      x: 79,
-      y: 440,
-      locked: true
+    "circle2": {
+      "enabled": false,
+      "locked": true,
+      "x": 59,
+      "y": 504,
+      "size": 334,
+      "rotate": 0,
+      "color": "#e0a96d",
+      "opacity": 0.7
     },
-    driftVisual: {
-      x: 696,
-      y: 564,
-      locked: true
+    "circle3": {
+      "enabled": false,
+      "locked": true,
+      "x": 590,
+      "y": 330,
+      "size": 225,
+      "rotate": 0,
+      "color": "#b04a4a",
+      "opacity": 0.5
     },
-    rate: {
-      x: 132,
-      y: 721,
-      locked: true
+    "leaf1": {
+      "enabled": false,
+      "locked": true,
+      "x": 105,
+      "y": 757,
+      "size": 320,
+      "rotate": -3,
+      "color": "#2c3e35",
+      "opacity": 0.82
     },
-    lfo: {
-      x: 234,
-      y: 630,
-      locked: true
-    },
-    autoGain: {
-      x: 691,
-      y: 710,
-      locked: true
+    "leaf2": {
+      "enabled": false,
+      "locked": true,
+      "x": 180,
+      "y": 720,
+      "size": 280,
+      "rotate": 15,
+      "color": "#1e2a24",
+      "opacity": 0.6
     }
   },
-  auraShapes: [
+  "hardwarePositions": {
+    "io": {
+      "x": 420,
+      "y": 204,
+      "locked": true
+    },
+    "mode": {
+      "x": 79,
+      "y": 440,
+      "locked": true
+    },
+    "driftVisual": {
+      "x": 696,
+      "y": 564,
+      "locked": true
+    },
+    "rate": {
+      "x": 132,
+      "y": 721,
+      "locked": true
+    },
+    "lfo": {
+      "x": 230,
+      "y": 625,
+      "locked": true
+    },
+    "autoGain": {
+      "x": 691,
+      "y": 718,
+      "locked": true
+    }
+  },
+  "auraShapes": [
     {
-      id: "aura-1",
-      enabled: true,
-      x: 65,
-      y: 470,
-      size: 318,
-      blur: 0,
-      opacity: 1,
-      gradientAngle: 0,
-      color1: "#d5a981",
-      color2: "#eca57e",
-      isAnimated: true,
-      locked: true,
-      rotate: 0,
-      blobRadius: "51% 48% 61% 28% / 67% 69% 40% 31%"
+      "id": "aura-1",
+      "enabled": true,
+      "x": 65,
+      "y": 470,
+      "size": 318,
+      "blur": 0,
+      "opacity": 1,
+      "gradientAngle": 0,
+      "color1": "#d5a981",
+      "color2": "#eca57e",
+      "isAnimated": true,
+      "locked": true,
+      "rotate": 0,
+      "blobRadius": "51% 48% 61% 28% / 67% 69% 40% 31%"
     },
     {
-      id: "aura-1777944917420",
-      enabled: true,
-      locked: true,
-      x: 95,
-      y: 759,
-      size: 304,
-      rotate: 82.00053901898676,
-      opacity: 0,
-      blur: 0,
-      color1: "#324d39",
-      color2: "#2c4939",
-      gradientAngle: 295,
-      isAnimated: true,
-      blobRadius: "70% 62% 43% 75% / 67% 50% 33% 41%"
+      "id": "aura-1777944917420",
+      "enabled": true,
+      "locked": true,
+      "x": 95,
+      "y": 759,
+      "size": 304,
+      "rotate": 82.00053901898676,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#324d39",
+      "color2": "#2c4939",
+      "gradientAngle": 295,
+      "isAnimated": true,
+      "blobRadius": "70% 62% 43% 75% / 67% 50% 33% 41%"
     },
     {
-      id: "aura-1777948941070",
-      enabled: true,
-      locked: true,
-      x: 295,
-      y: 822,
-      size: 50,
-      rotate: 11,
-      opacity: 0,
-      blur: 0,
-      color1: "#d77058",
-      color2: "#ca6c59",
-      gradientAngle: 343,
-      isAnimated: true,
-      blobRadius: "45% 65% 63% 36% / 56% 53% 53% 33%"
+      "id": "aura-1777948941070",
+      "enabled": true,
+      "locked": true,
+      "x": 295,
+      "y": 822,
+      "size": 50,
+      "rotate": 11,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#d77058",
+      "color2": "#ca6c59",
+      "gradientAngle": 343,
+      "isAnimated": true,
+      "blobRadius": "45% 65% 63% 36% / 56% 53% 53% 33%"
     },
     {
-      id: "aura-1777948979946",
-      enabled: true,
-      locked: true,
-      x: 622,
-      y: 731,
-      size: 621,
-      rotate: -2,
-      opacity: 0,
-      blur: 0,
-      color1: "#b04a4a",
-      color2: "#edd39a",
-      gradientAngle: 182,
-      isAnimated: true,
-      blobRadius: "51% 27% 59% 55% / 56% 27% 64% 33%"
+      "id": "aura-1777948979946",
+      "enabled": true,
+      "locked": true,
+      "x": 622,
+      "y": 731,
+      "size": 621,
+      "rotate": -2,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#b04a4a",
+      "color2": "#edd39a",
+      "gradientAngle": 182,
+      "isAnimated": true,
+      "blobRadius": "51% 27% 59% 55% / 56% 27% 64% 33%"
     },
     {
-      id: "aura-1778074211761",
-      enabled: true,
-      locked: true,
-      x: 633,
-      y: 720,
-      size: 641,
-      rotate: 193,
-      opacity: 0,
-      blur: 0,
-      color1: "#de6c58",
-      color2: "#de6c59",
-      gradientAngle: 114,
-      isAnimated: true,
-      blobRadius: "41% 29% 68% 42% / 33% 59% 50% 61%"
+      "id": "aura-1778074211761",
+      "enabled": true,
+      "locked": true,
+      "x": 633,
+      "y": 720,
+      "size": 641,
+      "rotate": 193,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#de6c58",
+      "color2": "#de6c59",
+      "gradientAngle": 114,
+      "isAnimated": true,
+      "blobRadius": "41% 29% 68% 42% / 33% 59% 50% 61%"
     },
     {
-      id: "aura-1778074515921",
-      enabled: true,
-      locked: true,
-      x: 658,
-      y: 714,
-      size: 634,
-      rotate: -38,
-      opacity: 0.97,
-      blur: 0,
-      color1: "#de6c59",
-      color2: "#de7058",
-      gradientAngle: 360,
-      isAnimated: true,
-      blobRadius: "38% 70% 60% 56% / 26% 64% 40% 72%"
+      "id": "aura-1778074515921",
+      "enabled": true,
+      "locked": true,
+      "x": 658,
+      "y": 714,
+      "size": 634,
+      "rotate": -38,
+      "opacity": 0.97,
+      "blur": 0,
+      "color1": "#de6c59",
+      "color2": "#de7058",
+      "gradientAngle": 360,
+      "isAnimated": true,
+      "blobRadius": "38% 70% 60% 56% / 26% 64% 40% 72%"
     }
   ],
-  ioScaleStyle: 6,
-  bottomSectionStyle: 0
+  "ioScaleStyle": 6,
+  "bottomSectionStyle": 0,
+  "readoutStyleIndex": 5,
+  "saturationMode": 0,
+  "saturationStyle": 0
 };
+
+Object.assign(CODE_DEFAULT_DESIGN, {
+  "power": true,
+  "input": 50,
+  "output": 50,
+  "ioLinkStyle": "fiberCoralCenter",
+  "ioLinked": false,
+  "drift": 29.875000000000025,
+  "spread": 0,
+  "character": 100,
+  "sweeten": 0,
+  "biasHF": 0,
+  "noise": 0,
+  "rate": 27.286376953124986,
+  "depth": 100,
+  "stereoPhase": 100,
+  "mode": "vintage",
+  "autoGain": true,
+  "lfoEnabled": true,
+  "lfoSync": false,
+  "lfoShape": 0,
+  "lfoSyncDiv": 6,
+  "currentPreset": 9,
+  "frameStyle": 13,
+  "modeStyle": 13,
+  "knobStyle": 6,
+  "centerDialStyle": 1,
+  "middleKnobStyle": 5,
+  "centerDialSurfaceStyle": 14,
+  "centerDialGrooveStyle": 0,
+  "centerDialMarkStyle": 0,
+  "centerDialNumberStyle": 0,
+  "centerDialCirclesEnabled": true,
+  "centerDialNumbersEnabled": true,
+  "centerDialGuideRings": {
+    "large": {
+      "enabled": true,
+      "locked": true,
+      "size": 245
+    },
+    "small": {
+      "enabled": true,
+      "locked": true,
+      "size": 161
+    }
+  },
+  "spreadPointerStyle": 0,
+  "driftAnimation": 13,
+  "bgIndex": 3,
+  "showOutputs": true,
+  "parallelCables": true,
+  "showStems": false,
+  "showFerns": false,
+  "faceTextureEnabled": true,
+  "faceTextureStyle": 0,
+  "faceTextureOpacity": 30,
+  "panelFaceColor": "#935748",
+  "useDefaultPanelFaceColor": true,
+  "brandTextStyle": 1,
+  "screwsEnabled": true,
+  "screwStyle": 2,
+  "lfoImageState": {
+    "enabled": true,
+    "locked": true,
+    "x": 131,
+    "y": 710,
+    "size": 155,
+    "rotate": 6
+  },
+  "sakuraImageState": {
+    "sakura": {
+      "enabled": true,
+      "x": 841,
+      "y": 277,
+      "size": 300,
+      "rotate": 6
+    },
+    "sakura2": {
+      "enabled": true,
+      "x": 8,
+      "y": 271,
+      "size": 335,
+      "rotate": 1
+    },
+    "sakura3": {
+      "enabled": true,
+      "x": 872,
+      "y": 774,
+      "size": 338,
+      "rotate": 34
+    }
+  },
+  "decorativeCircles": {
+    "circle1": {
+      "enabled": false,
+      "locked": true,
+      "x": 635,
+      "y": 777,
+      "size": 733,
+      "rotate": 0,
+      "color": "#e66a53",
+      "opacity": 0.92
+    },
+    "circle2": {
+      "enabled": false,
+      "locked": true,
+      "x": 59,
+      "y": 504,
+      "size": 334,
+      "rotate": 0,
+      "color": "#e0a96d",
+      "opacity": 0.7
+    },
+    "circle3": {
+      "enabled": false,
+      "locked": true,
+      "x": 590,
+      "y": 330,
+      "size": 225,
+      "rotate": 0,
+      "color": "#b04a4a",
+      "opacity": 0.5
+    },
+    "leaf1": {
+      "enabled": false,
+      "locked": true,
+      "x": 105,
+      "y": 757,
+      "size": 320,
+      "rotate": -3,
+      "color": "#2c3e35",
+      "opacity": 0.82
+    },
+    "leaf2": {
+      "enabled": false,
+      "locked": true,
+      "x": 180,
+      "y": 720,
+      "size": 280,
+      "rotate": 15,
+      "color": "#1e2a24",
+      "opacity": 0.6
+    }
+  },
+  "hardwarePositions": {
+    "io": {
+      "x": 420,
+      "y": 204,
+      "locked": true
+    },
+    "mode": {
+      "x": 79,
+      "y": 440,
+      "locked": true
+    },
+    "driftVisual": {
+      "x": 696,
+      "y": 564,
+      "locked": true
+    },
+    "rate": {
+      "x": 132,
+      "y": 721,
+      "locked": true
+    },
+    "lfo": {
+      "x": 230,
+      "y": 625,
+      "locked": true
+    },
+    "autoGain": {
+      "x": 691,
+      "y": 718,
+      "locked": true
+    }
+  },
+  "auraShapes": [
+    {
+      "id": "aura-1",
+      "enabled": true,
+      "x": 65,
+      "y": 470,
+      "size": 318,
+      "blur": 0,
+      "opacity": 1,
+      "gradientAngle": 0,
+      "color1": "#d5a981",
+      "color2": "#eca57e",
+      "isAnimated": true,
+      "locked": true,
+      "rotate": 0,
+      "blobRadius": "51% 48% 61% 28% / 67% 69% 40% 31%"
+    },
+    {
+      "id": "aura-1777944917420",
+      "enabled": true,
+      "locked": true,
+      "x": 24,
+      "y": 588,
+      "size": 782,
+      "rotate": 27,
+      "opacity": 0.2,
+      "blur": 0,
+      "color1": "#623628",
+      "color2": "#e2d1c0",
+      "gradientAngle": 295,
+      "isAnimated": true,
+      "blobRadius": "70% 62% 43% 75% / 67% 50% 33% 41%"
+    },
+    {
+      "id": "aura-1777948941070",
+      "enabled": true,
+      "locked": true,
+      "x": 926,
+      "y": -138,
+      "size": 742,
+      "rotate": 11,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#2d2725",
+      "color2": "#201d1d",
+      "gradientAngle": 343,
+      "isAnimated": true,
+      "blobRadius": "45% 65% 63% 36% / 56% 53% 53% 33%"
+    },
+    {
+      "id": "aura-1777948979946",
+      "enabled": true,
+      "locked": true,
+      "x": 622,
+      "y": 731,
+      "size": 621,
+      "rotate": -2,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#b04a4a",
+      "color2": "#edd39a",
+      "gradientAngle": 182,
+      "isAnimated": true,
+      "blobRadius": "51% 27% 59% 55% / 56% 27% 64% 33%"
+    },
+    {
+      "id": "aura-1778074211761",
+      "enabled": true,
+      "locked": true,
+      "x": 630,
+      "y": 742,
+      "size": 698,
+      "rotate": 193,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#de6c58",
+      "color2": "#de6c59",
+      "gradientAngle": 114,
+      "isAnimated": true,
+      "blobRadius": "41% 29% 68% 42% / 33% 59% 50% 61%"
+    },
+    {
+      "id": "aura-1778074515921",
+      "enabled": true,
+      "locked": true,
+      "x": 682,
+      "y": 727,
+      "size": 692,
+      "rotate": -38,
+      "opacity": 1,
+      "blur": 0,
+      "color1": "#97473b",
+      "color2": "#935a4d",
+      "gradientAngle": 360,
+      "isAnimated": true,
+      "blobRadius": "38% 70% 60% 56% / 26% 64% 40% 72%"
+    },
+    {
+      "id": "aura-1779007816614",
+      "enabled": true,
+      "locked": true,
+      "x": 189,
+      "y": -277,
+      "size": 826,
+      "rotate": 185.02305981078567,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#634c36",
+      "color2": "#d17261",
+      "gradientAngle": 174,
+      "isAnimated": true,
+      "blobRadius": "50% 27% 26% 49% / 38% 41% 48% 67%"
+    },
+    {
+      "id": "aura-1779007900426",
+      "enabled": true,
+      "locked": true,
+      "x": 1084,
+      "y": -67,
+      "size": 895,
+      "rotate": 101.3313096051421,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#be8b50",
+      "color2": "#b05e4a",
+      "gradientAngle": 185,
+      "isAnimated": true,
+      "blobRadius": "33% 30% 42% 46% / 51% 74% 55% 56%"
+    }
+  ],
+  "ioScaleStyle": 6,
+  "bottomSectionStyle": 0,
+  "readoutStyleIndex": 5,
+  "saturationMode": 0,
+  "saturationStyle": 0
+});
 
 const textureDataUrl = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 const RUBBER_MATTE_NOISE = textureDataUrl("<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='noise'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%' height='100%' filter='url(#noise)'/></svg>");
@@ -513,7 +861,7 @@ const generateRandomBlob = () => {
   return `${r()}% ${100-r()}% ${r()}% ${100-r()}% / ${r()}% ${r()}% ${100-r()}% ${100-r()}%`;
 };
 
-const DESIGN_DEFAULTS_KEY = 'vintage-drifter-current-default-v1';
+const DESIGN_DEFAULTS_KEY = 'vintage-drifter-current-default-v5';
 
 const createDefaultAuraShapes = () => CODE_DEFAULT_DESIGN.auraShapes.map(shape => ({ ...shape }));
 
@@ -759,6 +1107,7 @@ const OriginalWobblyAura = ({ drift, spread, active, rate, originalFlutter = fal
   const flutterBlur = 0.06 + intensity * 0.11;
   const flutterCycle = Math.max(1.02, 1.62 - intensity * 0.2 - rate / 270);
   const flutterFrequency = `${(0.018 + intensity * 0.01).toFixed(3)} ${(0.082 + intensity * 0.032).toFixed(3)}`;
+  const flutterBegin = `-${(((Date.now() - FLUTTER_ANIMATION_EPOCH) / 1000) % flutterCycle).toFixed(3)}s`;
 
   return (
     <div className={`absolute inset-0 pointer-events-none transition-all duration-700 ease-out flex justify-center items-center ${active ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
@@ -767,7 +1116,7 @@ const OriginalWobblyAura = ({ drift, spread, active, rate, originalFlutter = fal
           <defs>
             <filter id="driftOriginalFlutter" x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
               <feTurbulence type="fractalNoise" baseFrequency={flutterFrequency} numOctaves="2" seed="17" result="originalFlutterNoise">
-                <animate attributeName="seed" values="17;17;52;23;23" keyTimes="0;0.66;0.75;0.88;1" dur={`${flutterCycle}s`} repeatCount="indefinite" />
+                <animate attributeName="seed" values="17;17;52;23;23" keyTimes="0;0.66;0.75;0.88;1" dur={`${flutterCycle}s`} begin={flutterBegin} repeatCount="indefinite" />
               </feTurbulence>
               <feGaussianBlur in="originalFlutterNoise" stdDeviation={flutterBlur} result="softOriginalFlutterNoise" />
               <feColorMatrix
@@ -782,6 +1131,7 @@ const OriginalWobblyAura = ({ drift, spread, active, rate, originalFlutter = fal
                   values={`${flutterRestScale};${flutterRestScale};${flutterBurstScale};${flutterRestScale};${flutterRestScale}`}
                   keyTimes="0;0.66;0.75;0.88;1"
                   dur={`${flutterCycle}s`}
+                  begin={flutterBegin}
                   repeatCount="indefinite"
                 />
               </feDisplacementMap>
@@ -789,9 +1139,9 @@ const OriginalWobblyAura = ({ drift, spread, active, rate, originalFlutter = fal
           </defs>
         </svg>
       )}
-      <div className="absolute w-full h-full rounded-full blur-[60px] transition-transform duration-75" style={{ backgroundColor: '#e66a53', opacity: 0.15 + (drift/100)*0.1 + (spread/100)*0.15, transform: `translateX(-${visualSpread * 1.5}px) scaleX(${1 + visualSpread/200})` }} />
-      <div className="absolute w-full h-full rounded-full blur-[60px] transition-transform duration-75" style={{ backgroundColor: '#edd39a', opacity: 0.15 + (drift/100)*0.1 + (spread/100)*0.15, transform: `translateX(${visualSpread * 1.5}px) scaleX(${1 + visualSpread/200})` }} />
-      <div className="absolute w-[160%] h-[160%] flex justify-center items-center transition-transform duration-75" style={{ filter: originalFlutter ? 'url(#driftOriginalFlutter) drop-shadow(0 0 8px rgba(230,106,83,0.4))' : 'drop-shadow(0 0 8px rgba(230,106,83,0.4))', transform: `scaleX(${spreadScaleX}) scaleY(${spreadScaleY})` }}>
+      <div className="absolute w-full h-full rounded-full blur-[60px] transition-transform duration-[45ms]" style={{ backgroundColor: '#e66a53', opacity: 0.15 + (drift/100)*0.1 + (spread/100)*0.15, transform: `translateX(-${visualSpread * 1.5}px) scaleX(${1 + visualSpread/200})` }} />
+      <div className="absolute w-full h-full rounded-full blur-[60px] transition-transform duration-[45ms]" style={{ backgroundColor: '#edd39a', opacity: 0.15 + (drift/100)*0.1 + (spread/100)*0.15, transform: `translateX(${visualSpread * 1.5}px) scaleX(${1 + visualSpread/200})` }} />
+      <div className="absolute w-[160%] h-[160%] flex justify-center items-center transition-transform duration-[45ms]" style={{ filter: originalFlutter ? 'url(#driftOriginalFlutter) drop-shadow(0 0 8px rgba(230,106,83,0.4))' : 'drop-shadow(0 0 8px rgba(230,106,83,0.4))', transform: `scaleX(${spreadScaleX}) scaleY(${spreadScaleY})` }}>
         <div className="absolute w-[85%] h-[85%] transition-transform mix-blend-screen" style={{ animation: `spin ${animSpeed * 2.5}s linear infinite` }}>
           <div ref={ring1Ref} className="w-full h-full border-[2.5px] border-[#e66a53] border-dashed opacity-80" style={{ borderRadius: '50%', transition: 'border-radius 0.1s ease-out' }} />
         </div>
@@ -846,6 +1196,7 @@ const KnobFlutterRing = ({ drift, active, rate, mode, color = '#e66a53', strokeW
   const flutterBlur = 0.04 + intensity * 0.08;
   const flutterCycle = Math.max(1.02, (1.6 - intensity * 0.18 - rate / 285) * modeFreqMult);
   const flutterFrequency = `${(0.018 + intensity * 0.01).toFixed(3)} ${(0.082 + intensity * 0.03).toFixed(3)}`;
+  const flutterBegin = `-${(((Date.now() - FLUTTER_ANIMATION_EPOCH) / 1000) % flutterCycle).toFixed(3)}s`;
   const filterId = filled 
     ? (strokeWidth < 2 ? 'driftKnobFlutterCoralThinFilled' : 'driftKnobFlutterCoralFilled') 
     : (strokeWidth < 2 ? 'driftKnobFlutterCoralThin' : 'driftKnobFlutterCoral');
@@ -871,7 +1222,7 @@ const KnobFlutterRing = ({ drift, active, rate, mode, color = '#e66a53', strokeW
         <defs>
           <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
             <feTurbulence type="fractalNoise" baseFrequency={flutterFrequency} numOctaves="2" seed="17" result="knobFlutterNoise">
-              <animate attributeName="seed" values="17;17;52;23;23" keyTimes="0;0.66;0.75;0.88;1" dur={`${flutterCycle}s`} repeatCount="indefinite" />
+              <animate attributeName="seed" values="17;17;52;23;23" keyTimes="0;0.66;0.75;0.88;1" dur={`${flutterCycle}s`} begin={flutterBegin} repeatCount="indefinite" />
             </feTurbulence>
             <feGaussianBlur in="knobFlutterNoise" stdDeviation={flutterBlur} result="softKnobFlutterNoise" />
             <feColorMatrix
@@ -886,6 +1237,7 @@ const KnobFlutterRing = ({ drift, active, rate, mode, color = '#e66a53', strokeW
                 values={`${flutterRestScale};${flutterRestScale};${flutterBurstScale};${flutterRestScale};${flutterRestScale}`}
                 keyTimes="0;0.66;0.75;0.88;1"
                 dur={`${flutterCycle}s`}
+                begin={flutterBegin}
                 repeatCount="indefinite"
               />
             </feDisplacementMap>
@@ -901,11 +1253,11 @@ const KnobFlutterRing = ({ drift, active, rate, mode, color = '#e66a53', strokeW
           className="w-full h-full"
           style={{
             background: filled 
-              ? `conic-gradient(from ${startAngle}deg, #ffb09e 0deg, #e66a53 ${sweepAngle * 0.52}deg, #7e2a24 ${sweepAngle}deg, transparent ${sweepAngle}deg)` 
+              ? `conic-gradient(from ${startAngle}deg, hsl(11, 99%, 81%) 0deg, hsl(10, 74%, 61%) ${sweepAngle * 0.52}deg, hsl(4, 55%, 32%) ${sweepAngle}deg, transparent ${sweepAngle}deg)` 
               : 'transparent',
             border: filled ? 'none' : `${strokeWidth}px solid ${color}`,
             borderRadius: '50%',
-            filter: `url(#${filterId}) drop-shadow(0 0 7.6px ${color})`,
+            filter: `url(#${filterId}) drop-shadow(0 0 7.45px ${color})`,
             opacity: filled ? 1.0 : (color === '#e66a53' ? 0.88 : 0.94),
             animation: filled ? 'none' : `spin ${spinDuration} linear infinite`,
             transition: 'border-radius 0.1s ease-out'
@@ -976,6 +1328,7 @@ const KnobDriftExperiment = ({ drift, spread, active, rate, variant }) => {
     const phaseBlur = 0.055 + intensity * 0.11;
     const phaseCycle = Math.max(1.04, 1.66 - intensity * 0.22 - rate / 285);
     const phaseFrequency = `${(0.019 + intensity * 0.01).toFixed(3)} ${(0.083 + intensity * 0.034).toFixed(3)}`;
+    const phaseBegin = `-${(((Date.now() - FLUTTER_ANIMATION_EPOCH) / 1000) % phaseCycle).toFixed(3)}s`;
     return (
       <div className={stageClass} style={stageStyle}>
         {isFlutter && (
@@ -983,7 +1336,7 @@ const KnobDriftExperiment = ({ drift, spread, active, rate, variant }) => {
             <defs>
               <filter id={phaseFilterId} x="-45%" y="-45%" width="190%" height="190%" colorInterpolationFilters="sRGB">
                 <feTurbulence type="fractalNoise" baseFrequency={phaseFrequency} numOctaves="2" seed="29" result="phaseNoise">
-                  <animate attributeName="seed" values="29;29;61;37;37" keyTimes="0;0.62;0.72;0.86;1" dur={`${phaseCycle}s`} repeatCount="indefinite" />
+                  <animate attributeName="seed" values="29;29;61;37;37" keyTimes="0;0.62;0.72;0.86;1" dur={`${phaseCycle}s`} begin={phaseBegin} repeatCount="indefinite" />
                 </feTurbulence>
                 <feGaussianBlur in="phaseNoise" stdDeviation={phaseBlur} result="softPhaseNoise" />
                 <feColorMatrix
@@ -998,6 +1351,7 @@ const KnobDriftExperiment = ({ drift, spread, active, rate, variant }) => {
                     values={`${phaseRestScale};${phaseRestScale};${phaseBurstScale};${phaseRestScale};${phaseRestScale}`}
                     keyTimes="0;0.62;0.72;0.86;1"
                     dur={`${phaseCycle}s`}
+                    begin={phaseBegin}
                     repeatCount="indefinite"
                   />
                 </feDisplacementMap>
@@ -1699,6 +2053,7 @@ const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle, aurora
   const organicBlur = organicVariant ? organicVariant.blur(intensity) : 0;
   const organicCycle = organicVariant ? organicVariant.cycle(intensity, rate) : 2;
   const organicFrequency = organicVariant ? organicVariant.frequency(intensity) : '0.014 0.032';
+  const organicBegin = `-${(((Date.now() - FLUTTER_ANIMATION_EPOCH) / 1000) % organicCycle).toFixed(3)}s`;
   const stageStyle = {
     '--drift-speed': `${baseSpeed}s`,
     '--drift-speed-fast': `${Math.max(0.85, baseSpeed * 0.58)}s`,
@@ -1740,7 +2095,7 @@ const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle, aurora
           <defs>
             <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
               <feTurbulence type={organicVariant.type} baseFrequency={organicFrequency} numOctaves={organicVariant.numOctaves} seed="7" result="liquidNoise">
-                <animate attributeName="seed" values={organicVariant.seedValues} keyTimes={organicVariant.keyTimes} dur={`${organicCycle}s`} repeatCount="indefinite" />
+                <animate attributeName="seed" values={organicVariant.seedValues} keyTimes={organicVariant.keyTimes} dur={`${organicCycle}s`} begin={organicBegin} repeatCount="indefinite" />
               </feTurbulence>
               <feGaussianBlur in="liquidNoise" stdDeviation={organicBlur} result="softLiquidNoise" />
               {organicVariant.axis === 'horizontal' && (
@@ -1765,6 +2120,7 @@ const CreativeDriftAura = ({ drift, spread, active, rate, animationStyle, aurora
                     : `${organicRestScale};${organicRestScale};${organicBurstScale};${organicRestScale};${organicRestScale}`}
                   keyTimes={organicVariant.keyTimes}
                   dur={`${organicCycle}s`}
+                  begin={organicBegin}
                   repeatCount="indefinite"
                 />
               </feDisplacementMap>
@@ -2505,40 +2861,633 @@ const AnalogCables = ({ position = 'left', parallel = true }) => {
 // --- UI Components ---
 const KNOB_STYLES = [
   { name: 'Original (Levitating)', boxShadow: '12px 12px 20px rgba(0,0,0,0.45), 4px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)', backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)', backgroundColor: '#111' },
-  { name: 'Heavy Cast Iron', boxShadow: '0px 20px 25px rgba(0,0,0,0.6), 0px 5px 10px rgba(0,0,0,0.8), inset 0px 2px 4px rgba(255,255,255,0.1), inset 0px -4px 8px rgba(0,0,0,0.9)', backgroundImage: 'radial-gradient(circle at 50% 10%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.95) 100%)', backgroundColor: '#1a1a1a' },
-  { name: 'Anodized Studio', boxShadow: '0px 10px 15px rgba(0,0,0,0.3), 0px 3px 6px rgba(0,0,0,0.4), inset 0px 1px 1px rgba(255,255,255,0.2), inset 0px -1px 2px rgba(0,0,0,0.6)', backgroundImage: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.6) 100%)', backgroundColor: '#262626' },
-  { name: 'Vintage Bakelite', boxShadow: '8px 12px 15px rgba(0,0,0,0.6), 2px 4px 6px rgba(0,0,0,0.5), inset 2px 2px 4px rgba(255,255,255,0.3), inset -3px -3px 6px rgba(0,0,0,0.8)', backgroundImage: 'radial-gradient(circle at 25% 25%, rgba(255,255,255,0.25) 0%, rgba(0,0,0,0.9) 80%)', backgroundColor: '#111' },
   { name: 'Dark Brushed Metal', boxShadow: '0px 12px 20px rgba(0,0,0,0.5), 0px 4px 8px rgba(0,0,0,0.6), inset 0px 1px 3px rgba(255,255,255,0.4), inset 0px -2px 5px rgba(0,0,0,0.9)', backgroundImage: 'conic-gradient(from 180deg at 50% 50%, #1a1a1a 0deg, #3a3a3a 45deg, #1a1a1a 90deg, #3a3a3a 135deg, #1a1a1a 180deg, #3a3a3a 225deg, #1a1a1a 270deg, #3a3a3a 315deg, #1a1a1a 360deg)', backgroundColor: '#111' },
   { name: 'Soft Matte Rubber', boxShadow: '0px 15px 30px rgba(0,0,0,0.35), 0px 5px 15px rgba(0,0,0,0.45), inset 0px 1px 1px rgba(255,255,255,0.05), inset 0px -2px 4px rgba(0,0,0,0.5)', backgroundImage: 'none', backgroundColor: '#1f1f1f' },
-  { name: 'Recessed Dome', boxShadow: '0px 2px 4px rgba(0,0,0,0.8), 0px 0px 2px rgba(0,0,0,0.9), inset 0px 5px 10px rgba(255,255,255,0.1), inset 0px -5px 10px rgba(0,0,0,0.9)', backgroundImage: 'radial-gradient(circle at 50% 20%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%)', backgroundColor: '#141414' },
-  { name: 'Machined Grip', boxShadow: '0px 10px 15px rgba(0,0,0,0.7), 0px 2px 4px rgba(0,0,0,0.8), inset 0px 1px 2px rgba(255,255,255,0.3), inset 0px -1px 3px rgba(0,0,0,0.9)', backgroundImage: 'repeating-radial-gradient(circle at 50% 50%, #1a1a1a 0px, #2a2a2a 2px, #1a1a1a 4px)', backgroundColor: '#111' },
-  { name: 'Polished Onyx', boxShadow: '0px 15px 25px rgba(0,0,0,0.6), 0px 6px 12px rgba(0,0,0,0.7), inset 0px 2px 5px rgba(255,255,255,0.5), inset 0px -3px 8px rgba(0,0,0,0.9)', backgroundImage: 'radial-gradient(circle at 35% 25%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 30%, rgba(0,0,0,0.9) 100%)', backgroundColor: '#0a0a0a' }
+  {
+    name: 'Graphite Anodized Grip',
+    boxShadow: '10px 13px 18px rgba(0,0,0,0.48), 2px 4px 7px rgba(0,0,0,0.42), inset 1px 1px 2px rgba(255,255,255,0.16), inset -2px -3px 6px rgba(0,0,0,0.82)',
+    backgroundImage: 'linear-gradient(145deg, rgba(255,255,255,0.12), transparent 42%, rgba(0,0,0,0.34)), conic-gradient(from 190deg at 50% 50%, #151718, #3a3d3f, #17191a, #303436, #151718)',
+    backgroundColor: '#181a1b',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.14) 0deg 1deg, rgba(0,0,0,0.24) 1deg 3deg)',
+    edgeOpacity: 0.48,
+    edgeMask: 'radial-gradient(circle, transparent 0 68%, #000 70% 100%)',
+    faceOverlay: 'radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%)'
+  },
+  {
+    name: 'Original Graphite Grip',
+    boxShadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)',
+    backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    backgroundColor: '#111',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.14) 0deg 1deg, rgba(0,0,0,0.24) 1deg 3deg)',
+    edgeOpacity: 0.48,
+    edgeMask: 'radial-gradient(circle, transparent 0 68%, #000 70% 100%)',
+    faceOverlay: 'radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%)'
+  },
+  {
+    name: 'Original Graphite Grip Cream Pointer',
+    boxShadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)',
+    backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    backgroundColor: '#111',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.14) 0deg 1deg, rgba(0,0,0,0.24) 1deg 3deg)',
+    edgeOpacity: 0.48,
+    edgeMask: 'radial-gradient(circle, transparent 0 68%, #000 70% 100%)',
+    faceOverlay: 'radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%)',
+    indicator: {
+      background: 'linear-gradient(to bottom, #f3dcae, #c79f59)',
+      boxShadow: '0 0 8px rgba(243,220,174,0.34), 0 2px 4px rgba(0,0,0,0.48), inset 0 1px 1px rgba(255,246,224,0.78)'
+    }
+  },
+  {
+    name: 'Original Graphite Grip Dark Shadow',
+    boxShadow: '4px 12px 20px rgba(0,0,0,0.45), 2px 4px 8px rgba(0,0,0,0.54), inset 0px 1px 3px rgba(255,255,255,0.4), inset 0px -2px 5px rgba(0,0,0,0.9)',
+    backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    backgroundColor: '#111',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.14) 0deg 1deg, rgba(0,0,0,0.24) 1deg 3deg)',
+    edgeOpacity: 0.48,
+    edgeMask: 'radial-gradient(circle, transparent 0 68%, #000 70% 100%)',
+    faceOverlay: 'radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%)'
+  },
+  
 ];
 
-const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride, shadingStyle, labelOffsetY = 0, indicatorActive = true }) => {
+const PRESERVED_SMALL_KNOB_STYLES = new Set([
+  'Original (Levitating)',
+  'Dark Brushed Metal',
+  'Soft Matte Rubber',
+  'Graphite Anodized Grip',
+  'Original Graphite Grip',
+  'Original Graphite Grip Cream Pointer',
+  'Original Graphite Grip Dark Shadow'
+]);
+
+const KNOB_READOUT_STYLES = [
+  { name: 'Classic Digital', type: 'digital' },
+  { name: 'Floating Glass', type: 'glass' },
+  { name: 'Coral Glass', type: 'coral-glass' },
+  { name: 'Obsidian Coral', type: 'obsidian-coral' },
+  { name: 'Minimalist Coral', type: 'minimal-coral' },
+  { name: 'Stealth Modern', type: 'stealth-modern' },
+  { name: 'Hardware Label', type: 'hardware-label' },
+  { name: 'Stealth Ghost', type: 'stealth-ghost' },
+  { name: 'Stealth Coral', type: 'stealth-coral' },
+  { name: 'Stealth Ivory', type: 'stealth-ivory' }
+];
+
+export const formatKnobValue = (label, value) => {
+  const v = Math.max(0, Math.min(100, value));
+  switch (label.toUpperCase()) {
+    case 'INPUT':
+    case 'OUTPUT':
+      const db = ((v / 100) * 48) - 24;
+      return `${db > 0 ? '+' : ''}${db.toFixed(1)} dB`;
+    case 'FILTER':
+      const x = v / 100;
+      const freq = 100 * Math.pow(22000 / 100, x);
+      return freq >= 1000 ? `${(freq / 1000).toFixed(1)}k Hz` : `${Math.round(freq)} Hz`;
+    case 'RATE':
+      const rate = 1000 + (v / 100) * 9000;
+      return `${(rate / 1000).toFixed(1)}k Hz`;
+    case 'PHASE ◐':
+    case 'PHASE':
+      const phase = (v / 100) * 180;
+      return `${Math.round(phase)}°`;
+    case 'SAT':
+    case 'DEPTH ◍':
+    case 'DEPTH':
+    case 'NOISE':
+    case 'SWEETEN':
+    case 'DRIFT':
+    case 'SPREAD':
+    default:
+      return `${Math.round(v)}%`;
+  }
+};
+
+export const renderReadout = (type, val) => {
+  switch (type) {
+    case 'digital':
+      return <div className="text-[10px] font-mono text-red-500 drop-shadow-[0_0_4px_rgba(239,68,68,0.8)] bg-black/80 px-1.5 py-0.5 rounded border border-red-900/50 whitespace-nowrap">{val}</div>;
+    case 'glass':
+      return <div className="text-[9px] text-black/80 backdrop-blur-md bg-white/10 px-2 py-0.5 rounded-full border border-white/20 shadow-lg whitespace-nowrap font-bold tracking-wider">{val}</div>;
+    case 'coral-glass':
+      return <div className="text-[9px] text-[#e66a53] backdrop-blur-md bg-white/15 px-2 py-0.5 rounded-full border border-[#e66a53]/30 shadow-lg whitespace-nowrap font-bold tracking-wider">{val}</div>;
+    case 'obsidian-coral':
+      return <div className="text-[9px] text-[#e66a53] backdrop-blur-lg bg-black/40 px-2.5 py-0.5 rounded-lg border border-white/10 shadow-xl whitespace-nowrap font-bold tracking-widest uppercase">{val}</div>;
+    case 'minimal-coral':
+      return <div className="text-[10px] font-bold text-[#e66a53] drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] whitespace-nowrap tracking-widest" style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
+    case 'stealth-modern':
+      return <div className="text-[9px] text-white/90 backdrop-blur-md bg-black/60 px-2.5 py-0.5 rounded border border-white/10 shadow-xl whitespace-nowrap font-bold tracking-wider">{val}</div>;
+    case 'rounded-stealth-ivory':
+      return <div className="text-[10px] text-[#edd39a] backdrop-blur-md bg-black/60 px-2.5 py-0.5 rounded-full border border-[#edd39a]/20 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase" style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
+    case 'hardware-label':
+      return <div className="text-[9px] font-black text-black bg-[#e66a53] px-2 py-0.5 rounded shadow-[0_2px_4px_rgba(0,0,0,0.3)] whitespace-nowrap uppercase tracking-widest">{val}</div>;
+    case 'stealth-ghost':
+      return <div className="text-[10px] text-white backdrop-blur-md bg-black/60 px-2 py-0.5 rounded border border-white/10 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase" style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
+    case 'stealth-coral':
+      return <div className="text-[10px] text-[#e66a53] backdrop-blur-md bg-black/60 px-2 py-0.5 rounded border border-[#e66a53]/20 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase" style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
+    case 'stealth-ivory':
+      return <div className="text-[10px] text-[#edd39a] backdrop-blur-md bg-black/60 px-2 py-0.5 rounded border border-[#edd39a]/20 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase" style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
+    default:
+      return null;
+  }
+};
+
+const DISPLAY_ACCENT = '#e66a53';
+const DISPLAY_FONT_STACK = "'Chakra Petch', 'DIN Condensed', 'Avenir Next Condensed', 'Helvetica Neue', Arial, sans-serif";
+
+const DISPLAY_PARAMETER_CONFIG = {
+  input: { name: 'INPUT', label: 'INPUT', anim: 'bars' },
+  output: { name: 'OUTPUT', label: 'OUTPUT', anim: 'bars' },
+  noise: { name: 'NOISE', label: 'NOISE', anim: 'static' },
+  sweeten: { name: 'SWEETEN', label: 'SWEETEN', anim: 'sparkle' },
+  sat: { name: 'SAT', label: 'SAT', anim: 'heat' },
+  filter: { name: 'FILTER', label: 'FILTER', anim: 'curve' },
+  drift: { name: 'DRIFT', label: 'DRIFT', anim: 'drift' },
+  spread: { name: 'SPREAD', label: 'SPREAD', anim: 'width' },
+  rate: { name: 'RATE', label: 'RATE', anim: 'rateWave' },
+  depth: { name: 'DEPTH', label: 'DEPTH ◍', anim: 'pulse' },
+  phase: { name: 'PHASE', label: 'PHASE ◐', anim: 'circle' },
+  autoGain: { name: 'AUTO', label: 'AUTO GAIN', anim: 'pulse' }
+};
+
+const splitDisplayValue = (formatted) => {
+  const text = String(formatted || '');
+  const spaced = text.match(/^([+-]?\d+(?:\.\d+)?k?)\s*([^\d\s].*)?$/i);
+  if (spaced) return { val: spaced[1], unit: spaced[2] || '' };
+  return { val: text, unit: '' };
+};
+
+const createDisplayParameter = (id, value, options = {}) => {
+  const config = DISPLAY_PARAMETER_CONFIG[id] || DISPLAY_PARAMETER_CONFIG.sat;
+  if (id === 'autoGain') {
+    return {
+      ...config,
+      id,
+      val: value ? 'ON' : 'OFF',
+      unit: '',
+      level: value ? 1 : 0.08
+    };
+  }
+
+  const formatted = formatKnobValue(config.label, value);
+  const split = splitDisplayValue(formatted);
+  return {
+    ...config,
+    id,
+    ...split,
+    level: Math.max(0.04, Math.min(1, (Number(value) || 0) / 100)),
+    signalIn: Math.max(0.12, Math.min(1, (Number(options.input) || 0) / 100)),
+    signalOut: Math.max(0.12, Math.min(1, (Number(options.output) || 0) / 100)),
+    mode: options.mode,
+    rate: options.rate,
+    waveShape: options.waveShape,
+    driftAnimation: options.driftAnimation
+  };
+};
+
+const getLfoWavePoints = (waveShape = 0, cycles = 2, amplitude = 6, yMid = 11, samples = 96) => {
+  const points = [];
+  for (let i = 0; i < samples; i++) {
+    const x = (i / (samples - 1)) * 100;
+    const phase = ((i / (samples - 1)) * cycles) % 1;
+    let wave = Math.sin(phase * Math.PI * 2);
+    if (waveShape === 1) {
+      wave = 1 - 4 * Math.abs(phase - 0.5);
+    } else if (waveShape === 2) {
+      wave = phase < 0.5 ? -1 : 1;
+    }
+    points.push(`${x.toFixed(1)},${(yMid + wave * amplitude).toFixed(1)}`);
+  }
+  return points.join(' ');
+};
+
+const SideDisplayButtons = ({ onPrev, onNext }) => {
+  const buttonClass = 'w-6 h-6 rounded-full bg-gradient-to-b from-[#3A2D25] to-[#1A1410] border border-[#5A4535]/40 shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.1)] flex items-center justify-center text-[#8D7B68] hover:text-[#FF6B4A] hover:border-[#FF6B4A]/50 active:scale-95 transition-all outline-none';
+
+  return (
+    <>
+      <button type="button" onClick={onPrev} className={buttonClass} aria-label="Previous option">
+        <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M10 14L4 8l6-6v12z" />
+        </svg>
+      </button>
+      <button type="button" onClick={onNext} className={buttonClass} aria-label="Next option">
+        <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M6 2l6 6-6 6V2z" />
+        </svg>
+      </button>
+    </>
+  );
+};
+
+const DisplayFeatureAnimation = ({ parameter }) => {
+  const level = parameter.level ?? 0.5;
+  const accent = DISPLAY_ACCENT;
+  const speed = `${Math.max(0.85, 3.4 - level * 2.1)}s`;
+
+  switch (parameter.anim) {
+    case 'bars':
+      {
+        const inputLevel = parameter.signalIn ?? level;
+        const outputLevel = parameter.signalOut ?? level;
+        const meterLevels = [inputLevel, outputLevel];
+        return (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-2">
+            {meterLevels.map((meterLevel, i) => (
+            <div key={i} className="h-[3px] w-[76%] rounded-full bg-[#331812]">
+              <div
+                className="h-full rounded-full shadow-[0_0_4px_rgba(230,106,83,0.68)] transition-all duration-200"
+                style={{ width: `${18 + meterLevel * 76}%`, backgroundColor: accent, opacity: i === 0 ? 0.88 : 0.62 }}
+              />
+            </div>
+            ))}
+          </div>
+        );
+      }
+    case 'static':
+      return (
+        <div className="flex h-full w-full items-center justify-center p-2">
+          <div
+            className="h-full w-full rounded-sm"
+            style={{
+              opacity: 0.16 + level * 0.56,
+              backgroundImage: `radial-gradient(${accent} 1px, transparent 1px)`,
+              backgroundSize: `${Math.max(2, 5 - level * 2)}px ${Math.max(2, 5 - level * 2)}px`
+            }}
+          />
+        </div>
+      );
+    case 'sparkle':
+      return (
+        <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+          <div
+            className="hud-sweeten-bloom absolute rounded-full"
+            style={{
+              width: `${30 + level * 42}px`,
+              height: `${16 + level * 18}px`,
+              background: `radial-gradient(ellipse at 50% 50%, rgba(255,208,188,${0.16 + level * 0.26}) 0%, rgba(230,106,83,${0.14 + level * 0.28}) 42%, transparent 78%)`,
+              filter: `blur(${4 + level * 3}px) saturate(${1.05 + level * 0.45})`,
+              opacity: 0.3 + level * 0.46
+            }}
+          />
+          <div
+            className="hud-sweeten-bloom absolute rounded-full"
+            style={{
+              width: `${12 + level * 18}px`,
+              height: `${12 + level * 18}px`,
+              background: `radial-gradient(circle, rgba(255,224,198,${0.18 + level * 0.3}) 0%, rgba(230,106,83,${0.12 + level * 0.24}) 52%, transparent 82%)`,
+              filter: `blur(${2 + level * 2}px)`,
+              opacity: 0.24 + level * 0.36,
+              animationDelay: '-0.7s'
+            }}
+          />
+        </div>
+      );
+    case 'heat':
+      return (
+        <div className="relative flex h-full w-full items-center justify-center overflow-hidden px-3">
+          <div
+            className="absolute bottom-0 left-1/2 h-full w-[88%] -translate-x-1/2 blur-[6px] transition-all duration-300"
+            style={{
+              opacity: 0.12 + level * 0.58,
+              background: `radial-gradient(ellipse at 50% ${82 - level * 24}%, rgba(230,106,83,${0.32 + level * 0.44}) 0%, rgba(255,177,108,${0.12 + level * 0.24}) 34%, transparent 72%)`,
+              transform: `translateX(-50%) scaleY(${0.58 + level * 0.7})`
+            }}
+          />
+          <div
+            className="absolute h-[34px] w-[70px] rounded-full transition-all duration-300"
+            style={{
+              opacity: 0.12 + level * 0.4,
+              background: `radial-gradient(ellipse at center, rgba(255,180,110,${0.12 + level * 0.24}), rgba(230,106,83,${0.16 + level * 0.36}) 42%, transparent 72%)`,
+              filter: `blur(${7 + level * 5}px) saturate(${1 + level * 0.7})`,
+              transform: `scale(${0.72 + level * 0.42})`
+            }}
+          />
+        </div>
+      );
+    case 'curve':
+      {
+        const cutoffX = 8 + level * 45;
+        const highTail = 29 - level * 5;
+        const lowTail = 9 + level * 1.5;
+        return (
+          <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }}>
+            <path d="M3,10 H48 C53,10 55,14 55,25" fill="none" stroke="#2b1712" strokeWidth="2" strokeLinecap="round" opacity="0.68" />
+            <path
+              d={`M3,${lowTail.toFixed(1)} H${cutoffX.toFixed(1)} C${(cutoffX + 4.5).toFixed(1)},${lowTail.toFixed(1)} ${(cutoffX + 7.5).toFixed(1)},${highTail - 8} 55,${highTail}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              className="transition-all duration-200 drop-shadow-[0_0_3px_rgba(230,106,83,0.85)]"
+            />
+            <line x1={cutoffX} y1="7" x2={cutoffX} y2="28" stroke="currentColor" strokeWidth="0.8" opacity="0.38" className="transition-all duration-200" />
+          </svg>
+        );
+      }
+    case 'rateWave':
+      {
+        const cycles = 1 + Math.round(level * 5);
+        const amplitude = 10.5 + level * 3.4;
+        const points = getLfoWavePoints(parameter.waveShape, cycles, amplitude);
+        return (
+          <div className="absolute inset-y-0 left-[9px] right-[10px] overflow-hidden">
+            <div className="absolute left-0 flex h-full w-[200%] items-center hud-slide-left" style={{ animationDuration: `${Math.max(0.5, 3.2 - level * 2.2)}s` }}>
+            {[0, 1].map(i => (
+              <svg key={i} viewBox="0 0 100 22" className="h-[42px] w-1/2 shrink-0 fill-none" style={{ color: accent }}>
+                <polyline points={points} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.86" />
+              </svg>
+            ))}
+            </div>
+          </div>
+        );
+      }
+    case 'drift':
+      {
+        const driftFilterId = 'hudDriftFlutter';
+        const intensity = Math.max(0.08, level);
+        const modeFreqMult = (parameter.mode === 'calm' || parameter.mode === 0) ? 2.8 : ((parameter.mode === 'vintage' || parameter.mode === 1) ? 1.8 : 1.0);
+        const modeIntenseMult = (parameter.mode === 'calm' || parameter.mode === 0) ? 0.5 : ((parameter.mode === 'vintage' || parameter.mode === 1) ? 0.75 : 1.0);
+        const flutterCycle = Math.max(1.02, (1.6 - intensity * 0.18 - (Number(parameter.rate) || 0) / 285) * modeFreqMult);
+        const flutterFrequency = `${(0.018 + intensity * 0.01).toFixed(3)} ${(0.082 + intensity * 0.03).toFixed(3)}`;
+        const flutterRestScale = 0.18 + intensity * 0.42;
+        const flutterBurstScale = (2.8 + intensity * 6.2) * modeIntenseMult;
+        const flutterBlur = 0.04 + intensity * 0.08;
+        const flutterBegin = `-${(((Date.now() - FLUTTER_ANIMATION_EPOCH) / 1000) % flutterCycle).toFixed(3)}s`;
+        const centerPath = `M4,17 C13,${15 - level * 4} 18,${21 + level * 4} 28,17 S44,${11 + level * 5} 54,17`;
+        return (
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+            <svg viewBox="0 0 58 34" className="absolute h-full w-full" style={{ color: accent }}>
+              <defs>
+                <filter id={driftFilterId} x="-45%" y="-75%" width="190%" height="250%" colorInterpolationFilters="sRGB">
+                  <feTurbulence type="fractalNoise" baseFrequency={flutterFrequency} numOctaves="2" seed="17" result="hudDriftNoise">
+                    <animate attributeName="seed" values="17;17;52;23;23" keyTimes="0;0.66;0.75;0.88;1" dur={`${flutterCycle}s`} begin={flutterBegin} repeatCount="indefinite" />
+                  </feTurbulence>
+                  <feGaussianBlur in="hudDriftNoise" stdDeviation={flutterBlur} result="softHudDriftNoise" />
+                  <feDisplacementMap in="SourceGraphic" in2="softHudDriftNoise" scale={flutterRestScale} xChannelSelector="R" yChannelSelector="G">
+                    <animate
+                      attributeName="scale"
+                      values={`${flutterRestScale};${flutterRestScale};${flutterBurstScale};${flutterRestScale};${flutterRestScale}`}
+                      keyTimes="0;0.66;0.75;0.88;1"
+                      dur={`${flutterCycle}s`}
+                      begin={flutterBegin}
+                      repeatCount="indefinite"
+                    />
+                  </feDisplacementMap>
+                </filter>
+              </defs>
+              <g filter={`url(#${driftFilterId})`} style={{ opacity: 0.72 + level * 0.22 }}>
+                <path d={centerPath} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.78" />
+                <path d={centerPath} fill="none" stroke="#ffd0bc" strokeWidth="0.42" strokeLinecap="round" opacity={0.14 + level * 0.16} />
+              </g>
+            </svg>
+          </div>
+        );
+      }
+    case 'curve-old':
+      return (
+        <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }}>
+          <path d="M2,27 C16,27 18,8 30,8 C41,8 42,25 56,25" fill="none" stroke="#331812" strokeWidth="2" strokeLinecap="round" />
+          <path d="M2,27 C16,27 18,8 30,8 C41,8 42,25 56,25" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeDasharray="90" strokeDashoffset={78 - level * 68} className="transition-all duration-200 drop-shadow-[0_0_3px_rgba(230,106,83,0.85)]" />
+        </svg>
+      );
+    case 'wave':
+      return (
+        <div className="absolute left-0 flex h-full w-[200%] items-center hud-slide-left" style={{ animationDuration: speed }}>
+          <svg viewBox="0 0 100 22" className="h-7 w-full fill-none" style={{ color: accent }}>
+            <path d={`M0,11 Q12.5,${11 - level * 9} 25,11 T50,11 T75,11 T100,11`} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </div>
+      );
+    case 'width':
+      return (
+        <div className="relative flex h-full w-full items-center justify-center">
+          <div className="absolute h-px rounded-full transition-all duration-200" style={{ width: `${18 + level * 76}%`, backgroundColor: accent, opacity: 0.7 }} />
+          <div className="absolute flex items-center justify-between transition-all duration-200" style={{ width: `${22 + level * 68}%` }}>
+            <span className="h-3 w-[3px] rounded-sm" style={{ backgroundColor: accent }} />
+            <span className="h-3 w-[3px] rounded-sm" style={{ backgroundColor: accent }} />
+          </div>
+          <div className="relative h-1.5 w-1.5 rounded-full shadow-[0_0_7px_rgba(230,106,83,0.9)]" style={{ backgroundColor: accent }} />
+        </div>
+      );
+    case 'lfo':
+      return (
+        <svg viewBox="0 0 56 34" className="h-full w-full fill-none p-1" style={{ color: accent }}>
+          <polyline points="2,24 15,10 28,24 41,10 54,24" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" opacity="0.74" />
+          <circle cx={10 + level * 36} cy={17 + Math.sin(level * Math.PI * 4) * 8} r="2" fill={accent} className="hud-pulse" />
+        </svg>
+      );
+    case 'pulse':
+      return (
+        <div className="relative flex h-full w-full items-center justify-center">
+          <div className="absolute h-[3px] w-[62%] overflow-hidden rounded-full bg-[#2b1712]">
+            <div
+              className="hud-depth-soft h-full rounded-full"
+              style={{
+                width: `${18 + level * 76}%`,
+                backgroundColor: accent,
+                boxShadow: '0 0 5px rgba(230,106,83,0.62)'
+              }}
+            />
+          </div>
+          <div
+            className="absolute rounded-full border"
+            style={{
+              width: 11 + level * 12,
+              height: 11 + level * 12,
+              borderColor: accent,
+              opacity: 0.18 + level * 0.36
+            }}
+          />
+        </div>
+      );
+    case 'circle':
+      return (
+        <div className="flex h-full w-full items-center justify-center">
+          <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }}>
+            <path d="M8,17 H50" stroke="#2b1712" strokeWidth="2" strokeLinecap="round" opacity="0.9" />
+            <path d={`M8,17 C18,${17 - level * 8} 27,${17 + level * 8} 50,17`} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.78" className="hud-phase-soft" />
+            <circle cx={8 + level * 42} cy="17" r="1.8" fill="currentColor" opacity="0.82" />
+          </svg>
+        </div>
+      );
+    default:
+      return null;
+  }
+};
+
+const ParameterDataDisplay = ({ parameter, power = true }) => {
+  const level = parameter.level ?? 0.5;
+  const inWidth = `${Math.round((parameter.signalIn ?? level) * 82 + 10)}%`;
+  const outWidth = `${Math.round((parameter.signalOut ?? level) * 82 + 10)}%`;
+
+  return (
+    <div
+      className={`relative p-[5px] rounded-full border transition-opacity duration-300 ${power ? 'opacity-95' : 'opacity-50'}`}
+      style={{
+        background: '#1b1917',
+        borderColor: 'rgba(70,67,62,0.34)',
+        boxShadow: '2px 4px 6px rgba(19,15,13,0.24), inset 0 1px 0 rgba(255,255,245,0.055), inset 0 -1px 2px rgba(0,0,0,0.36)'
+      }}
+    >
+      <div
+        className="relative flex h-[58px] w-44 overflow-hidden rounded-full"
+        style={{
+          background: 'linear-gradient(180deg, #191817 0%, #121110 100%)',
+          boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.56), inset 0 0 0 1px rgba(255,235,210,0.04)',
+          fontFamily: DISPLAY_FONT_STACK,
+          fontVariantNumeric: 'tabular-nums'
+        }}
+      >
+        <div
+          className="pointer-events-none absolute inset-0 z-20 rounded-full"
+          style={{
+            background: 'radial-gradient(ellipse at 30% 78%, rgba(230,106,83,0.12), transparent 54%), radial-gradient(ellipse at 82% 18%, rgba(220,205,185,0.06), transparent 46%)',
+            mixBlendMode: 'screen',
+            opacity: 0.82
+          }}
+        />
+        <div
+          className="pointer-events-none absolute inset-x-5 top-[5px] z-30 h-[18%] rounded-full"
+          style={{
+            background: 'linear-gradient(180deg, rgba(235,230,220,0.03), transparent)',
+            opacity: 0.5
+          }}
+        />
+        <div className="pointer-events-none absolute inset-0 z-20 rounded-full shadow-[inset_0_0_12px_rgba(0,0,0,0.24)]" />
+        <div className="hud-screen-soft relative flex h-full w-[50%] items-center overflow-hidden pl-2">
+          <DisplayFeatureAnimation parameter={parameter} />
+        </div>
+        <div className="hud-screen-soft relative z-10 flex h-full w-[50%] flex-col justify-center px-4">
+          <div className="mb-0.5 text-[8px] font-bold uppercase tracking-[0.2em]" style={{ color: 'rgba(230,106,83,0.86)', textShadow: '0 0 4px rgba(230,106,83,0.35)' }}>{parameter.name}</div>
+          <div className="mb-1 flex items-baseline leading-none tracking-wider" style={{ color: '#f0ece1', textShadow: '0 0 3px rgba(230,106,83,0.32)' }}>
+            <span className={parameter.val.length > 5 ? 'text-[10px]' : 'text-[14px]'} style={{ color: '#f0ece1' }}>{parameter.val}</span>
+            {parameter.unit && <span className="ml-1 text-[8px]" style={{ color: 'rgba(230,106,83,0.78)' }}>{parameter.unit}</span>}
+          </div>
+          <div className="flex flex-col gap-[1.5px]">
+            <div className="flex items-center gap-1">
+              <span className="w-[11px] text-[5px] font-semibold leading-none" style={{ color: 'rgba(230,106,83,0.6)' }}>IN</span>
+              <div className="h-[1.5px] flex-1 overflow-hidden rounded-full bg-[#2b1712]">
+                <div className="h-full rounded-full bg-[#e66a53] shadow-[0_0_3px_rgba(230,106,83,0.72)] transition-all duration-200" style={{ width: inWidth }} />
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="w-[11px] text-[5px] font-semibold leading-none" style={{ color: 'rgba(230,106,83,0.6)' }}>OUT</span>
+              <div className="h-[1.5px] flex-1 overflow-hidden rounded-full bg-[#2b1712]">
+                <div className="h-full rounded-full bg-[#e66a53] shadow-[0_0_3px_rgba(230,106,83,0.64)] transition-all duration-200" style={{ width: outWidth }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="pointer-events-auto absolute left-1/2 top-[calc(100%+7px)] flex -translate-x-1/2 items-center gap-2">
+        <SideDisplayButtons onPrev={() => {}} onNext={() => {}} />
+        <span className="text-[9px] font-bold uppercase tracking-[0.28em] text-[#fff8eb] drop-shadow-sm">OPTIONS</span>
+      </div>
+    </div>
+  );
+};
+
+const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride, shadingStyle, labelOffsetY = 0, indicatorActive = true, forceSnappy = false, onDraggingChange, onDisplayFocus, readoutStyleIndex = 0 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
   const startVal = useRef(0);
-  const handlePointerDown = (e) => { e.preventDefault(); setIsDragging(true); startY.current = e.clientY; startVal.current = value; e.target.setPointerCapture(e.pointerId); };
+  const handlePointerDown = (e) => { e.preventDefault(); onDisplayFocus?.(); setIsDragging(true); onDraggingChange?.(true); startY.current = e.clientY; startVal.current = value; e.target.setPointerCapture(e.pointerId); };
   const handlePointerMove = (e) => { if (!isDragging) return; e.preventDefault(); const d = startY.current - e.clientY; onChange(Math.max(min, Math.min(max, startVal.current + (d * 0.8) * ((max - min) / 100)))); };
-  const handlePointerUp = (e) => { setIsDragging(false); e.target.releasePointerCapture(e.pointerId); };
+  const handlePointerUp = (e) => { setIsDragging(false); onDraggingChange?.(false); e.target.releasePointerCapture(e.pointerId); };
   const rotation = ((value - min) / (max - min) * 270) - 135;
   const isCoral = color === 'coral';
+  const formattedVal = formatKnobValue(label, value);
+  const readoutStyle = KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0];
+  const hasPronouncedGrip = false;
+  const ridgeCount = shadingStyle?.ridgeCount || 92;
+  const ridgeWidth = Math.max(1, size * 0.017);
+  const ridgeHeight = Math.max(3, size * 0.06);
+  const ridgeRadius = size * 0.505;
+
   return (
     <div className="flex flex-col items-center justify-center group select-none relative z-10" onDoubleClick={onDoubleClick}>
-      <div className="relative rounded-full cursor-ns-resize touch-none" style={{ width: size, height: size, backgroundColor: isCoral ? '#e66a53' : (shadingStyle?.backgroundColor || '#111'), boxShadow: isCoral ? '10px 10px 18px rgba(180,60,40,0.4), 4px 4px 6px rgba(180,60,40,0.3), inset 2px 2px 5px rgba(255,255,255,0.4), inset -2px -2px 5px rgba(0,0,0,0.3)' : (shadingStyle?.boxShadow || '12px 12px 20px rgba(0,0,0,0.45), 4px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)'), backgroundImage: isCoral ? 'none' : (shadingStyle?.backgroundImage || 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)') }}
+      <div className="relative overflow-visible rounded-full cursor-ns-resize touch-none" style={{ width: size, height: size, backgroundColor: isCoral ? '#e66a53' : (shadingStyle?.backgroundColor || '#111'), boxShadow: isCoral ? '10px 10px 18px rgba(180,60,40,0.4), 4px 4px 6px rgba(180,60,40,0.3), inset 2px 2px 5px rgba(255,255,255,0.4), inset -2px -2px 5px rgba(0,0,0,0.3)' : (shadingStyle?.boxShadow || '12px 12px 20px rgba(0,0,0,0.45), 4px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)'), backgroundImage: isCoral ? 'none' : (shadingStyle?.backgroundImage || 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)'), backgroundBlendMode: isCoral ? undefined : shadingStyle?.backgroundBlendMode }}
         onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
-        <div className="absolute inset-0 transition-transform duration-75" style={{ transform: `rotate(${rotation}deg)` }}>
+        {hasPronouncedGrip && (
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle at 50% 18%, rgba(255,255,255,0.055), transparent 34%), radial-gradient(circle at 50% 82%, rgba(0,0,0,0.22), transparent 58%)'
+            }}
+          />
+        )}
+        {shadingStyle?.edgeTexture && !isCoral && !hasPronouncedGrip && (
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{
+              background: shadingStyle.edgeTexture,
+              opacity: shadingStyle.edgeOpacity ?? 0.35,
+              WebkitMask: shadingStyle.edgeMask,
+              mask: shadingStyle.edgeMask,
+              mixBlendMode: shadingStyle.edgeBlendMode || 'screen'
+            }}
+          />
+        )}
+        {shadingStyle?.faceOverlay && !isCoral && (
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{
+              background: shadingStyle.faceOverlay,
+              opacity: shadingStyle.faceOverlayOpacity ?? 1,
+              mixBlendMode: shadingStyle.faceOverlayBlendMode || 'normal'
+            }}
+          />
+        )}
+        <div className={`absolute inset-0 ${ (isDragging || forceSnappy) ? 'transition-transform duration-[45ms] ease-out' : 'transition-transform duration-300'}`} style={{ transform: `rotate(${rotation}deg)` }}>
+          {hasPronouncedGrip && (
+            <>
+              <div
+                className="absolute inset-[-1px] rounded-full pointer-events-none"
+                style={{
+                  background: 'repeating-conic-gradient(from 0deg, rgba(255,255,255,0.18) 0deg 0.65deg, rgba(0,0,0,0.72) 0.65deg 2deg, rgba(255,255,255,0.07) 2deg 3.9deg)',
+                  opacity: shadingStyle?.ridgeOpacity ?? 0.62,
+                  WebkitMask: 'radial-gradient(circle, transparent 0 88%, #000 91% 100%)',
+                  mask: 'radial-gradient(circle, transparent 0 88%, #000 91% 100%)',
+                  mixBlendMode: 'normal'
+                }}
+              />
+              {Array.from({ length: ridgeCount }).map((_, i) => {
+                const angle = i * (360 / ridgeCount);
+                const isLit = i % 6 === 0;
+                return (
+                  <span
+                    key={`ridge-${i}`}
+                    className="absolute left-1/2 top-1/2 pointer-events-none"
+                    style={{
+                      width: ridgeWidth,
+                      height: ridgeHeight,
+                      transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-${ridgeRadius}px)`,
+                      transformOrigin: '50% 100%',
+                      borderRadius: '1px 1px 0 0',
+                      clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)',
+                      background: isLit
+                        ? 'linear-gradient(90deg, rgba(0,0,0,0.7), rgba(255,255,255,0.18) 48%, rgba(0,0,0,0.78))'
+                        : 'linear-gradient(90deg, rgba(0,0,0,0.82), rgba(255,255,255,0.07) 50%, rgba(0,0,0,0.86))',
+                      boxShadow: '0 0 1px rgba(0,0,0,0.62)',
+                      opacity: shadingStyle?.ridgeOpacity ?? 0.7
+                    }}
+                  />
+                );
+              })}
+              <div className="absolute inset-0 rounded-full pointer-events-none" style={{ boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.045), inset 0 0 0 3px rgba(0,0,0,0.28)' }} />
+            </>
+          )}
           <div
             className="absolute top-[10%] left-1/2 -translate-x-1/2 rounded-full transition-all duration-300"
             style={{
               width: size * 0.06,
               height: size * 0.25,
               background: indicatorActive
-                ? isCoral ? '#fff' : 'linear-gradient(to bottom, #d4af37, #8a6a1c)'
+                ? isCoral ? '#fff' : (shadingStyle?.indicator?.background || 'linear-gradient(to bottom, #d4af37, #8a6a1c)')
                 : 'linear-gradient(to bottom, #57534c, #272522)',
               boxShadow: indicatorActive
-                ? isCoral ? '0 1px 2px rgba(0,0,0,0.5)' : '0 0 8px rgba(212,175,55,0.44), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.8)'
+                ? isCoral ? '0 1px 2px rgba(0,0,0,0.5)' : (shadingStyle?.indicator?.boxShadow || '0 0 8px rgba(212,175,55,0.44), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.8)')
                 : '0 1px 2px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.08)',
               opacity: indicatorActive ? 1 : 0.55
             }}
@@ -2546,10 +3495,13 @@ const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, 
         </div>
       </div>
       <div
-        className={`mt-4 text-[9px] font-black tracking-[0.2em] uppercase ${labelColorOverride || (isCoral ? 'text-[#fff] drop-shadow-md' : 'text-[#7a7465]')}`}
+        className={`mt-4 text-[10px] font-black tracking-[0.2em] uppercase relative ${labelColorOverride || (isCoral ? 'text-[#fff] drop-shadow-md' : 'text-[#7a7465]')}`}
         style={{ transform: labelOffsetY ? `translateY(${labelOffsetY}px)` : undefined }}
       >
         {label}
+        <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 pointer-events-none transition-opacity duration-300 ${isDragging ? 'opacity-100' : 'opacity-0'} z-50`}>
+          {renderReadout(readoutStyle.type, formattedVal)}
+        </div>
       </div>
     </div>
   );
@@ -2732,7 +3684,7 @@ const IOLinkButton = ({ styleKey, active, onToggle }) => {
   );
 };
 
-const MiniBottomKnob = ({ label, value, onChange, accent = '#d4af37', labelColor = '#d3ba8c', face = '#202020' }) => {
+const MiniBottomKnob = ({ label, value, onChange, accent = '#d4af37', labelColor = '#d3ba8c', face = '#202020', readoutStyleIndex = 0 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
   const startVal = useRef(0);
@@ -2768,7 +3720,7 @@ const MiniBottomKnob = ({ label, value, onChange, accent = '#d4af37', labelColor
           boxShadow: '8px 9px 13px rgba(0,0,0,0.42), inset 1px 1px 2px rgba(255,255,255,0.16), inset -2px -2px 5px rgba(0,0,0,0.72)'
         }}
       >
-        <span className="absolute inset-0 transition-transform duration-75" style={{ transform: `rotate(${rotation}deg)` }}>
+        <span className={`absolute inset-0 ${isDragging ? 'transition-transform duration-[45ms] ease-out' : 'transition-transform duration-300'}`} style={{ transform: `rotate(${rotation}deg)` }}>
           <span
             className="absolute left-1/2 top-[6px] h-[13px] w-[4px] -translate-x-1/2 rounded-full"
             style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
@@ -2776,14 +3728,17 @@ const MiniBottomKnob = ({ label, value, onChange, accent = '#d4af37', labelColor
         </span>
         <span className="absolute inset-[15px] rounded-full bg-black/35 shadow-inner" />
       </button>
-      <span className="text-[9px] font-black uppercase leading-[8px] tracking-[0.18em]" style={{ color: labelColor }}>
+      <span className="text-[9px] font-black uppercase leading-[8px] tracking-[0.18em] relative" style={{ color: labelColor }}>
         {label === 'Phase ◐' ? <>Phase <span className="ml-[2px] text-[10px] leading-none">◐</span></> : label === 'Depth ◍' ? <>Depth <span className="relative -top-[1px] ml-[2px] text-[12px] leading-none">◍</span></> : label}
+        <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 pointer-events-none transition-opacity duration-300 ${isDragging ? 'opacity-100' : 'opacity-0'} z-50`}>
+          {renderReadout((KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0]).type, formatKnobValue(label, value))}
+        </div>
       </span>
     </div>
   );
 };
 
-const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, styleIndex, lfoActive = true }) => {
+const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, styleIndex, lfoActive = true, readoutStyleIndex = 0, screwStyle = 5 }) => {
   const HiddenRange = ({ value, onChange }) => (
     <input
       type="range"
@@ -2796,7 +3751,7 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
     />
   );
 
-  const DragSurface = ({ onChange }) => {
+  const DragSurface = ({ onChange, onDragStart, onDragEnd }) => {
     const surfaceRef = useRef(null);
     const updateFromPointer = (clientX, rect) => {
       if (!rect) return;
@@ -2809,6 +3764,7 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
         className="absolute inset-0 cursor-pointer touch-none"
         onPointerDown={event => {
           event.preventDefault();
+          onDragStart?.();
           const rect = surfaceRef.current?.getBoundingClientRect();
           updateFromPointer(event.clientX, rect);
           const handleMove = (moveEvent) => {
@@ -2819,6 +3775,7 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
             window.removeEventListener('pointermove', handleMove);
             window.removeEventListener('pointerup', handleUp);
             window.removeEventListener('pointercancel', handleUp);
+            onDragEnd?.();
           };
           window.addEventListener('pointermove', handleMove);
           window.addEventListener('pointerup', handleUp);
@@ -2849,9 +3806,13 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
     ticks = false,
     slotShadow = 'inset 0 2px 4px rgba(0,0,0,0.82), 0 1px 0 rgba(255,255,255,0.08)'
   }) => {
+    const [isDragging, setIsDragging] = useState(false);
     const pct = `${value}%`;
     return (
-      <div className="flex min-w-[92px] flex-col items-center gap-2 select-none">
+      <div className="flex min-w-[92px] flex-col items-center gap-2 select-none relative">
+        <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-1 pointer-events-none transition-opacity duration-300 z-50 ${isDragging ? 'opacity-100' : 'opacity-0'}`}>
+          {renderReadout((KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0]).type, formatKnobValue(label, value))}
+        </div>
         <div className="relative" style={{ width, height: 28 }}>
           {ticks && (
             <div className="absolute left-1 right-1 top-0 flex justify-between">
@@ -2891,36 +3852,43 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
     );
   };
 
-  const MeterSlider = ({ label, value, onChange, accent, labelColor, meterBg = '#17140f' }) => (
-    <div className="flex min-w-[94px] flex-col items-center gap-1.5 select-none">
-      <div className="relative h-8 w-[92px] rounded-[8px] border border-black/60" style={{ background: meterBg, boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.75), 0 1px 0 rgba(255,255,255,0.08)' }}>
-        <div className="absolute inset-x-2 top-2 flex justify-between">
-          {[0, 1, 2, 3, 4, 5].map(i => <span key={i} className="h-2 w-px bg-[#d8c28a]/45" />)}
+  const MeterSlider = ({ label, value, onChange, accent, labelColor, meterBg = '#17140f' }) => {
+    const [isDragging, setIsDragging] = useState(false);
+    return (
+      <div className="flex min-w-[94px] flex-col items-center gap-1.5 select-none relative">
+        <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-1 pointer-events-none transition-opacity duration-300 z-50 ${isDragging ? 'opacity-100' : 'opacity-0'}`}>
+          {renderReadout((KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0]).type, formatKnobValue(label, value))}
         </div>
-        <div className="absolute bottom-2 left-2 right-2 h-[5px] overflow-hidden rounded-full bg-black/65">
-          <div className="h-full rounded-full" style={{ width: `${value}%`, background: accent, boxShadow: `0 0 8px ${accent}` }} />
+        <div className="relative h-8 w-[92px] rounded-[8px] border border-black/60" style={{ background: meterBg, boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.75), 0 1px 0 rgba(255,255,255,0.08)' }}>
+          <div className="absolute inset-x-2 top-2 flex justify-between">
+            {[0, 1, 2, 3, 4, 5].map(i => <span key={i} className="h-2 w-px bg-[#d8c28a]/45" />)}
+          </div>
+          <div className="absolute bottom-2 left-2 right-2 h-[5px] overflow-hidden rounded-full bg-black/65">
+            <div className="h-full rounded-full" style={{ width: `${value}%`, background: accent, boxShadow: `0 0 8px ${accent}` }} />
+          </div>
+          <DragSurface onChange={onChange} onDragStart={() => setIsDragging(true)} onDragEnd={() => setIsDragging(false)} />
         </div>
-        <HiddenRange value={value} onChange={onChange} />
+        <span className="text-[9px] font-black uppercase leading-[8px] tracking-[0.2em]" style={{ color: labelColor }}>
+          {label === 'Phase ◐' ? <>Phase <span className="ml-[2px] text-[10px] leading-none">◐</span></> : label === 'Depth ◍' ? <>Depth <span className="relative -top-[1px] ml-[2px] text-[12px] leading-none">◍</span></> : label}
+        </span>
       </div>
-      <span className="text-[9px] font-black uppercase leading-[8px] tracking-[0.2em]" style={{ color: labelColor }}>
-        {label === 'Phase ◐' ? <>Phase <span className="ml-[2px] text-[10px] leading-none">◐</span></> : label === 'Depth ◍' ? <>Depth <span className="relative -top-[1px] ml-[2px] text-[12px] leading-none">◍</span></> : label}
-      </span>
-    </div>
-  );
+    );
+  };
 
   const KnobPair = ({ shell, accentA = '#d4af37', accentB = '#e66a53', labelColor = '#d3ba8c', face = '#202020', className = '', children }) => (
     <div className={`absolute bottom-[10.5%] left-[50%] z-10 flex -translate-x-1/2 items-center gap-5 px-5 py-3 ${className}`} style={shell}>
       {children}
-      <MiniBottomKnob label="Depth ◍" value={depth} onChange={setDepth} accent={accentA} face={face} labelColor={labelColor} />
-      <MiniBottomKnob label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} accent={accentB} face={face} labelColor={labelColor} />
+      <MiniBottomKnob label="Depth ◍" value={depth} onChange={setDepth} accent={accentA} face={face} labelColor={labelColor} readoutStyleIndex={readoutStyleIndex} />
+      <MiniBottomKnob label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} accent={accentB} face={face} labelColor={labelColor} readoutStyleIndex={readoutStyleIndex} />
     </div>
   );
 
   const IlluminatedRubberFader = ({ label, value, onChange, active = true }) => {
+    const [isDragging, setIsDragging] = useState(false);
     const thumbLeft = `calc(8px + ${value} * (100% - 16px) / 100)`;
     return (
     <div className="relative z-10 flex w-[88px] flex-col gap-1">
-	      <div className="flex h-2 items-center pl-[8px] pr-0 text-[9px] font-black uppercase leading-[8px] tracking-[0.18em] text-[#aaa39a] drop-shadow-md">
+	      <div className="flex h-2 items-center pl-[8px] pr-0 text-[9px] font-black uppercase leading-[8px] tracking-[0.18em] text-[#aaa39a] drop-shadow-md relative">
           {label === 'Phase ◐' ? <>Phase <span className="ml-[2px] text-[10px] leading-none">◐</span></> : label === 'Depth ◍' ? <>Depth <span className="relative -top-[1px] ml-[2px] text-[12px] leading-none">◍</span></> : label}
         </div>
       <div className="relative h-8">
@@ -2930,9 +3898,12 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
           style={{ width: `calc(${value} * (100% - 16px) / 100)` }}
         />
         <div
-          className="absolute top-1/2 h-7 w-5 -translate-x-1/2 -translate-y-1/2 rounded-md border border-black bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.09)]"
+          className="absolute top-1/2 h-7 w-5 -translate-x-1/2 -translate-y-1/2 rounded-md border border-black bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.09)] group"
           style={{ left: thumbLeft }}
         >
+          <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none transition-opacity duration-300 z-50 ${isDragging ? 'opacity-100' : 'opacity-0'}`}>
+            {renderReadout((KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0]).type, formatKnobValue(label, value))}
+          </div>
           <div
             className="absolute left-1/2 top-1/2 h-3 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-300"
             style={{
@@ -2945,7 +3916,7 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
           />
         </div>
         <div className="absolute left-[1px] right-[1px] top-[-7px] bottom-[-7px]">
-          <DragSurface onChange={onChange} />
+          <DragSurface onChange={onChange} onDragStart={() => setIsDragging(true)} onDragEnd={() => setIsDragging(false)} />
         </div>
       </div>
     </div>
@@ -2957,7 +3928,13 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
       return (
         <div className="absolute bottom-[12%] left-[50%] z-10 -translate-x-1/2">
           <div className="mb-1.5 text-center text-[10px] font-bold uppercase tracking-[0.32em] text-[#fff8eb] drop-shadow-sm">LFO INTENSITY</div>
-          <div className="relative flex w-[248px] justify-center gap-4 overflow-hidden rounded-full border border-[#1a1a1a] bg-[#282828] px-5 py-3 shadow-[0_8px_14px_rgba(0,0,0,0.22),0_2px_4px_rgba(0,0,0,0.18),inset_0_1px_2px_rgba(255,255,255,0.07),inset_0_-1px_2px_rgba(0,0,0,0.22)]">
+          <div className="relative flex w-[248px] justify-center gap-4 overflow-hidden rounded-full border border-[#1a1a1a] bg-[#242423] px-5 py-3 shadow-[0_8px_14px_rgba(0,0,0,0.22),0_2px_4px_rgba(0,0,0,0.18),inset_0_1px_2px_rgba(255,255,255,0.07),inset_0_-1px_2px_rgba(0,0,0,0.22)]">
+            <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-80 scale-75">
+              <ScrewHead styleIndex={screwStyle} size={12} />
+            </div>
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-80 scale-75">
+              <ScrewHead styleIndex={screwStyle} size={12} />
+            </div>
             <div className="absolute inset-0 bg-gradient-to-b from-[#ffffff08] to-transparent pointer-events-none" />
             <div className="absolute inset-0 opacity-30 mix-blend-overlay pointer-events-none" style={{ backgroundImage: RUBBER_MATTE_NOISE }} />
             <IlluminatedRubberFader label="Depth ◍" value={depth} onChange={setDepth} active={lfoActive} />
@@ -3163,7 +4140,7 @@ const OrbitalLfoControl = ({ active, setActive, sync, setSync, waveIndex, setWav
   const waveSymbol = SHAPE_BUTTON_SYMBOLS[waveIndex] || SHAPE_BUTTON_SYMBOLS[0];
   const waveSymbolStyle = SHAPE_BUTTON_SYMBOL_STYLES[waveIndex] || SHAPE_BUTTON_SYMBOL_STYLES[0];
   const rate = SYNC_DIVS[rateIndex] || SYNC_DIVS[0];
-  const textActiveClass = active ? 'text-[#e8d19e]' : 'text-[#666]';
+  const textActiveClass = active ? 'text-[#edcf88]' : 'text-[#666]';
   const rateActiveClass = active && sync ? 'text-[#e8d19e]' : 'text-[#666]';
   const renderDropdownPortal = () => {
     if (!openDropdown || !dropdownAnchor) return null;
@@ -3187,7 +4164,7 @@ const OrbitalLfoControl = ({ active, setActive, sync, setSync, waveIndex, setWav
               setValue(i);
               setOpenDropdown(null);
             }}
-            className={`${isRate ? 'py-2' : 'px-3 py-2.5'} cursor-pointer text-center text-[10px] font-bold transition-colors hover:bg-[#df6f5a] hover:text-[#111] ${selected ? 'text-[#e8d19e]' : 'text-[#888]'}`}
+            className={`${isRate ? 'py-2' : 'px-3 py-2.5'} cursor-pointer text-center text-[10px] font-bold transition-colors hover:bg-[#df6f5a] hover:text-[#111] ${selected ? 'text-[#edcf88]' : 'text-[#888]'}`}
           >
             {option}
           </button>
@@ -3605,6 +4582,166 @@ const CENTER_DIAL_NUMBER_STYLES = [
 const MIDDLE_KNOB_STYLES = [
   { name: 'Original Copper' },
   {
+    name: 'Original Copper Soft',
+    shadow: '14px 16px 30px rgba(0,0,0,0.48), inset 2px 2px 6px rgba(255,255,255,0.6), inset -5px -7px 13px rgba(0,0,0,0.5), 0 0 0 1.2px rgba(33,24,11,0.4)',
+    edgeInset: 5,
+    edgeBorder: '1px solid rgba(255,255,255,0.15)',
+    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.15), inset 0 -5px 9px rgba(0,0,0,0.25)',
+  },
+  {
+    name: 'Original Graphite Grip',
+    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
+    edgeInset: 8,
+    edgeBorder: '1px solid rgba(210,225,225,0.18)',
+    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.11), inset 0 -5px 10px rgba(0,0,0,0.58), 0 0 0 1px rgba(0,0,0,0.46)',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.16) 0deg 0.75deg, rgba(0,0,0,0.26) 0.75deg 2.5deg)',
+    edgeMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
+    edgeOpacity: 0.42,
+    edgeBlendMode: 'screen',
+    innerInset: 17,
+    innerOpacity: 0.2,
+    sheenOpacity: 0.22
+  },
+  {
+    name: 'Original Graphite Grip Coral Pointer',
+    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
+    edgeInset: 8,
+    edgeBorder: '1px solid rgba(210,225,225,0.18)',
+    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.11), inset 0 -5px 10px rgba(0,0,0,0.58), 0 0 0 1px rgba(0,0,0,0.46)',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.16) 0deg 0.75deg, rgba(0,0,0,0.26) 0.75deg 2.5deg)',
+    edgeMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
+    edgeOpacity: 0.42,
+    edgeBlendMode: 'screen',
+    innerInset: 17,
+    innerOpacity: 0.2,
+    sheenOpacity: 0.22,
+    pointerStyle: {
+      background: 'linear-gradient(to bottom, #e9725d, #b84c39)',
+      boxShadow: '0 0 5px rgba(255,107,74,0.18), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,196,181,0.36)'
+    }
+  },
+  {
+    name: 'Original Graphite Grip Copper Ring Coral Pointer',
+    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
+    edgeInset: 8,
+    edgeBorder: '1px solid rgba(203,132,72,0.32)',
+    edgeShadow: 'inset 0 2px 4px rgba(255,197,146,0.13), inset 0 -5px 10px rgba(62,27,14,0.52), 0 0 0 1px rgba(0,0,0,0.46)',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(234,154,92,0.58) 0deg 0.75deg, rgba(72,35,19,0.44) 0.75deg 2.5deg)',
+    edgeMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
+    edgeOpacity: 0.5,
+    edgeBlendMode: 'normal',
+    innerInset: 17,
+    innerOpacity: 0.2,
+    sheenOpacity: 0.22,
+    pointerStyle: {
+      background: 'linear-gradient(to bottom, #e9725d, #b84c39)',
+      boxShadow: '0 0 5px rgba(255,107,74,0.18), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,196,181,0.36)'
+    }
+  },
+  {
+    name: 'Original Graphite Grip Walnut Ring Coral Pointer',
+    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
+    edgeInset: 8,
+    edgeBorder: '1px solid rgba(117,75,45,0.36)',
+    edgeShadow: 'inset 0 2px 4px rgba(187,126,78,0.12), inset 0 -5px 10px rgba(34,18,10,0.58), 0 0 0 1px rgba(0,0,0,0.48)',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(114,70,39,0.62) 0deg 0.8deg, rgba(50,27,15,0.58) 0.8deg 2.35deg, rgba(151,93,51,0.42) 2.35deg 3.1deg)',
+    edgeMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
+    edgeOpacity: 0.54,
+    edgeBlendMode: 'normal',
+    innerInset: 17,
+    innerOpacity: 0.2,
+    sheenOpacity: 0.22,
+    pointerStyle: {
+      background: 'linear-gradient(to bottom, #e9725d, #b84c39)',
+      boxShadow: '0 0 5px rgba(255,107,74,0.18), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,196,181,0.36)'
+    }
+  },
+  {
+    name: 'Original Copper Grip Coral Pointer',
+    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
+    outerBackground: 'radial-gradient(circle at 34% 28%, rgba(255,202,153,0.2), transparent 38%), conic-gradient(from 180deg at 50% 50%, #6b2e18 0deg, #aa6030 45deg, #643018 90deg, #bd7040 135deg, #6b2e18 180deg, #9e552a 225deg, #5c2815 270deg, #b26634 315deg, #6b2e18 360deg)',
+    outerMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
+    edgeInset: 8,
+    edgeBorder: '1px solid rgba(167,91,45,0.26)',
+    edgeShadow: 'inset 0 2px 4px rgba(255,190,138,0.1), inset 0 -4px 8px rgba(47,21,12,0.46), 0 0 0 1px rgba(0,0,0,0.44)',
+    sheenOpacity: 0.12,
+    pointerStyle: {
+      background: 'linear-gradient(to bottom, #e9725d, #b84c39)',
+      boxShadow: '0 0 5px rgba(255,107,74,0.18), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,196,181,0.36)'
+    }
+  },
+  {
+    name: 'Original Walnut Grip Coral Pointer',
+    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
+    outerBackground: 'radial-gradient(circle at 34% 28%, rgba(165,105,66,0.16), transparent 38%), conic-gradient(from 180deg at 50% 50%, #2d190e 0deg, #634020 45deg, #2a160c 90deg, #7a4d2a 135deg, #321b0f 180deg, #5a351d 225deg, #25130a 270deg, #6d4425 315deg, #2d190e 360deg)',
+    outerMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
+    edgeInset: 8,
+    edgeBorder: '1px solid rgba(94,58,34,0.34)',
+    edgeShadow: 'inset 0 2px 4px rgba(165,105,66,0.1), inset 0 -4px 8px rgba(25,13,8,0.52), 0 0 0 1px rgba(0,0,0,0.46)',
+    sheenOpacity: 0.12,
+    pointerStyle: {
+      background: 'linear-gradient(to bottom, #e9725d, #b84c39)',
+      boxShadow: '0 0 5px rgba(255,107,74,0.18), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,196,181,0.36)'
+    }
+  },
+  {
+    name: 'Original Graphite Grip Yellow Pointer',
+    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
+    edgeInset: 8,
+    edgeBorder: '1px solid rgba(210,225,225,0.18)',
+    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.11), inset 0 -5px 10px rgba(0,0,0,0.58), 0 0 0 1px rgba(0,0,0,0.46)',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.16) 0deg 0.75deg, rgba(0,0,0,0.26) 0.75deg 2.5deg)',
+    edgeMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
+    edgeOpacity: 0.42,
+    edgeBlendMode: 'screen',
+    innerInset: 17,
+    innerOpacity: 0.2,
+    sheenOpacity: 0.22,
+    pointerStyle: {
+      background: 'linear-gradient(to bottom, #f3dcae, #c79f59)',
+      boxShadow: '0 0 8px rgba(243,220,174,0.34), 0 2px 4px rgba(0,0,0,0.48), inset 0 1px 1px rgba(255,246,224,0.78)'
+    }
+  },
+  {
+    name: 'Original Graphite Grip Thick',
+    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
+    edgeInset: 6,
+    edgeBorder: '1px solid rgba(210,225,225,0.18)',
+    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.11), inset 0 -5px 10px rgba(0,0,0,0.58), 0 0 0 1px rgba(0,0,0,0.46)',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.16) 0deg 0.75deg, rgba(0,0,0,0.26) 0.75deg 2.5deg)',
+    edgeMask: 'radial-gradient(circle, transparent 0 62%, #000 64% 100%)',
+    edgeOpacity: 0.42,
+    edgeBlendMode: 'screen',
+    innerInset: 17,
+    innerOpacity: 0.2,
+    sheenOpacity: 0.22
+  },
+  {
+    name: 'Original Copper Graphite Grip',
+    useOriginalBackground: true,
+    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
+    outerBackground: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    outerMask: 'radial-gradient(circle, transparent 0 58%, #000 60% 100%)',
+    edgeInset: 8,
+    edgeBorder: '1px solid rgba(210,225,225,0.18)',
+    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.11), inset 0 -5px 10px rgba(0,0,0,0.58), 0 0 0 1px rgba(0,0,0,0.46)',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.16) 0deg 0.75deg, rgba(0,0,0,0.26) 0.75deg 2.5deg)',
+    edgeMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
+    edgeOpacity: 0.42,
+    edgeBlendMode: 'screen',
+    originalCenterOverlay: true,
+    originalCenterOverlayOpacity: 1,
+    sheenOpacity: 0
+  },
+  {
     name: 'Soft Copper Dome',
     background: 'radial-gradient(circle at 32% 30%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.12) 19%, transparent 35%), radial-gradient(circle at 50% 50%, transparent 0 66%, rgba(180,163,119,0.16) 74%, rgba(70,56,36,0.42) 89%, rgba(18,13,7,0.58) 100%), conic-gradient(from 180deg at 50% 50%, #91764a 0deg, #c5b07b 45deg, #91764a 90deg, #cbb783 135deg, #8d7247 180deg, #c2ac75 225deg, #8c7045 270deg, #c8b27e 315deg, #91764a 360deg)',
     shadow: '13px 15px 28px rgba(0,0,0,0.46), inset 3px 3px 7px rgba(255,255,255,0.58), inset -5px -7px 13px rgba(0,0,0,0.48), 0 0 0 1px rgba(33,24,11,0.44)',
@@ -3638,6 +4775,24 @@ const MIDDLE_KNOB_STYLES = [
     edgeInset: 5,
     edgeBorder: '1px solid rgba(225,214,180,0.26)',
     edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.16), inset 0 -5px 9px rgba(27,23,18,0.34)',
+    sheenOpacity: 0.3
+  },
+  {
+    name: 'Smoked Champagne Bold',
+    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.48), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(224,210,174,0.16) 75%, rgba(35,31,25,0.42) 96%), conic-gradient(from 180deg at 50% 50%, #74684d, #c2b58a, #776b50, #d1c195, #74684d, #b9aa7d, #6e6249, #c8ba8e, #74684d)',
+    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.42), inset -5px -7px 12px rgba(0,0,0,0.45), 0 0 0 1px rgba(20,18,14,0.5)',
+    edgeInset: 8,
+    edgeBorder: '1.2px solid rgba(225,214,180,0.34)',
+    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.18), inset 0 -6px 10px rgba(27,23,18,0.38)',
+    sheenOpacity: 0.3
+  },
+  {
+    name: 'Smoked Champagne Bold Clean',
+    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.48), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(224,210,174,0.16) 75%, rgba(35,31,25,0.42) 96%), conic-gradient(from 180deg at 50% 50%, #74684d, #c2b58a, #776b50, #d1c195, #74684d, #b9aa7d, #6e6249, #c8ba8e, #74684d)',
+    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.42), inset -5px -7px 12px rgba(0,0,0,0.45)',
+    edgeInset: 8,
+    edgeBorder: '1.2px solid rgba(225,214,180,0.34)',
+    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.18), inset 0 -6px 10px rgba(27,23,18,0.38)',
     sheenOpacity: 0.3
   },
   {
@@ -3677,6 +4832,15 @@ const MIDDLE_KNOB_STYLES = [
     sheenOpacity: 0.28
   },
   {
+    name: 'Copper Pewter Bold',
+    background: 'radial-gradient(circle at 33% 30%, rgba(255,255,255,0.46), transparent 31%), radial-gradient(circle at 50% 50%, transparent 0 63%, rgba(201,174,126,0.18) 75%, rgba(45,36,29,0.48) 98%), conic-gradient(from 180deg at 50% 50%, #806d55, #c0aa7e, #887259, #cab486, #806d55, #b8a174, #76634d, #c4ae83, #806d55)',
+    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.38), inset -5px -7px 13px rgba(0,0,0,0.5)',
+    edgeInset: 7,
+    edgeBorder: '1.1px solid rgba(210,192,155,0.32)',
+    edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.14), inset 0 -5px 9px rgba(37,29,22,0.34)',
+    sheenOpacity: 0.28
+  },
+  {
     name: 'Inset Soft Bezel',
     background: 'radial-gradient(circle at 34% 31%, rgba(255,255,255,0.44), transparent 31%), radial-gradient(circle at 50% 50%, transparent 0 55%, rgba(50,40,23,0.16) 58%, transparent 63%, rgba(185,168,120,0.14) 74%, rgba(47,37,21,0.52) 98%), conic-gradient(from 180deg at 50% 50%, #8e7247, #bfa977, #907449, #c8b582, #8e7247, #baa371, #896d43, #c3ad7a, #8e7247)',
     shadow: '14px 16px 30px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.48), inset -5px -7px 13px rgba(0,0,0,0.5)',
@@ -3703,6 +4867,24 @@ const MIDDLE_KNOB_STYLES = [
     edgeInset: 5,
     edgeBorder: '1px solid rgba(221,213,186,0.24)',
     edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.14), inset 0 -5px 8px rgba(31,29,24,0.3)',
+    sheenOpacity: 0.26
+  },
+  {
+    name: 'Vintage Nickel Brass Bold',
+    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.5), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(214,202,169,0.16) 75%, rgba(34,32,27,0.46) 98%), conic-gradient(from 180deg at 50% 50%, #77715e, #bfb48e, #7b735f, #c9bd95, #77715e, #b5aa83, #706955, #c2b790, #77715e)',
+    shadow: '13px 15px 28px rgba(0,0,0,0.48), inset 3px 3px 7px rgba(255,255,255,0.4), inset -5px -7px 12px rgba(0,0,0,0.44)',
+    edgeInset: 7,
+    edgeBorder: '1.1px solid rgba(221,213,186,0.32)',
+    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.16), inset 0 -6px 10px rgba(31,29,24,0.36)',
+    sheenOpacity: 0.26
+  },
+  {
+    name: 'Vintage Nickel Brass Bold Heavy',
+    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.5), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(214,202,169,0.16) 75%, rgba(34,32,27,0.46) 98%), conic-gradient(from 180deg at 50% 50%, #77715e, #bfb48e, #7b735f, #c9bd95, #77715e, #b5aa83, #706955, #c2b790, #77715e)',
+    shadow: '13px 15px 28px rgba(0,0,0,0.48), inset 3px 3px 7px rgba(255,255,255,0.4), inset -5px -7px 12px rgba(0,0,0,0.44)',
+    edgeInset: 8,
+    edgeBorder: '1.2px solid rgba(221,213,186,0.36)',
+    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.18), inset 0 -6px 10px rgba(31,29,24,0.38)',
     sheenOpacity: 0.26
   }
 ];
@@ -3733,7 +4915,56 @@ const normalizeSpreadPointerStyle = (value) => {
   return Math.max(0, Math.min(SPREAD_POINTER_STYLES.length - 1, numericValue));
 };
 
-const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, shadowStyle, surfaceStyle, grooveStyle, markStyleIndex = 0, numberStyleIndex = 0, circlesEnabled = true, numbersEnabled = true, guideRings = CENTER_DIAL_GUIDE_RING_DEFAULTS, middleKnobStyle = 0, spreadPointerStyle = 0, animationStyle = 0, onDoubleClickDrift, onDoubleClickSpread }) => {
+const OUTER_RING_SCALES = [
+  { name: 'None', type: 'none' },
+  // Original "Gold Inlay" Styles
+  { name: 'Minimal Dots', type: 'dots', count: 11, radius: 1.5, color: '#d3ba8c', glow: true },
+  { name: 'Dense Dots', type: 'dots', count: 21, radius: 1.2, color: '#d3ba8c', glow: true },
+  { name: 'Classic Engraved Lines', type: 'lines', count: 11, length: 6, width: 1.5, color: '#d3ba8c', glow: true },
+  { name: 'Fine Instrument Needles', type: 'lines', count: 31, length: 4, width: 1, color: '#d3ba8c', glow: true },
+  { name: 'Alternating Dots', type: 'alternating-dots', count: 21, radiusL: 2, radiusS: 1, color: '#d3ba8c', glow: true },
+  { name: 'Alternating Lines', type: 'alternating-lines', count: 31, lengthL: 6, lengthS: 3, width: 1.5, color: '#d3ba8c', glow: true },
+  { name: 'Inner Edge Beads', type: 'dots-inner', count: 15, radius: 1.8, color: '#d3ba8c', glow: true },
+  { name: 'Outer Edge Ticks', type: 'lines-outer', count: 21, length: 5, width: 1.5, color: '#d3ba8c', glow: true },
+  { name: 'Vintage Graduated Scale', type: 'graduated', count: 25, color: '#d3ba8c', glow: true },
+  { name: 'Heavy Brass Studs', type: 'studs', count: 11, radius: 2.5, color: '#bca06f', glow: true },
+  // New "Engraved / Debossed" Styles
+  { name: 'Engraved Minimal Dots', type: 'dots', count: 11, radius: 1.5, color: '#1a110a', engraved: true },
+  { name: 'Engraved Dense Dots', type: 'dots', count: 21, radius: 1.2, color: '#1a110a', engraved: true },
+  { name: 'Engraved Classic Lines', type: 'lines', count: 11, length: 6, width: 1.5, color: '#1a110a', engraved: true },
+  { name: 'Engraved Thick Lines', type: 'lines', count: 11, length: 6, width: 2.5, color: '#1a110a', engraved: true },
+  { name: 'Engraved Fine Needles', type: 'lines', count: 31, length: 4, width: 1, color: '#1a110a', engraved: true },
+  { name: 'Engraved Alternating Dots', type: 'alternating-dots', count: 21, radiusL: 2, radiusS: 1, color: '#1a110a', engraved: true },
+  { name: 'Engraved Alternating Lines', type: 'alternating-lines', count: 31, lengthL: 6, lengthS: 3, width: 1.5, color: '#1a110a', engraved: true },
+  { name: 'Engraved Inner Beads', type: 'dots-inner', count: 15, radius: 1.8, color: '#1a110a', engraved: true },
+  { name: 'Engraved Outer Ticks', type: 'lines-outer', count: 21, length: 5, width: 1.5, color: '#1a110a', engraved: true },
+  { name: 'Engraved Vintage Scale', type: 'graduated', count: 25, color: '#1a110a', engraved: true },
+  { name: 'Engraved Deep Divots', type: 'studs', count: 11, radius: 2.5, color: '#0f0a06', engraved: true },
+  // New "Inner" Elegant Styles
+  { name: 'Inner Minimal Dots', type: 'dots', count: 11, radius: 1, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Inner Fine Needles', type: 'lines', count: 31, length: 3, width: 0.6, color: '#bca06f', position: 'inside' },
+  { name: 'Inner Brass Studs', type: 'studs', count: 11, radius: 1.5, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Inner Diamond Studs', type: 'diamonds', count: 11, radius: 1.5, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Inner Hairline Dashes', type: 'dashes', count: 31, length: 3, width: 0.5, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Inner Double Orbits', type: 'double-dots', count: 11, radius: 0.8, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Inner Golden Wedges', type: 'wedges', count: 11, radius: 2, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Inner Sub-Dial Arc', type: 'sub-dial-arc', count: 11, radius: 1, color: '#d3ba8c', position: 'inside', glow: true },
+  
+  // New "Inner" Drifty / Creative Styles
+  { name: 'Drifter Flutter Arcs', type: 'flutter-arcs', count: 21, width: 1, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Wabi-Sabi Flow', type: 'wabi-sabi-flow', count: 15, radius: 1.5, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Unstable Clusters', type: 'unstable-clusters', count: 11, radius: 0.6, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Cinematic Embers', type: 'cinematic-embers', count: 21, radius: 1.2, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Magnetic Tape Bleed', type: 'magnetic-bleed', count: 11, width: 2, color: '#d3ba8c', position: 'inside', glow: true },
+
+  // Inner Scales (Permanent)
+  { name: 'Inner Graduated Scale', type: 'graduated', count: 25, color: '#d3ba8c', position: 'inside', glow: true },
+  
+  // Faceplate Styles
+  { name: 'Faceplate Vintage Gauge', type: 'graduated', count: 25, color: '#7a5d49', position: 'outside' }
+];
+
+const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, shadowStyle, surfaceStyle, grooveStyle, markStyleIndex = 0, numberStyleIndex = 0, circlesEnabled = true, numbersEnabled = true, guideRings = CENTER_DIAL_GUIDE_RING_DEFAULTS, middleKnobStyle = 0, spreadPointerStyle = 0, animationStyle = 0, outerRingScaleStyle = 0, onDoubleClickDrift, onDoubleClickSpread, readoutStyleIndex = 0 }) => {
   const [isDraggingDrift, setIsDraggingDrift] = useState(false);
   const [isDraggingSpread, setIsDraggingSpread] = useState(false);
   const driftY = useRef(0), driftStart = useRef(0), spreadY = useRef(0), spreadStart = useRef(0);
@@ -4346,12 +5577,182 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
 
   const originalMiddleKnobBackground = 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 20%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #a88842 0deg, #edd39a 45deg, #a88842 90deg, #edd39a 135deg, #a88842 180deg, #edd39a 225deg, #a88842 270deg, #edd39a 315deg, #a88842 360deg)';
   const originalMiddleKnobShadow = '15px 15px 30px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.9), inset -4px -4px 8px rgba(0,0,0,0.6)';
-  const middleKnobBackground = activeMiddleKnobStyle.background || originalMiddleKnobBackground;
+  const middleKnobBackground = activeMiddleKnobStyle.useOriginalBackground ? originalMiddleKnobBackground : activeMiddleKnobStyle.background || originalMiddleKnobBackground;
   const middleKnobShadow = activeMiddleKnobStyle.shadow || originalMiddleKnobShadow;
   const middleKnobIsOriginal = !activeMiddleKnobStyle.background;
 
+  const renderOuterRingScale = () => {
+    const style = OUTER_RING_SCALES[outerRingScaleStyle] || OUTER_RING_SCALES[0];
+    if (style.type === 'none') return null;
+
+    const isOutside = style.position === 'outside';
+    const isInside = style.position === 'inside';
+    const scaleRadius = isOutside ? (outerSize / 2) + 8 : (isInside ? (outerSize / 2) - rimInnerInset - 6 : (outerSize / 2) - (rimInnerInset / 2));
+    const marks = [];
+    const count = style.count || 11;
+    const stepAngle = 270 / (count - 1);
+    
+    for (let i = 0; i < count; i++) {
+      const angle = -135 + i * stepAngle;
+      const isCenter = Math.abs(angle) < 0.1;
+      const isMajor = style.type.startsWith('alternating') && i % 5 === 0;
+      const color = style.highlight && isCenter ? style.highlight : style.color;
+      
+      let markElement = null;
+      if (style.type === 'dots' || style.type === 'dots-inner' || style.type === 'studs') {
+        let r = style.radius || 1.5;
+        if (style.highlightCenter && isCenter) r *= 1.4;
+        const cy = style.type === 'dots-inner' ? (outerSize / 2) - rimInnerInset + r + 2 : scaleRadius;
+        
+        markElement = <circle cx="0" cy={-cy} r={r} fill={color} />;
+      } else if (style.type === 'lines' || style.type === 'lines-outer' || style.type === 'graduated') {
+        let len = style.length || 6;
+        if (style.type === 'graduated') {
+          len = i % 2 === 0 ? 6 : 4;
+          if (isCenter) len = 8;
+        }
+        const w = style.width || 1.5;
+        const y1 = style.type === 'lines-outer' ? (outerSize / 2) - len : scaleRadius - len / 2;
+        const y2 = style.type === 'lines-outer' ? (outerSize / 2) : scaleRadius + len / 2;
+        
+        markElement = <line x1="0" y1={-y1} x2="0" y2={-y2} stroke={color} strokeWidth={w} strokeLinecap="round" />;
+      } else if (style.type === 'alternating-dots') {
+        const r = isMajor ? (style.radiusL || 2) : (style.radiusS || 1);
+        markElement = <circle cx="0" cy={-scaleRadius} r={r} fill={color} />;
+      } else if (style.type === 'alternating-lines') {
+        const len = isMajor ? (style.lengthL || 6) : (style.lengthS || 3);
+        const w = style.width || 1.5;
+        markElement = <line x1="0" y1={-scaleRadius + len/2} x2="0" y2={-scaleRadius - len/2} stroke={color} strokeWidth={w} strokeLinecap="round" />;
+      } else if (style.type === 'diamonds') {
+        const r = style.radius || 1.5;
+        markElement = <polygon points={`0,${-scaleRadius-r} ${r},${-scaleRadius} 0,${-scaleRadius+r} ${-r},${-scaleRadius}`} fill={color} />;
+      } else if (style.type === 'dashes') {
+        const len = style.length || 3;
+        const w = style.width || 0.5;
+        markElement = <line x1={-len/2} y1={-scaleRadius} x2={len/2} y2={-scaleRadius} stroke={color} strokeWidth={w} strokeLinecap="round" />;
+      } else if (style.type === 'double-dots') {
+        const r = style.radius || 0.8;
+        const spacing = 1.5;
+        markElement = (
+          <>
+            <circle cx={-spacing} cy={-scaleRadius} r={r} fill={color} />
+            <circle cx={spacing} cy={-scaleRadius} r={r} fill={color} />
+          </>
+        );
+      } else if (style.type === 'wedges') {
+        const r = style.radius || 2;
+        markElement = <polygon points={`${-r},${-scaleRadius-r} ${r},${-scaleRadius-r} 0,${-scaleRadius+r}`} fill={color} />;
+      } else if (style.type === 'sub-dial-arc') {
+        const r = style.radius || 1;
+        markElement = <circle cx="0" cy={-scaleRadius} r={r} fill={color} />;
+      } else if (style.type === 'flutter-arcs') {
+        const w = style.width || 1;
+        const seed = Math.sin(i * 12.9898) * 43758.5453;
+        const rand = seed - Math.floor(seed);
+        const length = 4 + rand * 4;
+        const sway = (rand - 0.5) * 4;
+        markElement = <path d={`M 0,${-scaleRadius - length/2} Q ${sway},${-scaleRadius} 0,${-scaleRadius + length/2}`} fill="none" stroke={color} strokeWidth={w} strokeLinecap="round" />;
+      } else if (style.type === 'wabi-sabi-flow') {
+        const seed = Math.cos(i * 4.2) * 234.1;
+        const rand = seed - Math.floor(seed);
+        const r = (style.radius || 1.5) + (rand - 0.5) * 0.8;
+        markElement = <path d={`M 0,${-scaleRadius-r*1.5} C ${r},${-scaleRadius-r} ${r},${-scaleRadius+r} 0,${-scaleRadius+r} C ${-r},${-scaleRadius+r} ${-r},${-scaleRadius-r} 0,${-scaleRadius-r*1.5}`} fill={color} />;
+      } else if (style.type === 'unstable-clusters') {
+        const seed1 = Math.sin(i * 1.1);
+        const seed2 = Math.cos(i * 2.2);
+        const seed3 = Math.sin(i * 3.3);
+        const r = style.radius || 0.6;
+        markElement = (
+          <>
+            <circle cx={seed1 * 1.5} cy={-scaleRadius + seed2 * 1.5} r={r} fill={color} />
+            <circle cx={seed2 * 2} cy={-scaleRadius - seed1 * 2} r={r * 0.8} fill={color} opacity={0.8} />
+            {(seed3 > 0) && <circle cx={seed3 * -2} cy={-scaleRadius + seed3 * 2} r={r * 1.2} fill={color} opacity={0.6} />}
+          </>
+        );
+      } else if (style.type === 'cinematic-embers') {
+        const seed = Math.sin(i * 5.5);
+        const r = style.radius || 1.2;
+        const opacity = 0.4 + Math.abs(seed) * 0.6;
+        const isDiamond = seed > 0;
+        markElement = isDiamond ? 
+          <polygon points={`0,${-scaleRadius-r} ${r},${-scaleRadius} 0,${-scaleRadius+r} ${-r},${-scaleRadius}`} fill={color} opacity={opacity} /> :
+          <circle cx="0" cy={-scaleRadius} r={r} fill={color} opacity={opacity} />;
+      } else if (style.type === 'magnetic-bleed') {
+        const w = style.width || 2;
+        markElement = (
+          <>
+            <line x1="0" y1={-scaleRadius-2} x2="0" y2={-scaleRadius+2} stroke={color} strokeWidth={w} strokeLinecap="round" />
+            <line x1="1.5" y1={-scaleRadius-1.5} x2="1.5" y2={-scaleRadius+1.5} stroke={color} strokeWidth={w*0.8} opacity={0.5} strokeLinecap="round" />
+            <line x1="3" y1={-scaleRadius-1} x2="3" y2={-scaleRadius+1} stroke={color} strokeWidth={w*0.5} opacity={0.2} strokeLinecap="round" />
+          </>
+        );
+      } else if (style.type === 'divots') {
+        const r = style.radius || 2;
+        markElement = <circle cx="0" cy={-scaleRadius} r={r} fill={color} />;
+      }
+
+      if (markElement) {
+        marks.push(
+          <g key={i} style={{ transform: `rotate(${angle}deg)` }}>
+            {markElement}
+          </g>
+        );
+      }
+    }
+
+    if (style.type === 'sub-dial-arc') {
+      const startAngle = -135 * (Math.PI / 180);
+      const endAngle = 135 * (Math.PI / 180);
+      const x1 = Math.sin(startAngle) * scaleRadius;
+      const y1 = -Math.cos(startAngle) * scaleRadius;
+      const x2 = Math.sin(endAngle) * scaleRadius;
+      const y2 = -Math.cos(endAngle) * scaleRadius;
+      // SVG path: Move to start, Draw Arc (rx ry x-axis-rotation large-arc-flag sweep-flag x y)
+      // Large arc flag = 1 (270 degrees is > 180), sweep flag = 1 (clockwise)
+      marks.push(
+        <g key="arc" style={{ transform: `rotate(0deg)` }}>
+          <path d={`M ${x1},${y1} A ${scaleRadius} ${scaleRadius} 0 1 1 ${x2},${y2}`} fill="none" stroke={style.color} strokeWidth="0.5" opacity="0.5" />
+        </g>
+      );
+    }
+
+    const filterId = `outerScaleGlow-${outerRingScaleStyle}`;
+    const filterIdEngraved = `outerScaleEngraved-${outerRingScaleStyle}`;
+    
+    const svgSize = 380;
+    
+    return (
+      <svg 
+        className="absolute inset-0 w-full h-full pointer-events-none z-30" 
+        viewBox={`-${svgSize/2} -${svgSize/2} ${svgSize} ${svgSize}`}
+      >
+        <defs>
+          {style.glow && (
+            <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
+              <feDropShadow dx="0" dy="1" stdDeviation="0.35" floodColor="#000000" floodOpacity="0.9" />
+            </filter>
+          )}
+          {style.engraved && (
+            <filter id={filterIdEngraved} x="-50%" y="-50%" width="200%" height="200%">
+              {/* Highlight catching the bottom inner lip of the cut */}
+              <feDropShadow dx="0" dy="1" stdDeviation="0.3" floodColor="rgba(255,255,255,0.25)" floodOpacity="1" />
+              {/* Slight dark blur to soften the top edge of the cut */}
+              <feDropShadow dx="0" dy="-0.5" stdDeviation="0.5" floodColor="#000000" floodOpacity="0.35" />
+            </filter>
+          )}
+        </defs>
+        <g 
+          filter={style.glow ? `url(#${filterId})` : (style.engraved ? `url(#${filterIdEngraved})` : undefined)}
+          style={style.glow ? { paintOrder: 'stroke', stroke: 'rgba(38,22,12,0.26)', strokeWidth: 0.65 } : undefined}
+        >
+          {marks}
+        </g>
+      </svg>
+    );
+  };
+
   return (
-    <div className="relative flex justify-center items-center z-20" style={{ width: 340, height: 340 }}>
+    <div className="relative flex justify-center items-center z-20" style={{ width: 380, height: 380 }}>
       <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center group z-10 overflow-hidden" style={{ width: outerSize, height: outerSize, backgroundColor: surface.outerRim ? (surface.rimBackgroundColor || rimFillColor) : surface.backgroundColor || '#1f1e1d', backgroundImage: surface.outerRim ? (surface.outerRimTexture ? surface.rimBackgroundImage : `radial-gradient(circle, transparent 0 calc(50% - ${rimInnerInset}px), ${rimFillColor} calc(50% - ${rimInnerInset}px) 100%)`) : surface.backgroundImage || CENTER_DIAL_SURFACES[0].backgroundImage, backgroundSize: surface.outerRimTexture ? surface.rimBackgroundSize : undefined, backgroundPosition: surface.outerRimTexture ? 'center' : undefined, backgroundBlendMode: surface.outerRimTexture ? 'normal, normal' : surface.backgroundBlendMode, boxShadow: guardedOuterShadow }}
         onPointerDown={handleSpreadDown} onPointerMove={handleSpreadMove} onPointerUp={handleSpreadUp} onPointerCancel={handleSpreadUp} onDoubleClick={onDoubleClickSpread}>
         {surface.outerRim && (
@@ -4382,7 +5783,7 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
           {renderDialNumberStyle()}
           {renderDialLabels()}
         </svg>
-        <div className="absolute inset-0 transition-transform duration-75 pointer-events-none" style={{ transform: `rotate(${spreadRot}deg)` }}>
+        <div className={`absolute inset-0 pointer-events-none ${isDraggingSpread ? 'transition-transform duration-[45ms] ease-out' : 'transition-transform duration-300'}`} style={{ transform: `rotate(${spreadRot}deg)` }}>
           {renderSpreadPointer()}
         </div>
         <WobblyAura drift={drift} spread={spread} active={auraActive} rate={rate} mode={mode} animationStyle={animationStyle} />
@@ -4393,6 +5794,26 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
           )}
           {!middleKnobIsOriginal && (
             <>
+              {activeMiddleKnobStyle.originalCenterOverlay && (
+                <div
+                  className="absolute inset-2 rounded-full pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(255,255,255,0.2) 100%)',
+                    boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.8), 0 1px 1px rgba(255,255,255,0.5)',
+                    opacity: activeMiddleKnobStyle.originalCenterOverlayOpacity ?? 1
+                  }}
+                />
+              )}
+              {activeMiddleKnobStyle.outerBackground && (
+                <div
+                  className="absolute inset-0 rounded-full pointer-events-none"
+                  style={{
+                    background: activeMiddleKnobStyle.outerBackground,
+                    WebkitMask: activeMiddleKnobStyle.outerMask,
+                    mask: activeMiddleKnobStyle.outerMask
+                  }}
+                />
+              )}
               <div
                 className="absolute rounded-full pointer-events-none"
                 style={{
@@ -4401,6 +5822,30 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
                   boxShadow: activeMiddleKnobStyle.edgeShadow
                 }}
               />
+              {activeMiddleKnobStyle.edgeTexture && (
+                <div
+                  className="absolute inset-0 rounded-full pointer-events-none"
+                  style={{
+                    background: activeMiddleKnobStyle.edgeTexture,
+                    opacity: activeMiddleKnobStyle.edgeOpacity ?? 0.42,
+                    WebkitMask: activeMiddleKnobStyle.edgeMask,
+                    mask: activeMiddleKnobStyle.edgeMask,
+                    mixBlendMode: activeMiddleKnobStyle.edgeBlendMode || 'screen'
+                  }}
+                />
+              )}
+              {activeMiddleKnobStyle.centerTexture && (
+                <div
+                  className="absolute inset-0 rounded-full pointer-events-none"
+                  style={{
+                    background: activeMiddleKnobStyle.centerTexture,
+                    opacity: activeMiddleKnobStyle.centerOpacity ?? 0.4,
+                    WebkitMask: activeMiddleKnobStyle.centerMask,
+                    mask: activeMiddleKnobStyle.centerMask,
+                    mixBlendMode: activeMiddleKnobStyle.centerBlendMode || 'soft-light'
+                  }}
+                />
+              )}
               {activeMiddleKnobStyle.innerInset && (
                 <div
                   className="absolute rounded-full pointer-events-none"
@@ -4420,10 +5865,30 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
               />
             </>
           )}
-          <div className="absolute inset-0 transition-transform duration-75 pointer-events-none" style={{ transform: `rotate(${driftRot}deg)` }}>
-            <div className="absolute top-[12%] left-1/2 -translate-x-1/2 w-1.5 h-7 bg-[#1a1a1a] rounded-full opacity-95 shadow-[inset_0_2px_4px_rgba(0,0,0,0.9),0_1px_1px_rgba(255,255,255,0.4)]" />
+          <div className={`absolute inset-0 pointer-events-none ${isDraggingDrift ? 'transition-transform duration-[45ms] ease-out' : 'transition-transform duration-300'}`} style={{ transform: `rotate(${driftRot}deg)` }}>
+            <div
+              className="absolute top-[12%] left-1/2 -translate-x-1/2 w-1.5 h-7 rounded-full opacity-95"
+              style={{
+                background: activeMiddleKnobStyle.pointerStyle?.background || '#1a1a1a',
+                boxShadow: activeMiddleKnobStyle.pointerStyle?.boxShadow || 'inset 0 2px 4px rgba(0,0,0,0.9), 0 1px 1px rgba(255,255,255,0.4)'
+              }}
+            />
           </div>
         </div>
+      </div>
+      {renderOuterRingScale()}
+      
+      {/* Spread Readout */}
+      <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-300 z-50 ${isDraggingSpread ? 'opacity-100' : 'opacity-0'}`}>
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#7a7465]">Spread</span>
+          {renderReadout((KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0]).type, formatKnobValue('SPREAD', spread))}
+        </div>
+      </div>
+
+      {/* Drift Readout */}
+      <div className={`absolute top-[65%] left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-300 z-50 ${isDraggingDrift ? 'opacity-100' : 'opacity-0'}`}>
+        {renderReadout((KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0]).type, formatKnobValue('DRIFT', drift))}
       </div>
     </div>
   );
@@ -4572,6 +6037,221 @@ const BACKGROUNDS = [
   { name: 'Dark Slate', color: '#212326' },
   { name: 'Midnight Ash', color: '#1c1c1a' }
 ];
+
+const SaturationSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
+  const modes = ['Tape', 'Tube'];
+  
+  const Label = ({ m, active, colorActive, colorInactive, shadow = 'none' }) => (
+    <span className="text-[9px] font-black tracking-[0.18em] uppercase transition-colors" style={{ color: active ? colorActive : colorInactive, textShadow: shadow }}>
+      {m}
+    </span>
+  );
+
+  switch (styleIndex) {
+    case 1: // Walnut Twin Push (High Fidelity)
+      return (
+        <div className="flex items-center justify-center gap-4 w-[190px] h-[52px] rounded-full z-10" style={{ 
+          backgroundImage: 'linear-gradient(rgba(25,10,0,0.15), rgba(15,5,0,0.25)), url("/textures/walnut.png")', 
+          backgroundSize: 'cover',
+          boxShadow: '0 0 0 1px #2b170b, 0 0 0 2px #78502a, inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08)',
+          border: '1px solid rgba(0,0,0,0.8)'
+        }}>
+          {modes.map((m, i) => {
+            const ledColor = i === 0 ? '#4ade80' : '#fb923c';
+            return (
+              <div key={m} className="flex items-center gap-2">
+                <button onClick={() => setMode(i)} className={`shrink-0 w-9 h-9 rounded-xl transition-all flex items-center justify-center border border-black
+                  ${power && mode === i ? 'bg-[#111] shadow-[inset_2px_2px_5px_rgba(0,0,0,0.9)] scale-95' : 'bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.1)]'}
+                `}>
+                  <div 
+                    className={`w-3 h-[3px] rounded-full ${!power || mode !== i ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
+                    style={power && mode === i ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
+                  />
+                </button>
+                <span className="shrink-0 w-[30px] text-[9px] font-bold tracking-[0.25em] uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" style={{ color: '#d3ba8c' }}>{m}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+
+    case 2: // Anodized Studio Rocker
+      return (
+        <div className="flex items-center gap-5 px-5 py-2.5 rounded-lg border border-[#111]" style={{
+          background: 'linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%)',
+          boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.15), 0 5px 15px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.8)'
+        }}>
+          <div className="text-[8px] font-black uppercase tracking-[0.2em] text-[#888] text-shadow-[0_1px_0_rgba(255,255,255,0.1)]">Sat</div>
+          <div className="relative w-[100px] h-[22px] bg-[#0a0a0a] rounded-sm shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)] flex items-center px-1 border border-white/5 cursor-pointer" onClick={() => setMode(mode === 0 ? 1 : 0)}>
+             <div className="absolute inset-0 flex justify-between items-center px-3 pointer-events-none">
+                <span className={`text-[7px] font-black tracking-widest ${mode === 0 && power ? 'text-[#e66a53] shadow-[0_0_8px_#e66a53]' : 'text-[#333]'}`}>TAPE</span>
+                <span className={`text-[7px] font-black tracking-widest ${mode === 1 && power ? 'text-[#e66a53] shadow-[0_0_8px_#e66a53]' : 'text-[#333]'}`}>TUBE</span>
+             </div>
+             <div className={`w-[44px] h-[16px] rounded-sm bg-gradient-to-b from-[#555] to-[#222] shadow-[0_2px_4px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.4),inset_0_-1px_1px_rgba(0,0,0,0.8)] border border-black transition-transform duration-200 flex items-center justify-center ${mode === 1 ? 'translate-x-[46px]' : 'translate-x-0'}`}>
+                <div className="w-[30px] h-[2px] bg-black/50 rounded-full shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
+             </div>
+          </div>
+        </div>
+      );
+
+    case 3: // Ivory & Brass Strip
+      return (
+        <div className="flex items-center gap-4 px-4 py-2 rounded-md border border-[#c5bba8]" style={{
+          background: '#e8dfcc',
+          boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.9), 0 4px 8px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1)'
+        }}>
+           <div className="text-[7px] font-bold tracking-[0.25em] text-[#8a7e6b]">SATURATION</div>
+           <div className="h-4 w-px bg-[#d3c8b3] mx-1" />
+           <div className="flex gap-2">
+             {modes.map((m, i) => (
+                <button key={m} onClick={() => setMode(i)} className={`px-4 py-1.5 rounded-sm border transition-all ${power && mode === i ? 'bg-[#d8c07d] border-[#b09756] shadow-[inset_0_2px_5px_rgba(0,0,0,0.3)]' : 'bg-gradient-to-b from-[#fdfbf7] to-[#e6dfce] border-[#d4cbba] shadow-[0_2px_3px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.8)]'}`}>
+                   <span className={`text-[8px] font-black tracking-widest uppercase ${power && mode === i ? 'text-[#3d2e13] drop-shadow-[0_1px_0_rgba(255,255,255,0.4)]' : 'text-[#a39682]'}`}>{m}</span>
+                </button>
+             ))}
+           </div>
+        </div>
+      );
+
+    case 4: // Solid Brass Heavy Plate
+      return (
+        <div className="flex items-center gap-5 px-5 py-2 rounded-sm border border-[#e8d5a6]" style={{
+          background: 'linear-gradient(180deg, #c5b07b 0%, #8a6a1c 100%)',
+          boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.6), inset 0 -1px 2px rgba(0,0,0,0.8), 0 6px 12px rgba(0,0,0,0.5)'
+        }}>
+          <div className="text-[8px] font-black uppercase tracking-[0.2em] text-[#3d2e13] drop-shadow-[0_1px_0_rgba(255,255,255,0.3)]">Sat</div>
+          <div className="flex gap-4">
+             {modes.map((m, i) => (
+                <button key={m} onClick={() => setMode(i)} className={`relative flex items-center justify-center w-14 h-6 rounded-sm border border-black/80 transition-all ${power && mode === i ? 'bg-[#1a1410] shadow-[inset_0_3px_8px_rgba(0,0,0,0.9)] scale-[0.98]' : 'bg-gradient-to-b from-[#2a241f] to-[#110e0c] shadow-[0_2px_4px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.1)]'}`}>
+                   <span className={`text-[7px] font-black tracking-widest uppercase ${power && mode === i ? 'text-[#e66a53] drop-shadow-[0_0_6px_#e66a53]' : 'text-[#554a3f]'}`}>{m}</span>
+                </button>
+             ))}
+          </div>
+        </div>
+      );
+
+    case 5: // Vintage Broadcast Red/Amber
+      return (
+        <div className="flex items-center gap-3 px-3 py-2 rounded border border-[#222]" style={{
+           background: 'linear-gradient(180deg, #3a3a3a 0%, #222 100%)',
+           boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.1), 0 4px 10px rgba(0,0,0,0.4)'
+        }}>
+           <div className="w-[3px] h-6 bg-gradient-to-b from-[#444] to-[#111] rounded-full shadow-inner" />
+           {modes.map((m, i) => {
+             const activeColor = i === 0 ? '#ff3b30' : '#ff9500';
+             return (
+               <div key={m} className="flex flex-col items-center">
+                 <button onClick={() => setMode(i)} className={`w-12 h-6 rounded-sm border border-black transition-all flex items-center justify-center ${power && mode === i ? 'scale-[0.97] shadow-[inset_0_2px_5px_rgba(0,0,0,0.5),0_0_15px_rgba(255,59,48,0.4)]' : 'shadow-[0_4px_6px_rgba(0,0,0,0.6),inset_0_2px_3px_rgba(255,255,255,0.3)]'}`} style={{ backgroundColor: power && mode === i ? activeColor : '#555' }}>
+                   <span className={`text-[7px] font-black uppercase tracking-wider ${power && mode === i ? 'text-white drop-shadow-[0_0_2px_rgba(0,0,0,0.5)]' : 'text-black/40 text-shadow-[0_1px_0_rgba(255,255,255,0.2)]'}`}>{m}</span>
+                 </button>
+               </div>
+             );
+           })}
+           <div className="w-[3px] h-6 bg-gradient-to-b from-[#444] to-[#111] rounded-full shadow-inner ml-1" />
+        </div>
+      );
+
+    case 6: // Stealth Glass Bar
+      return (
+        <div className="flex items-center gap-6 px-6 py-2 rounded-full border border-white/5 backdrop-blur-xl" style={{
+           background: 'rgba(20,20,20,0.6)',
+           boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.05), 0 8px 24px rgba(0,0,0,0.4)'
+        }}>
+           <div className="text-[7px] font-black tracking-[0.3em] uppercase text-white/20">SAT</div>
+           <div className="flex gap-4">
+             {modes.map((m, i) => (
+                <button key={m} onClick={() => setMode(i)} className="group relative focus:outline-none">
+                  <span className={`text-[9px] font-black tracking-widest uppercase transition-all duration-300 ${power && mode === i ? 'text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]' : 'text-white/20 group-hover:text-white/40'}`}>{m}</span>
+                  {power && mode === i && <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-[2px] bg-white rounded-full shadow-[0_0_8px_white]" />}
+                </button>
+             ))}
+           </div>
+        </div>
+      );
+
+    case 7: // Chrome Twin Switch
+      return (
+        <div className="flex items-center gap-6 px-6 py-3 rounded-md border border-white/40" style={{
+           background: 'linear-gradient(180deg, #f5f5f5 0%, #c0c0c0 40%, #909090 100%)',
+           boxShadow: 'inset 0 2px 3px rgba(255,255,255,0.9), 0 5px 15px rgba(0,0,0,0.3)'
+        }}>
+           <div className="text-[8px] font-black tracking-[0.2em] uppercase text-[#444] drop-shadow-[0_1px_0_rgba(255,255,255,0.8)]">SAT</div>
+           <div className="flex gap-5">
+              {modes.map((m, i) => (
+                 <div key={m} className="flex flex-col items-center gap-1.5">
+                    <button onClick={() => setMode(i)} className={`relative w-4 h-8 bg-black rounded-full shadow-inner flex flex-col justify-between items-center py-1 transition-all`}>
+                       <div className={`w-2.5 h-3.5 rounded-sm bg-gradient-to-b from-[#fff] to-[#888] shadow-[0_1px_3px_rgba(0,0,0,0.8)] transition-transform duration-200 ${power && mode === i ? 'translate-y-0' : 'translate-y-[10px]'}`} />
+                    </button>
+                    <span className="text-[7px] font-bold tracking-widest uppercase text-[#555] drop-shadow-[0_1px_0_rgba(255,255,255,0.5)]">{m}</span>
+                 </div>
+              ))}
+           </div>
+        </div>
+      );
+
+    case 8: // Industrial Amber Matrix
+      return (
+        <div className="flex items-center gap-4 px-4 py-2 rounded-sm border border-[#333]" style={{
+           background: '#1a1a1a',
+           backgroundImage: 'radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)',
+           backgroundSize: '3px 3px',
+           boxShadow: '0 4px 10px rgba(0,0,0,0.6)'
+        }}>
+           <div className="px-2 py-1 bg-black rounded shadow-[inset_0_0_5px_rgba(0,0,0,0.8)] border border-[#333]">
+              <span className="text-[7px] font-black tracking-[0.2em] uppercase text-[#d4af37]/60">SAT</span>
+           </div>
+           <div className="flex gap-2">
+              {modes.map((m, i) => (
+                 <button key={m} onClick={() => setMode(i)} className={`relative w-14 h-6 border transition-all flex items-center justify-center ${power && mode === i ? 'bg-[#2a1e0b] border-[#d4af37] shadow-[0_0_10px_rgba(212,175,55,0.3),inset_0_0_5px_rgba(212,175,55,0.2)]' : 'bg-black border-[#333] shadow-[inset_0_1px_3px_rgba(0,0,0,0.9)] hover:border-[#555]'}`}>
+                    <span className={`text-[7px] font-black uppercase tracking-widest ${power && mode === i ? 'text-[#d4af37] drop-shadow-[0_0_4px_#d4af37]' : 'text-[#444]'}`}>{m}</span>
+                    {power && mode === i && <div className="absolute top-0 right-0 w-1 h-1 bg-[#d4af37] shadow-[0_0_3px_#d4af37]" />}
+                 </button>
+              ))}
+           </div>
+        </div>
+      );
+
+    case 9: // Porcelain & Rose Gold
+      return (
+        <div className="flex items-center gap-5 px-5 py-2.5 rounded-full border border-[#f0e8dc]" style={{
+           background: '#fdfbf7',
+           boxShadow: 'inset 0 2px 4px rgba(255,255,255,1), 0 5px 15px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)'
+        }}>
+           <span className="text-[7px] font-black tracking-[0.2em] uppercase text-[#a69882]">SAT</span>
+           <div className="flex gap-4">
+              {modes.map((m, i) => (
+                 <div key={m} className="flex items-center gap-2">
+                    <button onClick={() => setMode(i)} className={`w-5 h-5 rounded-full border border-[#d4a373] transition-all flex items-center justify-center ${power && mode === i ? 'shadow-[inset_1px_2px_4px_rgba(0,0,0,0.4)] scale-95' : 'shadow-[1px_2px_4px_rgba(0,0,0,0.2),inset_1px_1px_2px_rgba(255,255,255,0.8)]'}`} style={{ background: 'linear-gradient(135deg, #e2b48a 0%, #c18753 100%)' }}>
+                       {power && mode === i && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_4px_white]" />}
+                    </button>
+                    <Label m={m} active={power && mode === i} colorActive="#c18753" colorInactive="#d3c8b3" />
+                 </div>
+              ))}
+           </div>
+        </div>
+      );
+
+    case 10: // Raw Steel Push
+      return (
+        <div className="flex items-center gap-4 px-4 py-2 rounded border border-[#555]" style={{
+           background: 'linear-gradient(180deg, #999 0%, #777 100%)',
+           boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.5)'
+        }}>
+           <div className="text-[8px] font-black uppercase tracking-[0.2em] text-[#333] drop-shadow-[0_1px_0_rgba(255,255,255,0.2)]">SAT</div>
+           <div className="w-[2px] h-6 bg-[#555] rounded-full shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
+           <div className="flex gap-2">
+              {modes.map((m, i) => (
+                 <button key={m} onClick={() => setMode(i)} className={`w-14 h-7 rounded-sm border border-black/80 flex items-center justify-center transition-all ${power && mode === i ? 'bg-gradient-to-b from-[#e63946] to-[#b81d28] shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_0_12px_rgba(230,57,70,0.5)] scale-[0.98]' : 'bg-gradient-to-b from-[#4a1c1f] to-[#2d1113] shadow-[0_3px_5px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.15)]'}`}>
+                    <span className={`text-[8px] font-black tracking-widest uppercase ${power && mode === i ? 'text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]' : 'text-[#884444]'}`}>{m}</span>
+                 </button>
+              ))}
+           </div>
+        </div>
+      );
+
+    default:
+      return null;
+  }
+};
 
 const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = false }) => {
   const modes = ['calm', 'vintage', 'unstable'];
@@ -5034,6 +6714,17 @@ const FRAMES = [
       boxShadow: 'inset 2px 2px 6px rgba(255,255,255,0.1), inset -3px -3px 10px rgba(0,0,0,0.85), 12px 20px 45px rgba(0,0,0,0.55)',
       border: '1.5px solid #2a1d15'
     }
+  },
+  { name: 'Oiled Walnut - Double Join Heavy', inset: '-inset-5', panelInset: 'inset-1', radius: '4.5rem', panelRadius: '3.9rem',
+    style: {
+      backgroundImage: 'url("/textures/walnut.png")',
+      backgroundSize: '200px',
+      boxShadow: 'inset 0 4px 9px rgba(255,255,255,0.1), inset 0 -8px 20px rgba(0,0,0,0.5), 10px 15px 35px rgba(0,0,0,0.6)',
+      border: '1px solid #111'
+    },
+    panelStyle: {
+      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1px #2b170b, 0 0 0 2px #78502a'
+    }
   }
 ];
 
@@ -5218,6 +6909,13 @@ export default function App() {
   const [output, setOutput] = useState(() => initial('output', CODE_DEFAULT_DESIGN.output));
   const [ioLinkStyle, setIoLinkStyle] = useState(() => initial('ioLinkStyle', CODE_DEFAULT_DESIGN.ioLinkStyle));
   const [ioLinked, setIoLinked] = useState(() => initial('ioLinked', CODE_DEFAULT_DESIGN.ioLinked));
+  const [isInputDragging, setIsInputDragging] = useState(false);
+  const [isOutputDragging, setIsOutputDragging] = useState(false);
+  const [outerRingScaleStyle, setOuterRingScaleStyle] = useState(() => initial('outerRingScaleStyle', CODE_DEFAULT_DESIGN.outerRingScaleStyle));
+  const [showWabiSabi, setShowWabiSabi] = useState(() => initial('showWabiSabi', CODE_DEFAULT_DESIGN.showWabiSabi));
+  const [readoutStyleIndex, setReadoutStyleIndex] = useState(() => initial('readoutStyleIndex', CODE_DEFAULT_DESIGN.readoutStyleIndex));
+  const [activeDisplayParam, setActiveDisplayParam] = useState('sat');
+  const isIoDragging = isInputDragging || isOutputDragging;
   const inputValueRef = useRef(input);
   const outputValueRef = useRef(output);
   const [drift, setDrift] = useState(() => initial('drift', CODE_DEFAULT_DESIGN.drift));
@@ -5235,10 +6933,14 @@ export default function App() {
   const [lfoSync, setLfoSync] = useState(() => initial('lfoSync', CODE_DEFAULT_DESIGN.lfoSync));
   const [lfoShape, setLfoShape] = useState(() => initial('lfoShape', CODE_DEFAULT_DESIGN.lfoShape));
   const [lfoSyncDiv, setLfoSyncDiv] = useState(() => initial('lfoSyncDiv', CODE_DEFAULT_DESIGN.lfoSyncDiv));
+  const [saturationMode, setSaturationMode] = useState(() => initial('saturationMode', CODE_DEFAULT_DESIGN.saturationMode));
+  const [saturationStyle, setSaturationStyle] = useState(() => normalizeSaturationStyle(initial('saturationStyle', CODE_DEFAULT_DESIGN.saturationStyle)));
   const [currentPreset, setCurrentPreset] = useState(() => initial('currentPreset', CODE_DEFAULT_DESIGN.currentPreset));
   const [frameStyle, setFrameStyle] = useState(() => initial('frameStyle', CODE_DEFAULT_DESIGN.frameStyle));
   const [modeStyle, setModeStyle] = useState(() => initial('modeStyle', CODE_DEFAULT_DESIGN.modeStyle));
   const [knobStyle, setKnobStyle] = useState(() => initial('knobStyle', CODE_DEFAULT_DESIGN.knobStyle));
+  const activeKnobStyleIndex = Math.max(0, Math.min(KNOB_STYLES.length - 1, Number(knobStyle) || 0));
+  const activeKnobStyle = KNOB_STYLES[activeKnobStyleIndex];
   const [centerDialStyle, setCenterDialStyle] = useState(() => initial('centerDialStyle', CODE_DEFAULT_DESIGN.centerDialStyle));
   const [middleKnobStyle, setMiddleKnobStyle] = useState(() => normalizeMiddleKnobStyle(initial('middleKnobStyle', CODE_DEFAULT_DESIGN.middleKnobStyle)));
   const [centerDialSurfaceStyle, setCenterDialSurfaceStyle] = useState(() => initial('centerDialSurfaceStyle', CODE_DEFAULT_DESIGN.centerDialSurfaceStyle));
@@ -5287,6 +6989,23 @@ export default function App() {
   const activePanelFaceColor = useDefaultPanelFaceColor ? DEFAULT_PANEL_FACE_COLOR : panelFaceColor;
   const activeBrandTextStyle = BRAND_TEXT_STYLES[normalizeBrandTextStyle(brandTextStyle)] || BRAND_TEXT_STYLES[0];
   const lfoImageSettings = { ...LFO_IMAGE_PRESET, ...lfoImageState };
+  const displaySignal = { input, output, mode, rate, waveShape: lfoShape, driftAnimation };
+  const displayParameters = {
+    input: createDisplayParameter('input', input, displaySignal),
+    output: createDisplayParameter('output', output, displaySignal),
+    noise: createDisplayParameter('noise', noise, displaySignal),
+    sweeten: createDisplayParameter('sweeten', sweeten, displaySignal),
+    sat: createDisplayParameter('sat', biasHF, displaySignal),
+    filter: createDisplayParameter('filter', character, displaySignal),
+    drift: createDisplayParameter('drift', drift, displaySignal),
+    spread: createDisplayParameter('spread', spread, displaySignal),
+    rate: createDisplayParameter('rate', rate, displaySignal),
+    depth: createDisplayParameter('depth', depth, displaySignal),
+    phase: createDisplayParameter('phase', stereoPhase, displaySignal),
+    autoGain: createDisplayParameter('autoGain', autoGain, displaySignal)
+  };
+  const activeDisplayData = displayParameters[activeDisplayParam] || displayParameters.sat;
+  const markDisplayParam = (id) => setActiveDisplayParam(id);
 
   const updateSakuraImage = (id, patch) => {
     setSakuraImageState(current => ({
@@ -5332,6 +7051,7 @@ export default function App() {
 
   const clampControlValue = (value) => Math.max(0, Math.min(100, value));
   const handleInputChange = (nextInput) => {
+    markDisplayParam('input');
     const previousInput = inputValueRef.current;
     const inputDelta = nextInput - previousInput;
     inputValueRef.current = nextInput;
@@ -5345,10 +7065,12 @@ export default function App() {
     }
   };
   const handleOutputChange = (nextOutput) => {
+    markDisplayParam('output');
     outputValueRef.current = nextOutput;
     setOutput(nextOutput);
   };
   const handleInputReset = () => {
+    markDisplayParam('input');
     const previousInput = inputValueRef.current;
     const inputDelta = 50 - previousInput;
     inputValueRef.current = 50;
@@ -5362,8 +7084,23 @@ export default function App() {
     }
   };
   const handleOutputReset = () => {
+    markDisplayParam('output');
     outputValueRef.current = 50;
     setOutput(50);
+  };
+  const handleDriftChange = (nextValue) => { markDisplayParam('drift'); setDrift(nextValue); };
+  const handleSpreadChange = (nextValue) => { markDisplayParam('spread'); setSpread(nextValue); };
+  const handleNoiseChange = (nextValue) => { markDisplayParam('noise'); setNoise(nextValue); };
+  const handleSweetenChange = (nextValue) => { markDisplayParam('sweeten'); setSweeten(nextValue); };
+  const handleSatChange = (nextValue) => { markDisplayParam('sat'); setBiasHF(nextValue); };
+  const handleFilterChange = (nextValue) => { markDisplayParam('filter'); setCharacter(nextValue); };
+  const handleRateChange = (nextValue) => { markDisplayParam('rate'); setRate(nextValue); };
+  const handleDepthChange = (nextValue) => { markDisplayParam('depth'); setDepth(nextValue); };
+  const handlePhaseChange = (nextValue) => { markDisplayParam('phase'); setStereoPhase(nextValue); };
+  const handleLfoShapeChange = (nextValue) => { markDisplayParam('rate'); setLfoShape(nextValue); };
+  const handleAutoGainToggle = () => {
+    markDisplayParam('autoGain');
+    setAutoGain(current => !current);
   };
   const handleIOLinkStyleChange = (nextStyle) => {
     setIoLinkStyle(nextStyle);
@@ -5465,7 +7202,10 @@ export default function App() {
       hardwarePositions,
       auraShapes,
       ioScaleStyle,
-      bottomSectionStyle
+      bottomSectionStyle,
+      readoutStyleIndex,
+      saturationMode,
+      saturationStyle
     });
     setDefaultSaveMessage(saved ? 'Saved as default' : 'Could not save');
     window.setTimeout(() => setDefaultSaveMessage(''), 2200);
@@ -5518,9 +7258,33 @@ export default function App() {
             onNext={() => setCurrentPreset(p => (p + 1) % DEMO_PRESETS.length)}
             onLoad={setCurrentPreset} onSave={(name) => console.log('Save preset:', name)} />
 
+          <div className="absolute -top-[52px] right-[40px] z-30 flex items-center gap-2 group flex-row-reverse">
+            <div className="relative h-9 rounded-lg bg-[#2d2c2b]/85 border border-white/10 shadow-xl backdrop-blur-md flex items-center min-w-[130px]">
+              <select
+                value={driftAnimation}
+                onChange={e => setDriftAnimation(normalizeDriftAnimationStyle(e.target.value))}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              >
+                {DRIFT_ANIMATION_STYLES.map((name, i) => <option key={i} value={i} className="bg-[#2d2c2b] text-[#edd39a]">{name}</option>)}
+              </select>
+              <div className="w-full flex items-center justify-between px-3 pointer-events-none">
+                <span className="text-[#edd39a] text-[8px] font-black tracking-[0.14em] uppercase truncate max-w-[90px]">{DRIFT_ANIMATION_STYLES[driftAnimation]}</span>
+                <span className="text-[#e66a53] text-[9px] ml-1">▼</span>
+              </div>
+            </div>
+            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-[#edd39a]/30 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Drift Visual</span>
+          </div>
+
           <div
-            className="absolute inset-0 rounded-[4rem] shadow-[0_40px_80px_rgba(0,0,0,0.4),0_20px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500"
-            style={{ backgroundColor: activePanelFaceColor, zIndex: 8, transform: `scale(${OUTER_PLUGIN_SCALE})`, transformOrigin: 'center center', ...FRAMES[frameStyle]?.panelStyle }}
+            className={`absolute ${FRAMES[frameStyle]?.panelInset || 'inset-0'} shadow-[0_40px_80px_rgba(0,0,0,0.4),0_20px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500`}
+            style={{ 
+              backgroundColor: activePanelFaceColor, 
+              zIndex: 8, 
+              transform: `scale(${OUTER_PLUGIN_SCALE})`, 
+              transformOrigin: 'center center', 
+              borderRadius: FRAMES[frameStyle]?.panelRadius || '4rem',
+              ...FRAMES[frameStyle]?.panelStyle 
+            }}
           >
             <div
               className="absolute inset-0 pointer-events-none z-[5] transition-all duration-300"
@@ -5581,18 +7345,18 @@ export default function App() {
 
             <div className={`absolute inset-0 bg-[#3a352d]/50 backdrop-grayscale transition-all duration-700 z-40 pointer-events-none ${power ? 'opacity-0' : 'opacity-100'}`} />
 
-            <div className="absolute top-[6%] left-[8%] z-10 flex flex-col items-start">
-              <h1 className="text-3xl leading-none font-black tracking-tighter text-[#e66a53] drop-shadow-sm flex gap-3"><span>VINTAGE</span> <span>DRIFTER</span></h1>
-              <p className="text-[10px] tracking-[0.2em] font-bold text-[#8b7b65] mt-1">MOTION / TONE / INSTABILITY</p>
+            <div className="absolute top-[6%] left-[10.2%] z-10 flex flex-col items-start">
+              <h1 className="text-[34px] leading-none font-black tracking-tighter text-[#e66a53] drop-shadow-sm flex gap-3"><span>VINTAGE</span> <span>DRIFTER</span></h1>
+              <p className="text-[11px] tracking-[0.2em] font-bold text-[#8b7b65] mt-1">MOTION / TONE / INSTABILITY</p>
             </div>
 
-            <div className="absolute top-[6%] right-[10%] z-10 flex flex-col items-center">
+            <div className="absolute top-[calc(6%-2px)] right-[10%] z-10 flex flex-col items-center">
               <div className="text-[12px] font-black tracking-[0.2em] mb-4 drop-shadow-sm" style={{ color: activeBrandTextStyle.polarisColor }}>POLARIS DSP</div>
               <div className="relative top-[5px] flex flex-col items-center">
                 <button onClick={() => setPower(!power)} className="relative w-8 h-14 bg-[#111] rounded-md border border-white/10 shadow-[inset_0_2px_5px_rgba(0,0,0,0.8),10px_10px_20px_rgba(0,0,0,0.4)] flex justify-center items-center">
-                  <div className="w-3 h-8 rounded-full bg-gradient-to-b from-[#edd39a] to-[#a88842] shadow-[0_5px_10px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(255,255,255,0.9)] transition-transform duration-200" style={{ transform: power ? 'translateY(-8px)' : 'translateY(8px)' }} />
+                  <div className="w-3 h-8 rounded-full bg-gradient-to-b from-[hsl(41,68%,76%)] to-[hsl(42,41%,46%)] shadow-[0_5px_10px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(255,255,255,0.9)] transition-transform duration-200" style={{ transform: power ? 'translateY(-8px)' : 'translateY(8px)' }} />
                 </button>
-                <div className="mt-3 text-[9px] font-black tracking-[0.24em]" style={{ color: activeBrandTextStyle.powerColor, textShadow: activeBrandTextStyle.powerShadow }}>POWER</div>
+                <div className="mt-[10px] text-[10px] font-black tracking-[0.24em]" style={{ color: activeBrandTextStyle.powerColor, textShadow: activeBrandTextStyle.powerShadow }}>POWER</div>
               </div>
             </div>
 
@@ -5609,7 +7373,7 @@ export default function App() {
               <div className="flex items-start gap-[18px]">
                 <div className="relative">
                   <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
-                  <MatteKnob label="Input" value={input} onChange={handleInputChange} onDoubleClick={handleInputReset} size={55} />
+                  <MatteKnob label="Input" value={input} onChange={handleInputChange} onDoubleClick={handleInputReset} size={55} shadingStyle={activeKnobStyle} onDraggingChange={(dragging) => { setIsInputDragging(dragging); if (dragging) markDisplayParam('input'); }} onDisplayFocus={() => markDisplayParam('input')} forceSnappy={isIoDragging} readoutStyleIndex={readoutStyleIndex} />
                 </div>
                 <div className="mt-[13px] flex flex-col items-center">
                   <IOLinkButton
@@ -5623,15 +7387,15 @@ export default function App() {
                 </div>
                 <div className="relative">
                   <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
-                  <MatteKnob label="Output" value={output} onChange={handleOutputChange} onDoubleClick={handleOutputReset} size={55} />
+                  <MatteKnob label="Output" value={output} onChange={handleOutputChange} onDoubleClick={handleOutputReset} size={55} shadingStyle={activeKnobStyle} onDraggingChange={(dragging) => { setIsOutputDragging(dragging); if (dragging) markDisplayParam('output'); }} onDisplayFocus={() => markDisplayParam('output')} forceSnappy={isIoDragging} readoutStyleIndex={readoutStyleIndex} />
                 </div>
               </div>
             </EditableHardwareWrapper>
 
             <div className="absolute top-[52%] left-[50%] z-30 -translate-x-1/2 -translate-y-1/2">
               <BotanicalCenterDial 
-                drift={drift} setDrift={setDrift} onDoubleClickDrift={() => setDrift(0)}
-                spread={spread} setSpread={setSpread} onDoubleClickSpread={() => setSpread(0)}
+                drift={drift} setDrift={handleDriftChange} 
+                spread={spread} setSpread={handleSpreadChange} 
                 rate={rate}
                 shadowStyle={CENTER_DIAL_SHADOWS[centerDialStyle].shadow}
                 surfaceStyle={CENTER_DIAL_SURFACES[centerDialSurfaceStyle]}
@@ -5643,33 +7407,39 @@ export default function App() {
                 guideRings={centerDialGuideRings}
                 middleKnobStyle={middleKnobStyle}
                 spreadPointerStyle={spreadPointerStyle}
+                outerRingScaleStyle={outerRingScaleStyle}
+                onDoubleClickDrift={() => handleDriftChange(0)}
+                onDoubleClickSpread={() => handleSpreadChange(0)}
+                readoutStyleIndex={readoutStyleIndex}
                 animationStyle={driftAnimation}
                 mode={mode}
               />
             </div>
 
             {/* Vertical Wabi-Sabi Text */}
-            <div 
-              className="absolute z-20 flex flex-col items-center pointer-events-none select-none transition-all duration-500"
-              style={{
-                right: '4.5%',
-                top: '14%',
-                transform: 'translateY(-50%)',
-                opacity: 0.4,
-                color: '#7a5d49',
-                fontFamily: "'M PLUS 1p', sans-serif",
-                fontWeight: 700,
-                fontSize: '13px',
-                lineHeight: '1.4',
-                letterSpacing: '0.12em',
-                textShadow: '0 0.5px 0 rgba(255,255,255,0.3)'
-              }}
-            >
-              <span>侘</span>
-              <span>び</span>
-              <span>寂</span>
-              <span>び</span>
-            </div>
+            {showWabiSabi && (
+              <div 
+                className="absolute z-20 flex flex-col items-center pointer-events-none select-none transition-all duration-500"
+                style={{
+                  right: '4.5%',
+                  top: '14%',
+                  transform: 'translateY(-50%)',
+                  opacity: 0.4,
+                  color: '#7a5d49',
+                  fontFamily: "'M PLUS 1p', sans-serif",
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  lineHeight: '1.4',
+                  letterSpacing: '0.12em',
+                  textShadow: '0 0.5px 0 rgba(255,255,255,0.3)'
+                }}
+              >
+                <span>侘</span>
+                <span>び</span>
+                <span>寂</span>
+                <span>び</span>
+              </div>
+            )}
 
             <EditableHardwareWrapper 
               id="mode" 
@@ -5684,47 +7454,43 @@ export default function App() {
               <ModeSelectorEngine mode={mode} setMode={setMode} styleIndex={modeStyle} power={power} isMovable={true} />
             </EditableHardwareWrapper>
 
-            <div className="absolute top-[38%] right-[10%] z-30 grid grid-cols-2 gap-x-6 gap-y-10 justify-items-center">
-              <MatteKnob label="Noise" value={noise} onChange={setNoise} onDoubleClick={() => setNoise(0)} size={50} />
-              <MatteKnob label="Sweeten" value={sweeten} onChange={setSweeten} onDoubleClick={() => setSweeten(0)} size={50} />
+            <div className="absolute top-[38%] right-[10%] z-30 grid grid-cols-2 gap-x-6 gap-y-10 justify-items-center translate-y-[-10px]">
+              <MatteKnob label="Noise" value={noise} onChange={handleNoiseChange} onDoubleClick={() => handleNoiseChange(0)} size={50} shadingStyle={activeKnobStyle} onDisplayFocus={() => markDisplayParam('noise')} readoutStyleIndex={readoutStyleIndex} />
+              <MatteKnob label="Sweeten" value={sweeten} onChange={handleSweetenChange} onDoubleClick={() => handleSweetenChange(0)} size={50} shadingStyle={activeKnobStyle} onDisplayFocus={() => markDisplayParam('sweeten')} readoutStyleIndex={readoutStyleIndex} />
               <div className="relative">
-                <div className="absolute -right-6 top-1/2 -translate-y-1/2">
-                  <HardwareLED active={power && biasHF > 20} color="coral" size={6} label="DRV" />
-                </div>
-                <MatteKnob label="Sat" value={biasHF} onChange={setBiasHF} onDoubleClick={() => setBiasHF(0)} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
+                <MatteKnob label="Sat" value={biasHF} onChange={handleSatChange} onDoubleClick={() => handleSatChange(0)} size={50} shadingStyle={activeKnobStyle} labelColorOverride="text-white/90 drop-shadow-md" onDisplayFocus={() => markDisplayParam('sat')} readoutStyleIndex={readoutStyleIndex} />
               </div>
               <div className="relative">
-                <MatteKnob label="Filter" value={character} onChange={setCharacter} onDoubleClick={() => setCharacter(0)} size={50} labelColorOverride="text-white/90 drop-shadow-md" />
+                <MatteKnob label="Filter" value={character} onChange={handleFilterChange} onDoubleClick={() => handleFilterChange(0)} size={50} shadingStyle={activeKnobStyle} labelColorOverride="text-white/90 drop-shadow-md" onDisplayFocus={() => markDisplayParam('filter')} readoutStyleIndex={readoutStyleIndex} />
               </div>
             </div>
 
-            <EditableHardwareWrapper 
-              id="driftVisual" 
-              x={hardwarePositions.driftVisual.x} 
-              y={hardwarePositions.driftVisual.y} 
-              locked={hardwarePositions.driftVisual.locked}
-              selected={selectedHardwareSection === 'driftVisual'}
-              onSelect={setSelectedHardwareSection}
-              onUpdate={updateHardwarePosition}
-              stageRef={pluginStageRef}
-            >
-              <div className="flex flex-col items-center gap-2">
-                <div className="relative w-[148px] h-9 rounded-lg bg-[#2d2c2b]/78 border border-white/15 shadow-[8px_10px_18px_rgba(0,0,0,0.28),inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-md">
-                  <select
-                    value={driftAnimation}
-                    onChange={e => setDriftAnimation(normalizeDriftAnimationStyle(e.target.value))}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  >
-                    {DRIFT_ANIMATION_STYLES.map((name, i) => <option key={i} value={i} className="bg-[#2d2c2b] text-[#edd39a]">{name}</option>)}
-                  </select>
-                  <div className="absolute inset-0 flex items-center justify-center px-6 pointer-events-none">
-                    <span className="text-[#edd39a] text-[9px] font-black tracking-[0.12em] uppercase text-center leading-tight">{DRIFT_ANIMATION_STYLES[driftAnimation]}</span>
-                  </div>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[#e66a53] text-[9px] pointer-events-none">▼</div>
+            <div className="absolute right-[8.2%] top-[calc(64%+2px)] z-30 pointer-events-none">
+              <ParameterDataDisplay parameter={activeDisplayData} power={power} />
+            </div>
+
+            {saturationStyle !== 0 && (
+              <EditableHardwareWrapper 
+                id="driftVisual" 
+                x={hardwarePositions.driftVisual.x} 
+                y={hardwarePositions.driftVisual.y} 
+                locked={hardwarePositions.driftVisual.locked}
+                selected={selectedHardwareSection === 'driftVisual'}
+                onSelect={setSelectedHardwareSection}
+                onUpdate={updateHardwarePosition}
+                stageRef={pluginStageRef}
+              >
+                <div className="z-10 flex flex-col items-center translate-x-[-2px] translate-y-[12px]">
+                  <SaturationSelectorEngine 
+                    mode={saturationMode} 
+                    setMode={setSaturationMode} 
+                    styleIndex={saturationStyle} 
+                    power={power} 
+                  />
+                  <div className="mt-2 text-center text-[10px] font-bold uppercase tracking-[0.32em] text-[#fff8eb] drop-shadow-sm">Saturation types</div>
                 </div>
-                <span className="text-[9px] font-bold tracking-[0.22em] uppercase text-white/90 drop-shadow-md">drift visual</span>
-              </div>
-            </EditableHardwareWrapper>
+              </EditableHardwareWrapper>
+            )}
 
             <EditableHardwareWrapper 
               id="rate" 
@@ -5737,7 +7503,7 @@ export default function App() {
               stageRef={pluginStageRef}
             >
               <div className="flex flex-col items-center gap-3">
-                <MatteKnob label="Rate" value={rate} onChange={setRate} size={70} shadingStyle={KNOB_STYLES[knobStyle]} labelOffsetY={5} indicatorActive={lfoEnabled && !lfoSync} />
+                <MatteKnob label="Rate" value={rate} onChange={handleRateChange} size={70} shadingStyle={activeKnobStyle} labelOffsetY={5} indicatorActive={lfoEnabled && !lfoSync} onDisplayFocus={() => markDisplayParam('rate')} readoutStyleIndex={readoutStyleIndex} />
               </div>
             </EditableHardwareWrapper>
 
@@ -5757,7 +7523,7 @@ export default function App() {
                 sync={lfoSync}
                 setSync={setLfoSync}
                 waveIndex={lfoShape}
-                setWaveIndex={setLfoShape}
+                setWaveIndex={handleLfoShapeChange}
                 rateIndex={lfoSyncDiv}
                 setRateIndex={setLfoSyncDiv}
               />
@@ -5765,11 +7531,13 @@ export default function App() {
 
             <BottomSectionEngine
               depth={depth}
-              setDepth={setDepth}
+              setDepth={handleDepthChange}
               stereoPhase={stereoPhase}
-              setStereoPhase={setStereoPhase}
+              setStereoPhase={handlePhaseChange}
               styleIndex={bottomSectionStyle}
               lfoActive={lfoEnabled}
+              readoutStyleIndex={readoutStyleIndex}
+              screwStyle={screwStyle}
             />
 
             <EditableHardwareWrapper 
@@ -5783,10 +7551,10 @@ export default function App() {
               stageRef={pluginStageRef}
             >
               <div className="flex flex-col items-center">
-                <button onClick={() => setAutoGain(!autoGain)} className="w-16 h-16 rounded-full flex justify-center items-center active:scale-95 transition-transform border-2 border-white/20" style={{ backgroundColor: '#e66a53', boxShadow: '12px 12px 20px rgba(180,60,40,0.5), inset 2px 2px 5px rgba(255,255,255,0.5), inset -2px -2px 5px rgba(0,0,0,0.3)' }}>
+                <button onClick={handleAutoGainToggle} className="w-16 h-16 rounded-full flex justify-center items-center active:scale-95 transition-transform border-2 border-white/20" style={{ backgroundColor: '#e66a53', boxShadow: '12px 12px 20px rgba(180,60,40,0.5), inset 2px 2px 5px rgba(255,255,255,0.5), inset -2px -2px 5px rgba(0,0,0,0.3)' }}>
                   <div className={`w-6 h-6 rounded-full ${autoGain && power ? 'bg-white shadow-[0_0_15px_white]' : 'bg-[#a34433] shadow-inner'} transition-all`} />
                 </button>
-                <div className="text-center text-[9px] tracking-[0.2em] font-bold text-[#fff] drop-shadow-md mt-3 uppercase">Auto Gain</div>
+                <div className="text-center text-[10px] tracking-[0.2em] font-bold text-[#fff] drop-shadow-md mt-3 uppercase">Auto Gain</div>
               </div>
             </EditableHardwareWrapper>
 
@@ -5796,7 +7564,7 @@ export default function App() {
               className="absolute z-30 text-center text-[10px] font-black uppercase tracking-[0.24em]"
               style={{
                 bottom: 'calc(3.4% + 1px)',
-                left: 'calc(19% + 1px)',
+                left: 'calc(22% + 1px)',
                 transform: 'translateX(-50%)',
                 color: 'rgba(58, 53, 45, 0.58)',
                 textShadow: '0 1px 0 rgba(255,255,255,0.24), 0 -1px 0 rgba(0,0,0,0.12)'
@@ -5991,6 +7759,16 @@ export default function App() {
             </div>
 
             <div className="flex flex-col gap-2 border-t border-white/10 pt-5">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Knob Readout Style</span>
+              <div className="relative w-full h-11">
+                <select value={readoutStyleIndex} onChange={e => setReadoutStyleIndex(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {KNOB_READOUT_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-white/10 pt-5">
               <button
                 onClick={handleSaveCurrentAsDefault}
                 className="w-full rounded-xl bg-[#e66a53] px-4 py-3 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_10px_24px_rgba(230,106,83,0.22)] transition-all active:scale-[0.98] hover:brightness-110"
@@ -6096,6 +7874,16 @@ export default function App() {
         <CollapsibleSection title="Hardware Build">
           <div className="grid grid-cols-1 gap-6">
             <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Saturation Module</span>
+              <div className="relative w-full h-11">
+                <select value={saturationStyle} onChange={e => setSaturationStyle(normalizeSaturationStyle(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[12px] font-bold outline-none cursor-pointer appearance-none">
+                  {SATURATION_MODULE_STYLES.map((name, i) => <option key={i} value={i}>{name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
               <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Mode Switch Style</span>
               <div className="relative w-full h-11">
                 <select value={modeStyle} onChange={e => setModeStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
@@ -6106,9 +7894,9 @@ export default function App() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Knob Texture</span>
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Small Knob Material</span>
               <div className="relative w-full h-11">
-                <select value={knobStyle} onChange={e => setKnobStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                <select value={activeKnobStyleIndex} onChange={e => setKnobStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
                   {KNOB_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
@@ -6245,6 +8033,20 @@ export default function App() {
                   className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none"
                 >
                   {SPREAD_POINTER_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Outer Ring Scale</span>
+              <div className="relative w-full h-11">
+                <select
+                  value={outerRingScaleStyle}
+                  onChange={e => setOuterRingScaleStyle(Number(e.target.value))}
+                  className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none"
+                >
+                  {OUTER_RING_SCALES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
               </div>
@@ -6422,7 +8224,7 @@ export default function App() {
 
         {/* SECTION 6: GLOBAL TOGGLES */}
         <CollapsibleSection title="Workspace">
-          <div className="grid grid-cols-2 gap-y-6">
+          <div className="grid grid-cols-3 gap-y-6">
              <div className="flex flex-col items-center gap-2">
                 <button onClick={() => setShowOutputs(!showOutputs)} className={`w-11 h-6 rounded-full border-2 border-white/20 flex items-center px-1 transition-colors ${showOutputs ? 'bg-white/20' : 'bg-transparent'}`}>
                   <div className={`w-3 h-3 rounded-full bg-white transition-transform ${showOutputs ? 'translate-x-5' : 'translate-x-0'}`} />
@@ -6434,6 +8236,12 @@ export default function App() {
                   <div className={`w-3 h-3 rounded-full bg-white transition-transform ${parallelCables ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
                 <span className="text-[9px] text-white/50 uppercase font-bold tracking-widest">Parallel</span>
+             </div>
+             <div className="flex flex-col items-center gap-2">
+                <button onClick={() => setShowWabiSabi(!showWabiSabi)} className={`w-11 h-6 rounded-full border-2 border-white/20 flex items-center px-1 transition-colors ${showWabiSabi ? 'bg-white/20' : 'bg-transparent'}`}>
+                  <div className={`w-3 h-3 rounded-full bg-white transition-transform ${showWabiSabi ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+                <span className="text-[9px] text-white/50 uppercase font-bold tracking-widest">JP Text</span>
              </div>
           </div>
         </CollapsibleSection>
@@ -6504,6 +8312,89 @@ export default function App() {
         @keyframes center-radar-sweep {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @keyframes hud-slide-left {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        @keyframes hud-pulse {
+          0%, 100% { transform: scale(0.92); filter: drop-shadow(0 0 2px rgba(230,106,83,0.45)); }
+          50% { transform: scale(1.12); filter: drop-shadow(0 0 8px rgba(230,106,83,0.85)); }
+        }
+        @keyframes hud-static {
+          0%, 100% { transform: translate(0,0); opacity: 0.7; }
+          50% { transform: translate(1px,1px); opacity: 0.35; }
+        }
+        @keyframes hud-meter-flicker {
+          0%, 100% { transform: scaleX(0.74); }
+          45% { transform: scaleX(1); }
+          72% { transform: scaleX(0.52); }
+        }
+        @keyframes hud-audio-in {
+          0%, 100% { transform: scaleX(0.42); }
+          20% { transform: scaleX(0.92); }
+          50% { transform: scaleX(0.58); }
+          80% { transform: scaleX(1); }
+        }
+        @keyframes hud-audio-out {
+          0%, 100% { transform: scaleX(0.5); }
+          30% { transform: scaleX(0.76); }
+          60% { transform: scaleX(1); }
+          90% { transform: scaleX(0.48); }
+        }
+        @keyframes hud-heat-bar {
+          0%, 100% { transform: scaleY(0.72); }
+          50% { transform: scaleY(1.08); }
+        }
+        @keyframes hud-heat-shimmer {
+          0% { transform: translateX(0) scaleX(0.88); opacity: 0.22; }
+          50% { transform: translateX(35%) scaleX(1.06); opacity: 0.75; }
+          100% { transform: translateX(78%) scaleX(0.92); opacity: 0.28; }
+        }
+        @keyframes hud-glow-breathe {
+          0%, 100% { opacity: var(--hud-glow-min, 0.24); filter: blur(8px) saturate(1.08); }
+          52% { opacity: var(--hud-glow-max, 0.5); filter: blur(10px) saturate(1.22); }
+        }
+        @keyframes hud-sweeten-bloom {
+          0%, 100% { transform: scale(0.94); }
+          50% { transform: scale(1.12); }
+        }
+        @keyframes hud-depth-soft {
+          0%, 100% { opacity: 0.72; }
+          50% { opacity: 1; }
+        }
+        @keyframes hud-phase-soft {
+          0%, 100% { opacity: 0.62; filter: drop-shadow(0 0 1px rgba(230,106,83,0.3)); }
+          50% { opacity: 0.9; filter: drop-shadow(0 0 4px rgba(230,106,83,0.62)); }
+        }
+        @keyframes hud-drift-wave {
+          0%, 100% { filter: drop-shadow(0 0 2px rgba(230,106,83,0.5)); opacity: 0.72; }
+          36% { filter: drop-shadow(0 0 7px rgba(230,106,83,0.88)); opacity: 0.98; }
+          68% { filter: drop-shadow(0 0 4px rgba(230,106,83,0.64)); opacity: 0.82; }
+        }
+        @keyframes hud-drift-dot {
+          0%, 100% { filter: drop-shadow(0 0 2px rgba(230,106,83,0.45)); }
+          45% { filter: drop-shadow(0 0 8px rgba(230,106,83,0.92)); }
+          70% { filter: drop-shadow(0 0 4px rgba(230,106,83,0.62)); }
+        }
+        .hud-slide-left { animation: hud-slide-left 3s linear infinite; }
+        .hud-pulse { animation: hud-pulse 1.8s ease-in-out infinite; }
+        .hud-static { animation: hud-static 0.12s steps(2) infinite; }
+        .hud-meter-flicker { transform-origin: left center; animation: hud-meter-flicker 1.25s ease-in-out infinite; }
+        .hud-audio-in { transform-origin: left center; animation: hud-audio-in 1.2s ease-in-out infinite; }
+        .hud-audio-out { transform-origin: left center; animation: hud-audio-out 1.4s ease-in-out infinite; }
+        .hud-heat-bar { transform-origin: center bottom; animation: hud-heat-bar 1.4s ease-in-out infinite; }
+        .hud-heat-shimmer { animation: hud-heat-shimmer 1.8s ease-in-out infinite; }
+        .hud-glow-breathe { animation: hud-glow-breathe 2.4s ease-in-out infinite; }
+        .hud-sweeten-bloom { animation: hud-sweeten-bloom 2.6s ease-in-out infinite; }
+        .hud-depth-soft { animation: hud-depth-soft 1.8s ease-in-out infinite; }
+        .hud-phase-soft { animation: hud-phase-soft 2s ease-in-out infinite; }
+        .hud-drift-wave { animation-name: hud-drift-wave; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+        .hud-drift-dot { animation-name: hud-drift-dot; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+        .hud-screen-soft {
+          filter: saturate(0.93) contrast(0.91) drop-shadow(0 0 2px rgba(230,106,83,0.16));
+          opacity: 0.95;
+          text-shadow: 0 0 3px rgba(230,106,83,0.21);
         }
         * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         body { overflow: hidden; touch-action: none; }
