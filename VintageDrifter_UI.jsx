@@ -770,7 +770,7 @@ Object.assign(CODE_DEFAULT_DESIGN, {
   "mixKnobStyle": 1,
   "smallKnobRingEnabled": true,
   "centerDialStyle": 1,
-  "middleKnobStyle": 6,
+  "middleKnobStyle": 0,
   "centerDialSurfaceStyle": 14,
   "centerDialGrooveStyle": 0,
   "centerDialMarkStyle": 0,
@@ -1290,7 +1290,7 @@ const generateRandomBlob = () => {
 
 const AURA_SHAPE_MAX_SIZE = 1800;
 
-const DESIGN_DEFAULTS_KEY = 'vintage-drifter-current-default-v9';
+const DESIGN_DEFAULTS_KEY = 'vintage-drifter-current-default-v10';
 
 const createDefaultAuraShapes = () => CODE_DEFAULT_DESIGN.auraShapes.map(shape => ({ ...shape }));
 
