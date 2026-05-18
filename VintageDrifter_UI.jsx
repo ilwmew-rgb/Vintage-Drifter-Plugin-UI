@@ -8027,6 +8027,7 @@ export default function App({ websiteMode = false, showCables = true }) {
               borderRadius: FRAMES[frameStyle]?.panelRadius || '4rem',
               WebkitMaskImage: '-webkit-radial-gradient(white, black)',
               maskImage: 'radial-gradient(white, black)',
+              isolation: 'isolate',
               ...FRAMES[frameStyle]?.panelStyle 
             }}
           >
