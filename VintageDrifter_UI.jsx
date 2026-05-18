@@ -7599,7 +7599,7 @@ export default function App({ websiteMode = false, showCables = true }) {
   const [outerRingScaleStyle, setOuterRingScaleStyle] = useState(() => initial('outerRingScaleStyle', CODE_DEFAULT_DESIGN.outerRingScaleStyle));
   const [showWabiSabi, setShowWabiSabi] = useState(() => initial('showWabiSabi', CODE_DEFAULT_DESIGN.showWabiSabi));
   const [readoutStyleIndex, setReadoutStyleIndex] = useState(() => initial('readoutStyleIndex', CODE_DEFAULT_DESIGN.readoutStyleIndex));
-  const [activeDisplayParam, setActiveDisplayParam] = useState('filter');
+  const [activeDisplayParam, setActiveDisplayParam] = useState('drift');
   const isIoDragging = isInputDragging || isOutputDragging;
   const inputValueRef = useRef(input);
   const outputValueRef = useRef(output);
