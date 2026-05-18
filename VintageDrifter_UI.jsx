@@ -1290,7 +1290,7 @@ const generateRandomBlob = () => {
 
 const AURA_SHAPE_MAX_SIZE = 1800;
 
-const DESIGN_DEFAULTS_KEY = 'vintage-drifter-current-default-v6';
+const DESIGN_DEFAULTS_KEY = 'vintage-drifter-current-default-v7';
 
 const createDefaultAuraShapes = () => CODE_DEFAULT_DESIGN.auraShapes.map(shape => ({ ...shape }));
 
