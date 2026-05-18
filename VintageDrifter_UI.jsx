@@ -2717,7 +2717,7 @@ const SakuraImageLayer = ({ src, settings, alt, matteBacking = false }) => {
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none" style={{ isolation: 'isolate', zIndex: 39 }}>
+    <>
       {matteBacking && (
         <img
           src={src}
@@ -2741,12 +2741,11 @@ const SakuraImageLayer = ({ src, settings, alt, matteBacking = false }) => {
         style={{
           ...layerStyle,
           zIndex: 39,
-          opacity: 0.9,
-          filter: 'brightness(0.95)',
-          mixBlendMode: 'luminosity'
+          opacity: 0.95,
+          filter: 'brightness(0.95)'
         }}
       />
-    </div>
+    </>
   );
 };
 
