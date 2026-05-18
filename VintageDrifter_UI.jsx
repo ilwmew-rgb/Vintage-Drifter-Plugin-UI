@@ -136,7 +136,7 @@ const CODE_DEFAULT_DESIGN = {
   "ioLinked": true,
   "drift": 32.778808593750014,
   "spread": 0,
-  "character": 82.90488281249999,
+  "character": 83.43,
   "sweeten": 80.14729003906251,
   "biasHF": 100,
   "noise": 100,
@@ -7599,7 +7599,7 @@ export default function App({ websiteMode = false, showCables = true }) {
   const [outerRingScaleStyle, setOuterRingScaleStyle] = useState(() => initial('outerRingScaleStyle', CODE_DEFAULT_DESIGN.outerRingScaleStyle));
   const [showWabiSabi, setShowWabiSabi] = useState(() => initial('showWabiSabi', CODE_DEFAULT_DESIGN.showWabiSabi));
   const [readoutStyleIndex, setReadoutStyleIndex] = useState(() => initial('readoutStyleIndex', CODE_DEFAULT_DESIGN.readoutStyleIndex));
-  const [activeDisplayParam, setActiveDisplayParam] = useState('sat');
+  const [activeDisplayParam, setActiveDisplayParam] = useState('filter');
   const isIoDragging = isInputDragging || isOutputDragging;
   const inputValueRef = useRef(input);
   const outputValueRef = useRef(output);
