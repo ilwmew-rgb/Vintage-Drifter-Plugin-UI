@@ -134,7 +134,7 @@ const CODE_DEFAULT_DESIGN = {
   "output": 62.95026855468748,
   "ioLinkStyle": "fiberCoralCenter",
   "ioLinked": true,
-  "drift": 32.778808593750014,
+  "drift": 30,
   "spread": 0,
   "character": 83.43,
   "sweeten": 80.14729003906251,
