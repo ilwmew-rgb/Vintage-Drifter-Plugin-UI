@@ -2717,7 +2717,7 @@ const SakuraImageLayer = ({ src, settings, alt, matteBacking = false }) => {
   };
 
   return (
-    <>
+    <div className="absolute inset-0 pointer-events-none" style={{ isolation: 'isolate', zIndex: 39 }}>
       {matteBacking && (
         <img
           src={src}
@@ -2746,7 +2746,7 @@ const SakuraImageLayer = ({ src, settings, alt, matteBacking = false }) => {
           mixBlendMode: 'luminosity'
         }}
       />
-    </>
+    </div>
   );
 };
 
