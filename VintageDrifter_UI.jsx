@@ -7968,7 +7968,7 @@ export default function App({ websiteMode = false, showCables = true }) {
           {/* Frame Wrapper */}
           <div 
             className={`absolute ${FRAMES[frameStyle]?.inset || '-inset-6'} transition-all duration-500 pointer-events-none`} 
-            style={{ borderRadius: FRAMES[frameStyle]?.radius || '4.5rem', zIndex: -1, transform: `scale(${OUTER_PLUGIN_SCALE})`, transformOrigin: 'center center', ...FRAMES[frameStyle]?.style }}
+            style={{ borderRadius: FRAMES[frameStyle]?.radius || '4.5rem', zIndex: -1, transform: `scale(${OUTER_PLUGIN_SCALE}) translateZ(0)`, transformOrigin: 'center center', ...FRAMES[frameStyle]?.style }}
           >
             {FRAMES[frameStyle]?.innerStyle && (
               <div 
@@ -8022,9 +8022,11 @@ export default function App({ websiteMode = false, showCables = true }) {
             style={{ 
               backgroundColor: activePanelFaceColor, 
               zIndex: 8, 
-              transform: `scale(${OUTER_PLUGIN_SCALE})`, 
+              transform: `scale(${OUTER_PLUGIN_SCALE}) translateZ(0)`, 
               transformOrigin: 'center center', 
               borderRadius: FRAMES[frameStyle]?.panelRadius || '4rem',
+              WebkitMaskImage: '-webkit-radial-gradient(white, black)',
+              maskImage: 'radial-gradient(white, black)',
               ...FRAMES[frameStyle]?.panelStyle 
             }}
           >
@@ -9288,8 +9290,8 @@ export default function App({ websiteMode = false, showCables = true }) {
           opacity: 0.95;
           text-shadow: 0 0 3px rgba(230,106,83,0.21);
         }
-        * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-        body { overflow: hidden; touch-action: none; }
+        ${websiteMode ? '.plugin-wrapper *' : '*'} { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        ${websiteMode ? '' : 'body { overflow: hidden; touch-action: none; }'}
         input[type="range"] { -webkit-user-select: auto; user-select: auto; }
         .lfo-scrollbar::-webkit-scrollbar { width: 3px; }
         .lfo-scrollbar::-webkit-scrollbar-track { background: transparent; margin-block: 14px; }
