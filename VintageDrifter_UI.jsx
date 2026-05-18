@@ -2719,22 +2719,17 @@ const SakuraImageLayer = ({ src, settings, alt, matteBacking = false }) => {
   return (
     <>
       {matteBacking && (
-        <div
+        <img
+          src={src}
+          alt=""
+          aria-hidden="true"
           className="absolute pointer-events-none select-none"
+          draggable={false}
           style={{
             ...layerStyle,
-            height: settings.size,
             zIndex: 38,
             opacity: 0.94,
-            backgroundColor: '#faf6ee',
-            WebkitMaskImage: `url(${src})`,
-            maskImage: `url(${src})`,
-            WebkitMaskSize: 'contain',
-            maskSize: 'contain',
-            WebkitMaskRepeat: 'no-repeat',
-            maskRepeat: 'no-repeat',
-            WebkitMaskPosition: 'center',
-            maskPosition: 'center'
+            filter: 'brightness(0) saturate(100%) invert(97%) sepia(16%) saturate(355%) hue-rotate(343deg) brightness(105%) contrast(96%)'
           }}
         />
       )}
