@@ -8024,8 +8024,8 @@ export default function App({ websiteMode = false, showCables = true }) {
               transform: `scale(${OUTER_PLUGIN_SCALE}) translateZ(0)`, 
               transformOrigin: 'center center', 
               borderRadius: FRAMES[frameStyle]?.panelRadius || '4rem',
-              WebkitMaskImage: '-webkit-linear-gradient(white, white)',
-              maskImage: 'linear-gradient(white, white)',
+              WebkitMaskImage: '-webkit-radial-gradient(white, white)',
+              maskImage: 'radial-gradient(white, white)',
               isolation: 'isolate',
               ...FRAMES[frameStyle]?.panelStyle 
             }}
