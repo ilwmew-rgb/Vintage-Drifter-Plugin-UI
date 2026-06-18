@@ -429,9 +429,9 @@ const CODE_DEFAULT_DESIGN = {
   "output": 62.95026855468748,
   "ioLinkStyle": "fiberCoralCenter",
   "ioLinked": true,
-  "drift": 32.778808593750014,
+  "drift": 30,
   "spread": 0,
-  "character": 82.90488281249999,
+  "character": 83.43,
   "sweeten": 80.14729003906251,
   "biasHF": 100,
   "noise": 100,
@@ -451,7 +451,7 @@ const CODE_DEFAULT_DESIGN = {
   "mixKnobStyle": 0,
   "smallKnobRingEnabled": true,
   "centerDialStyle": 1,
-  "middleKnobStyle": 0,
+  "middleKnobStyle": 16,
   "centerDialSurfaceStyle": 14,
   "centerDialGrooveStyle": 0,
   "centerDialMarkStyle": 0,
@@ -3422,9 +3422,8 @@ const SakuraImageLayer = ({ src, settings, alt, matteBacking = false }) => {
         style={{
           ...layerStyle,
           zIndex: 39,
-          opacity: 0.9,
-          filter: 'brightness(0.95)',
-          mixBlendMode: 'luminosity'
+          opacity: 0.95,
+          filter: 'brightness(0.95)'
         }}
       />
     </>
@@ -11816,9 +11815,12 @@ export default function App({ websiteMode = false }) {
             style={{ 
               backgroundColor: activePanelFaceColor, 
               zIndex: 8, 
-              transform: `scale(${OUTER_PLUGIN_SCALE})`, 
+              transform: `scale(${OUTER_PLUGIN_SCALE}) translateZ(0)`, 
               transformOrigin: 'center center', 
               borderRadius: FRAMES[frameStyle]?.panelRadius || '4rem',
+              WebkitMaskImage: '-webkit-radial-gradient(white, white)',
+              maskImage: 'radial-gradient(white, white)',
+              isolation: 'isolate',
               ...FRAMES[frameStyle]?.panelStyle 
             }}
           >
@@ -13744,8 +13746,8 @@ export default function App({ websiteMode = false }) {
           opacity: 0.95;
           text-shadow: 0 0 3px rgba(230,106,83,0.21);
         }
-        * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-        body { overflow: hidden; touch-action: none; }
+        ${websiteMode ? '.plugin-wrapper *' : '*'} { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        ${websiteMode ? '' : 'body { overflow: hidden; touch-action: none; }'}
         input[type="range"] { -webkit-user-select: auto; user-select: auto; }
         .top-preset-option:hover {
           background: var(--preset-option-hover-bg) !important;
