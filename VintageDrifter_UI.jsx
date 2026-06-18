@@ -11810,20 +11810,29 @@ export default function App({ websiteMode = false }) {
             />
           )}
 
+          {/* Panel Shadow and Border Wrapper */}
           <div
-            className={`absolute ${FRAMES[frameStyle]?.panelInset || 'inset-0'} shadow-[0_40px_80px_rgba(0,0,0,0.4),0_20px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500`}
+            className={`absolute ${FRAMES[frameStyle]?.panelInset || 'inset-0'} transition-all duration-500`}
             style={{ 
-              backgroundColor: activePanelFaceColor, 
               zIndex: 8, 
               transform: `scale(${OUTER_PLUGIN_SCALE}) translateZ(0)`, 
               transformOrigin: 'center center', 
               borderRadius: FRAMES[frameStyle]?.panelRadius || '4rem',
-              WebkitMaskImage: '-webkit-radial-gradient(white, white)',
-              maskImage: 'radial-gradient(white, white)',
-              isolation: 'isolate',
+              boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2)',
               ...FRAMES[frameStyle]?.panelStyle 
             }}
           >
+            {/* Masked Panel Faceplate Content */}
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={{
+                borderRadius: 'inherit',
+                backgroundColor: activePanelFaceColor,
+                WebkitMaskImage: '-webkit-radial-gradient(white, white)',
+                maskImage: 'radial-gradient(white, white)',
+                isolation: 'isolate'
+              }}
+            >
             <div
               className="absolute inset-0 pointer-events-none z-[5] transition-all duration-300"
               style={{
@@ -12218,6 +12227,7 @@ export default function App({ websiteMode = false }) {
               }}
             />
 
+            </div>
           </div>
         </div>
         <GlobalMasteringOverlay settings={globalMastering} scene />
