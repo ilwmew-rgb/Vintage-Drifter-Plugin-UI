@@ -1,8 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { HelpCircle, Settings } from 'lucide-react';
 import sakuraSrc from './Images/Sakura.png';
 import sakura2Src from './Images/Sakura2.png';
 import lfoSrc from './Images/LFO.png';
+import leatherTextureSrc from './Images/textures/leather texture.jpg';
+import leatherTexture2Src from './Images/textures/leather texture 2.jpg';
+import fineLeatherTextureSrc from './Images/textures/fine leather textured.jpg';
+import whiteLeatherTextureSrc from './Images/textures/white-leather-texture.jpg';
+import gptTextureSrc from './Images/textures/GPT.jpg';
 
 const SATURATION_MODULE_STYLES = [
   'Hidden (Disabled)',
@@ -38,11 +44,64 @@ const DRIFT_ANIMATION_STYLES = [
   'Coral Dual Outer Ribbon',
   'Coral Dual Outer Ribbon Flutter',
   'Coral Dual Outer Flutter Clean',
-  'Knob Flutter Coral Filled'
+  'Knob Flutter Coral Filled',
+  'Knob Flutter Coral Filled + Spread Ribbon'
 ];
 
-const SAT_MODES = ['Tape Saturation', 'Tube Saturation'];
+const SAT_MODES = ['Tape Saturation', 'Desk Saturation'];
 const FLUTTER_ANIMATION_EPOCH = Date.now();
+
+const normalizeSaturationMode = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(SAT_MODES.length - 1, numericValue));
+};
+
+const normalizeFilterPole = (value) => Number(value) === 24 ? 24 : 12;
+
+const FACE_TEXTURE_BLEND_MODES = [
+  'multiply',
+  'soft-light',
+  'overlay',
+  'screen',
+  'darken',
+  'lighten',
+  'luminosity',
+  'color-burn'
+];
+
+const normalizeFaceTextureBlendMode = (value) =>
+  FACE_TEXTURE_BLEND_MODES.includes(value) ? value : FACE_TEXTURE_BLEND_MODES[0];
+
+const DEFAULT_FACE_TEXTURE_SCALE = 100;
+const CURVES_FILTER_ID = 'global-mastering-curves-filter';
+const CURVE_CHANNELS = ['rgb', 'r', 'g', 'b'];
+const createIdentityCurve = () => (
+  Array.from({ length: 5 }, (_, index) => {
+    const value = index / 4;
+    return { x: value, y: value };
+  })
+);
+const clamp01 = (value) => Math.max(0, Math.min(1, value));
+const DEFAULT_GLOBAL_CURVES = {
+  enabled: false,
+  channels: {
+    rgb: createIdentityCurve(),
+    r: createIdentityCurve(),
+    g: createIdentityCurve(),
+    b: createIdentityCurve()
+  }
+};
+
+const hexToRgba = (hex, alpha = 1) => {
+  const value = String(hex || '').replace('#', '');
+  if (!/^[0-9a-f]{6}$/i.test(value)) return `rgba(230,106,83,${alpha})`;
+  const numeric = parseInt(value, 16);
+  const r = (numeric >> 16) & 255;
+  const g = (numeric >> 8) & 255;
+  const b = numeric & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+};
 
 const normalizeDriftAnimationStyle = (value) => {
   const numericValue = Number(value);
@@ -58,6 +117,26 @@ const SAKURA_IMAGE_PRESETS = {
 
 const LFO_IMAGE_PRESET = { enabled: true, locked: true, x: 250, y: 636, size: 72, rotate: 0 };
 const DEFAULT_PANEL_FACE_COLOR = '#f4ead6';
+const DEFAULT_VINTAGE_LOGO_COLOR = '#e66a53';
+const DEFAULT_POLARIS_LOGO_COLOR = '#e66a53';
+const DEFAULT_KNOB_FLUTTER_FILLED_COLORS = {
+  highlight: '#ffc0a4',
+  mid: '#e36f55',
+  tail: '#7e3028'
+};
+const DEFAULT_GLOBAL_MASTERING = {
+  enabled: false,
+  studioDim: { enabled: false, opacity: 18, color: '#050403', x: 50, y: 45, size: 118, softness: 56 },
+  light: { enabled: false, x: 18, y: 12, intensity: 22, size: 70, warmth: 62, color: '#fff2cf' },
+  vignette: { enabled: false, strength: 22, size: 68, softness: 45, color: '#060403' },
+  grade: { enabled: false, warmth: 50, contrast: 50, saturation: 50, lift: 50, fade: 0, opacity: 18, tint: '#9a493c' },
+  curves: DEFAULT_GLOBAL_CURVES,
+  shadowGlue: { enabled: false, opacity: 18, x: 54, y: 58, size: 68, blur: 28, color: '#120906' },
+  bloom: { enabled: false, opacity: 12, size: 62, blur: 28, color: '#e66a53' },
+  grain: { enabled: false, opacity: 8, scale: 1, contrast: 24, tone: 50, hold: 0 },
+  edgeWash: { enabled: false, opacity: 10, angle: 225, color: '#20100b' }
+};
+const PANEL_TEXT_DEPTH_SHADOW = '0 1px 0 rgba(255,255,255,0.24), 0 -1px 0 rgba(0,0,0,0.12)';
 const OUTER_PLUGIN_SCALE = 0.95;
 
 const CENTER_DIAL_GUIDE_RING_DEFAULTS = {
@@ -85,6 +164,239 @@ const normalizeBrandTextStyle = (value) => {
   if (!Number.isFinite(numericValue)) return 0;
   return Math.max(0, Math.min(BRAND_TEXT_STYLES.length - 1, numericValue));
 };
+
+const normalizeGlobalMastering = (settings = {}) => {
+  const value = settings || {};
+  const curvesValue = value.curves || {};
+  const normalizedCurves = CURVE_CHANNELS.reduce((acc, channel) => {
+    const source = Array.isArray(curvesValue.channels?.[channel]) ? curvesValue.channels[channel] : DEFAULT_GLOBAL_CURVES.channels[channel];
+    const points = source
+      .slice(0, 5)
+      .map((point, index) => ({
+        x: clamp01(Number(point?.x)),
+        y: clamp01(Number(point?.y)),
+        index
+      }))
+      .filter(point => Number.isFinite(point.x) && Number.isFinite(point.y))
+      .sort((a, b) => a.x - b.x)
+      .map(({ x, y }, index, array) => {
+        const minX = index === 0 ? 0 : array[index - 1].x + 0.001;
+        const maxX = index === array.length - 1 ? 1 : array[index + 1].x - 0.001;
+        return {
+          x: index === 0 ? 0 : index === array.length - 1 ? 1 : Math.max(minX, Math.min(maxX, x)),
+          y: clamp01(y)
+        };
+      });
+    while (points.length < 5) points.push(createIdentityCurve()[points.length]);
+    points[0] = { x: 0, y: clamp01(points[0].y) };
+    points[points.length - 1] = { x: 1, y: clamp01(points[points.length - 1].y) };
+    acc[channel] = points;
+    return acc;
+  }, {});
+  return {
+    ...DEFAULT_GLOBAL_MASTERING,
+    ...value,
+    studioDim: { ...DEFAULT_GLOBAL_MASTERING.studioDim, ...(value.studioDim || {}) },
+    light: { ...DEFAULT_GLOBAL_MASTERING.light, ...(value.light || {}) },
+    vignette: { ...DEFAULT_GLOBAL_MASTERING.vignette, ...(value.vignette || {}) },
+    grade: { ...DEFAULT_GLOBAL_MASTERING.grade, ...(value.grade || {}) },
+    curves: {
+      ...DEFAULT_GLOBAL_CURVES,
+      ...curvesValue,
+      channels: normalizedCurves
+    },
+    shadowGlue: { ...DEFAULT_GLOBAL_MASTERING.shadowGlue, ...(value.shadowGlue || {}) },
+    bloom: { ...DEFAULT_GLOBAL_MASTERING.bloom, ...(value.bloom || {}) },
+    grain: { ...DEFAULT_GLOBAL_MASTERING.grain, ...(value.grain || {}) },
+    edgeWash: { ...DEFAULT_GLOBAL_MASTERING.edgeWash, ...(value.edgeWash || {}) }
+  };
+};
+
+const sampleCurve = (points, x) => {
+  const clampedX = clamp01(x);
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const left = points[index];
+    const right = points[index + 1];
+    if (clampedX >= left.x && clampedX <= right.x) {
+      const span = Math.max(0.0001, right.x - left.x);
+      const mix = (clampedX - left.x) / span;
+      return left.y + (right.y - left.y) * mix;
+    }
+  }
+  return points[points.length - 1]?.y ?? clampedX;
+};
+
+const curveToTableValues = (points, samples = 33) => (
+  Array.from({ length: samples }, (_, index) => {
+    const x = index / (samples - 1);
+    return clamp01(sampleCurve(points, x)).toFixed(4);
+  }).join(' ')
+);
+
+const composeCurveTables = (masterPoints, channelPoints, samples = 33) => (
+  Array.from({ length: samples }, (_, index) => {
+    const x = index / (samples - 1);
+    const masterY = sampleCurve(masterPoints, x);
+    return clamp01(sampleCurve(channelPoints, masterY)).toFixed(4);
+  }).join(' ')
+);
+
+const buildSmoothCurvePath = (points) => {
+  if (!points.length) return '';
+  const scaledPoints = points.map(point => ({ x: point.x * 100, y: (1 - point.y) * 100 }));
+  if (scaledPoints.length === 1) return `M ${scaledPoints[0].x} ${scaledPoints[0].y}`;
+  let path = `M ${scaledPoints[0].x} ${scaledPoints[0].y}`;
+  for (let index = 0; index < scaledPoints.length - 1; index += 1) {
+    const prev = scaledPoints[index - 1] || scaledPoints[index];
+    const current = scaledPoints[index];
+    const next = scaledPoints[index + 1];
+    const after = scaledPoints[index + 2] || next;
+    const control1X = current.x + (next.x - prev.x) / 6;
+    const control1Y = current.y + (next.y - prev.y) / 6;
+    const control2X = next.x - (after.x - current.x) / 6;
+    const control2Y = next.y - (after.y - current.y) / 6;
+    path += ` C ${control1X} ${control1Y}, ${control2X} ${control2Y}, ${next.x} ${next.y}`;
+  }
+  return path;
+};
+
+const DEFAULT_ORIGINAL_COPPER_TUNING = {
+  ringInset: 8.2,
+  darkMetalColor: '#a88842',
+  lightMetalColor: '#edd39a',
+  baseOuterShadowOpacity: 0.5,
+  baseInnerHighlightOpacity: 0.9,
+  baseInnerShadowOpacity: 0.6,
+  overlayDarkOpacity: 0.4,
+  overlayLightOpacity: 0.2,
+  overlayInnerShadowOpacity: 0.8,
+  overlayOuterHighlightOpacity: 0.5
+};
+
+const normalizeOriginalCopperTuning = (settings = {}) => {
+  const value = settings || {};
+  const clamp = (input, min, max, fallback) => {
+    const numericValue = Number(input);
+    if (!Number.isFinite(numericValue)) return fallback;
+    return Math.max(min, Math.min(max, numericValue));
+  };
+  return {
+    ringInset: clamp(value.ringInset, 4, 14, DEFAULT_ORIGINAL_COPPER_TUNING.ringInset),
+    darkMetalColor: typeof value.darkMetalColor === 'string' ? value.darkMetalColor : DEFAULT_ORIGINAL_COPPER_TUNING.darkMetalColor,
+    lightMetalColor: typeof value.lightMetalColor === 'string' ? value.lightMetalColor : DEFAULT_ORIGINAL_COPPER_TUNING.lightMetalColor,
+    baseOuterShadowOpacity: clamp(value.baseOuterShadowOpacity, 0, 1, DEFAULT_ORIGINAL_COPPER_TUNING.baseOuterShadowOpacity),
+    baseInnerHighlightOpacity: clamp(value.baseInnerHighlightOpacity, 0, 1, DEFAULT_ORIGINAL_COPPER_TUNING.baseInnerHighlightOpacity),
+    baseInnerShadowOpacity: clamp(value.baseInnerShadowOpacity, 0, 1, DEFAULT_ORIGINAL_COPPER_TUNING.baseInnerShadowOpacity),
+    overlayDarkOpacity: clamp(value.overlayDarkOpacity, 0, 1, DEFAULT_ORIGINAL_COPPER_TUNING.overlayDarkOpacity),
+    overlayLightOpacity: clamp(value.overlayLightOpacity, 0, 1, DEFAULT_ORIGINAL_COPPER_TUNING.overlayLightOpacity),
+    overlayInnerShadowOpacity: clamp(value.overlayInnerShadowOpacity, 0, 1, DEFAULT_ORIGINAL_COPPER_TUNING.overlayInnerShadowOpacity),
+    overlayOuterHighlightOpacity: clamp(value.overlayOuterHighlightOpacity, 0, 1, DEFAULT_ORIGINAL_COPPER_TUNING.overlayOuterHighlightOpacity)
+  };
+};
+
+const DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING = {
+  ringInset: 8,
+  darkMetalColor: '#6b5a42',
+  midMetalColor: '#a4936d',
+  lightMetalColor: '#bead85',
+  faceHighlightOpacity: 0.39,
+  faceShadowOpacity: 0.54,
+  baseOuterShadowOpacity: 0.5,
+  baseInnerHighlightOpacity: 0.34,
+  baseInnerShadowOpacity: 0.54,
+  ringBorderOpacity: 0.26,
+  ringHighlightOpacity: 0.12,
+  ringShadowOpacity: 0.38,
+  sheenOpacity: 0.24
+};
+
+const normalizeAgedChampagneBrassTuning = (settings = {}) => {
+  const value = settings || {};
+  const clamp = (input, min, max, fallback) => {
+    const numericValue = Number(input);
+    if (!Number.isFinite(numericValue)) return fallback;
+    return Math.max(min, Math.min(max, numericValue));
+  };
+  return {
+    ringInset: clamp(value.ringInset, 4, 14, DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.ringInset),
+    darkMetalColor: typeof value.darkMetalColor === 'string' ? value.darkMetalColor : DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.darkMetalColor,
+    midMetalColor: typeof value.midMetalColor === 'string' ? value.midMetalColor : DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.midMetalColor,
+    lightMetalColor: typeof value.lightMetalColor === 'string' ? value.lightMetalColor : DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.lightMetalColor,
+    faceHighlightOpacity: clamp(value.faceHighlightOpacity, 0, 1, DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.faceHighlightOpacity),
+    faceShadowOpacity: clamp(value.faceShadowOpacity, 0, 1, DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.faceShadowOpacity),
+    baseOuterShadowOpacity: clamp(value.baseOuterShadowOpacity, 0, 1, DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.baseOuterShadowOpacity),
+    baseInnerHighlightOpacity: clamp(value.baseInnerHighlightOpacity, 0, 1, DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.baseInnerHighlightOpacity),
+    baseInnerShadowOpacity: clamp(value.baseInnerShadowOpacity, 0, 1, DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.baseInnerShadowOpacity),
+    ringBorderOpacity: clamp(value.ringBorderOpacity, 0, 1, DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.ringBorderOpacity),
+    ringHighlightOpacity: clamp(value.ringHighlightOpacity, 0, 1, DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.ringHighlightOpacity),
+    ringShadowOpacity: clamp(value.ringShadowOpacity, 0, 1, DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.ringShadowOpacity),
+    sheenOpacity: clamp(value.sheenOpacity, 0, 1, DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.sheenOpacity)
+  };
+};
+
+const DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING = {
+  ringInset: 8,
+  darkMetalColor: '#6e634a',
+  midMetalColor: '#afa178',
+  lightMetalColor: '#c4b58b',
+  faceHighlightOpacity: 0.4,
+  faceShadowOpacity: 0.46,
+  baseOuterShadowOpacity: 0.5,
+  baseInnerHighlightOpacity: 0.35,
+  baseInnerShadowOpacity: 0.47,
+  ringBorderOpacity: 0.28,
+  ringHighlightOpacity: 0.13,
+  ringShadowOpacity: 0.4,
+  sheenOpacity: 0.24
+};
+
+const normalizeSmokedChampagneBoldCleanTuning = (settings = {}) => {
+  const value = settings || {};
+  const clamp = (input, min, max, fallback) => {
+    const numericValue = Number(input);
+    if (!Number.isFinite(numericValue)) return fallback;
+    return Math.max(min, Math.min(max, numericValue));
+  };
+  return {
+    ringInset: clamp(value.ringInset, 4, 14, DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.ringInset),
+    darkMetalColor: typeof value.darkMetalColor === 'string' ? value.darkMetalColor : DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.darkMetalColor,
+    midMetalColor: typeof value.midMetalColor === 'string' ? value.midMetalColor : DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.midMetalColor,
+    lightMetalColor: typeof value.lightMetalColor === 'string' ? value.lightMetalColor : DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.lightMetalColor,
+    faceHighlightOpacity: clamp(value.faceHighlightOpacity, 0, 1, DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.faceHighlightOpacity),
+    faceShadowOpacity: clamp(value.faceShadowOpacity, 0, 1, DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.faceShadowOpacity),
+    baseOuterShadowOpacity: clamp(value.baseOuterShadowOpacity, 0, 1, DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.baseOuterShadowOpacity),
+    baseInnerHighlightOpacity: clamp(value.baseInnerHighlightOpacity, 0, 1, DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.baseInnerHighlightOpacity),
+    baseInnerShadowOpacity: clamp(value.baseInnerShadowOpacity, 0, 1, DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.baseInnerShadowOpacity),
+    ringBorderOpacity: clamp(value.ringBorderOpacity, 0, 1, DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.ringBorderOpacity),
+    ringHighlightOpacity: clamp(value.ringHighlightOpacity, 0, 1, DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.ringHighlightOpacity),
+    ringShadowOpacity: clamp(value.ringShadowOpacity, 0, 1, DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.ringShadowOpacity),
+    sheenOpacity: clamp(value.sheenOpacity, 0, 1, DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.sheenOpacity)
+  };
+};
+
+const DEFAULT_POWER_SWITCH_TUNING = {
+  bodyRadius: 6,
+  insertTopColor: '#ddc48b',
+  insertBottomColor: '#88764f'
+};
+
+const normalizePowerSwitchTuning = (settings = {}) => {
+  const value = settings || {};
+  const clamp = (input, min, max, fallback) => {
+    const numericValue = Number(input);
+    if (!Number.isFinite(numericValue)) return fallback;
+    return Math.max(min, Math.min(max, numericValue));
+  };
+  return {
+    bodyRadius: clamp(value.bodyRadius, 2, 16, DEFAULT_POWER_SWITCH_TUNING.bodyRadius),
+    insertTopColor: typeof value.insertTopColor === 'string' ? value.insertTopColor : DEFAULT_POWER_SWITCH_TUNING.insertTopColor,
+    insertBottomColor: typeof value.insertBottomColor === 'string' ? value.insertBottomColor : DEFAULT_POWER_SWITCH_TUNING.insertBottomColor
+  };
+};
+
+const CENTER_DIAL_GRAIN_EXCLUSION_MASK =
+  'radial-gradient(circle at 50% 52%, rgba(0,0,0,0.5) 0 138px, #000 156px)';
+
 
 const DECORATIVE_CIRCLE_PRESETS = {
   circle1: { enabled: true, locked: true, x: 619, y: 676, size: 655, rotate: 0, color: '#e66a53', opacity: 0.9 },
@@ -123,19 +435,21 @@ const CODE_DEFAULT_DESIGN = {
   "sweeten": 80.14729003906251,
   "biasHF": 100,
   "noise": 100,
+  "mix": 50,
   "rate": 27.302001953124986,
   "depth": 100,
   "stereoPhase": 100,
   "mode": "vintage",
-  "autoGain": true,
   "lfoEnabled": true,
   "lfoSync": false,
   "lfoShape": 0,
   "lfoSyncDiv": 6,
   "currentPreset": 9,
-  "frameStyle": 8,
+  "frameStyle": 3,
   "modeStyle": 13,
   "knobStyle": 0,
+  "mixKnobStyle": 0,
+  "smallKnobRingEnabled": true,
   "centerDialStyle": 1,
   "middleKnobStyle": 0,
   "centerDialSurfaceStyle": 14,
@@ -161,16 +475,57 @@ const CODE_DEFAULT_DESIGN = {
   "driftAnimation": 13,
   "bgIndex": 3,
   "showOutputs": true,
-  "showWabiSabi": true,
+  "showWabiSabi": false,
   "parallelCables": true,
   "showStems": false,
   "showFerns": false,
   "faceTextureEnabled": true,
   "faceTextureStyle": 0,
   "faceTextureOpacity": 29,
+  "faceTextureBlendMode": "multiply",
+  "faceTextureScale": 100,
   "panelFaceColor": "#e8dfcc",
   "useDefaultPanelFaceColor": true,
   "brandTextStyle": 1,
+  "vintageLogoColor": "#e66a53",
+  "polarisLogoColor": "#e66a53",
+  "knobFlutterFilledColors": {
+    "highlight": "#ffc0a4",
+    "mid": "#e36f55",
+    "tail": "#7e3028"
+  },
+  "originalCopperTuning": {
+    "ringInset": 8,
+    "darkMetalColor": "#a88842",
+    "lightMetalColor": "#edd39a",
+    "baseOuterShadowOpacity": 0.5,
+    "baseInnerHighlightOpacity": 0.9,
+    "baseInnerShadowOpacity": 0.6,
+    "overlayDarkOpacity": 0.4,
+    "overlayLightOpacity": 0.2,
+    "overlayInnerShadowOpacity": 0.8,
+    "overlayOuterHighlightOpacity": 0.5
+  },
+  "agedChampagneBrassTuning": {
+    "ringInset": 8,
+    "darkMetalColor": "#6b5a42",
+    "midMetalColor": "#a4936d",
+    "lightMetalColor": "#bead85",
+    "faceHighlightOpacity": 0.39,
+    "faceShadowOpacity": 0.54,
+    "baseOuterShadowOpacity": 0.5,
+    "baseInnerHighlightOpacity": 0.34,
+    "baseInnerShadowOpacity": 0.54,
+    "ringBorderOpacity": 0.26,
+    "ringHighlightOpacity": 0.12,
+    "ringShadowOpacity": 0.38,
+    "sheenOpacity": 0.24
+  },
+  "powerSwitchTuning": {
+    "bodyRadius": 6,
+    "insertTopColor": "#ddc48b",
+    "insertBottomColor": "#88764f"
+  },
   "screwsEnabled": false,
   "screwStyle": 0,
   "lfoImageState": {
@@ -405,19 +760,21 @@ Object.assign(CODE_DEFAULT_DESIGN, {
   "sweeten": 0,
   "biasHF": 0,
   "noise": 0,
+  "mix": 50,
   "rate": 27.286376953124986,
   "depth": 100,
   "stereoPhase": 100,
   "mode": "vintage",
-  "autoGain": true,
   "lfoEnabled": true,
   "lfoSync": false,
   "lfoShape": 0,
   "lfoSyncDiv": 6,
   "currentPreset": 9,
-  "frameStyle": 13,
+  "frameStyle": 3,
   "modeStyle": 13,
   "knobStyle": 6,
+  "mixKnobStyle": 0,
+  "smallKnobRingEnabled": true,
   "centerDialStyle": 1,
   "middleKnobStyle": 5,
   "centerDialSurfaceStyle": 14,
@@ -451,6 +808,13 @@ Object.assign(CODE_DEFAULT_DESIGN, {
   "panelFaceColor": "#935748",
   "useDefaultPanelFaceColor": true,
   "brandTextStyle": 1,
+  "vintageLogoColor": "#e66a53",
+  "polarisLogoColor": "#e66a53",
+  "knobFlutterFilledColors": {
+    "highlight": "#ffc0a4",
+    "mid": "#e36f55",
+    "tail": "#7e3028"
+  },
   "screwsEnabled": true,
   "screwStyle": 2,
   "lfoImageState": {
@@ -705,6 +1069,627 @@ Object.assign(CODE_DEFAULT_DESIGN, {
   "saturationStyle": 0
 });
 
+Object.assign(CODE_DEFAULT_DESIGN, {
+  "power": true,
+  "input": 50,
+  "output": 50,
+  "ioLinkStyle": "fiberCoralCenter",
+  "ioLinked": false,
+  "drift": 29.634375,
+  "spread": 0,
+  "character": 100,
+  "sweeten": 0,
+  "biasHF": 0,
+  "noise": 0,
+  "mix": 100,
+  "rate": 27.61875000000001,
+  "depth": 0,
+  "stereoPhase": 0,
+  "depthDisplayStyle": 0,
+  "phaseDisplayStyle": 0,
+  "spreadDisplayStyle": 0,
+  "noiseDisplayStyle": 0,
+  "mode": "vintage",
+  "lfoEnabled": true,
+  "lfoSync": false,
+  "lfoShape": 0,
+  "lfoSyncDiv": 6,
+  "currentPreset": 8,
+  "frameStyle": 3,
+  "panelDepthStyle": 0,
+  "objectContactShadowStyle": 0,
+  "panelLightingStyle": 0,
+  "panelSurfaceTextureStyle": 0,
+  "modeStyle": 13,
+  "knobStyle": 7,
+  "mixKnobStyle": 2,
+  "smallKnobRingEnabled": true,
+  "centerDialStyle": 1,
+  "middleKnobStyle": 9,
+  "centerDialSurfaceStyle": 15,
+  "centerDialGrooveStyle": 0,
+  "centerDialMarkStyle": 0,
+  "centerDialNumberStyle": 0,
+  "centerDialCirclesEnabled": true,
+  "centerDialNumbersEnabled": true,
+  "centerDialGuideRings": {
+    "large": {
+      "enabled": true,
+      "locked": true,
+      "size": 245
+    },
+    "small": {
+      "enabled": true,
+      "locked": true,
+      "size": 161
+    }
+  },
+  "spreadPointerStyle": 0,
+  "driftAnimation": 14,
+  "bgIndex": 3,
+  "customBackgroundColor": "#918676",
+  "showOutputs": true,
+  "parallelCables": true,
+  "showStems": false,
+  "showFerns": false,
+  "faceTextureEnabled": true,
+  "faceTextureStyle": 0,
+  "faceTextureOpacity": 29,
+  "faceTextureBlendMode": "multiply",
+  "faceTextureScale": 100,
+  "panelFaceColor": "#e2d4c6",
+  "useDefaultPanelFaceColor": false,
+  "brandTextStyle": 1,
+  "vintageLogoColor": "#7f3629",
+  "polarisLogoColor": "#7f362e",
+  "knobFlutterFilledColors": {
+    "highlight": "#e9af96",
+    "mid": "#9a5242",
+    "tail": "#782a21"
+  },
+  "originalCopperTuning": {
+    "ringInset": 8,
+    "darkMetalColor": "#a88842",
+    "lightMetalColor": "#edd39a",
+    "baseOuterShadowOpacity": 0.5,
+    "baseInnerHighlightOpacity": 0.9,
+    "baseInnerShadowOpacity": 0.6,
+    "overlayDarkOpacity": 0.4,
+    "overlayLightOpacity": 0.2,
+    "overlayInnerShadowOpacity": 0.8,
+    "overlayOuterHighlightOpacity": 0.5
+  },
+  "agedChampagneBrassTuning": {
+    "ringInset": 7.8,
+    "darkMetalColor": "#716047",
+    "midMetalColor": "#a79072",
+    "lightMetalColor": "#bdab84",
+    "faceHighlightOpacity": 0.38,
+    "faceShadowOpacity": 0.16,
+    "baseOuterShadowOpacity": 0.54,
+    "baseInnerHighlightOpacity": 0.32,
+    "baseInnerShadowOpacity": 0.58,
+    "ringBorderOpacity": 0.29,
+    "ringHighlightOpacity": 0.11,
+    "ringShadowOpacity": 0.32,
+    "sheenOpacity": 0.25
+  },
+  "smokedChampagneBoldCleanTuning": {
+    "ringInset": 8,
+    "darkMetalColor": "#6e6349",
+    "midMetalColor": "#b09b78",
+    "lightMetalColor": "#c0a887",
+    "faceHighlightOpacity": 0.39,
+    "faceShadowOpacity": 0.18,
+    "baseOuterShadowOpacity": 0.52,
+    "baseInnerHighlightOpacity": 0.32,
+    "baseInnerShadowOpacity": 0.5,
+    "ringBorderOpacity": 0.28,
+    "ringHighlightOpacity": 0.12,
+    "ringShadowOpacity": 0.36,
+    "sheenOpacity": 0.22
+  },
+  "powerSwitchTuning": {
+    "bodyRadius": 6,
+    "insertTopColor": "#d9bb92",
+    "insertBottomColor": "#9b8059"
+  },
+  "screwsEnabled": false,
+  "screwStyle": 2,
+  "lfoImageState": {
+    "enabled": true,
+    "locked": true,
+    "x": 131,
+    "y": 712,
+    "size": 155,
+    "rotate": 6
+  },
+  "sakuraImageState": {
+    "sakura": {
+      "enabled": true,
+      "x": 841,
+      "y": 277,
+      "size": 300,
+      "rotate": 6
+    },
+    "sakura2": {
+      "enabled": true,
+      "x": 8,
+      "y": 266,
+      "size": 335,
+      "rotate": 1
+    },
+    "sakura3": {
+      "enabled": true,
+      "x": 872,
+      "y": 774,
+      "size": 338,
+      "rotate": 34
+    }
+  },
+  "decorativeCircles": {
+    "circle1": {
+      "enabled": false,
+      "locked": true,
+      "x": 635,
+      "y": 777,
+      "size": 733,
+      "rotate": 0,
+      "color": "#e66a53",
+      "opacity": 0.92
+    },
+    "circle2": {
+      "enabled": false,
+      "locked": true,
+      "x": 59,
+      "y": 504,
+      "size": 334,
+      "rotate": 0,
+      "color": "#e0a96d",
+      "opacity": 0.7
+    },
+    "circle3": {
+      "enabled": false,
+      "locked": true,
+      "x": 590,
+      "y": 330,
+      "size": 225,
+      "rotate": 0,
+      "color": "#b04a4a",
+      "opacity": 0.5
+    },
+    "leaf1": {
+      "enabled": false,
+      "locked": true,
+      "x": 105,
+      "y": 757,
+      "size": 320,
+      "rotate": -3,
+      "color": "#2c3e35",
+      "opacity": 0.82
+    },
+    "leaf2": {
+      "enabled": false,
+      "locked": true,
+      "x": 180,
+      "y": 720,
+      "size": 280,
+      "rotate": 15,
+      "color": "#1e2a24",
+      "opacity": 0.6
+    }
+  },
+  "hardwarePositions": {
+    "io": {
+      "x": 426,
+      "y": 204,
+      "locked": true
+    },
+    "mode": {
+      "x": 79,
+      "y": 440,
+      "locked": true
+    },
+    "driftVisual": {
+      "x": 696,
+      "y": 564,
+      "locked": true
+    },
+    "rate": {
+      "x": 133,
+      "y": 722,
+      "locked": true
+    },
+    "lfo": {
+      "x": 230,
+      "y": 625,
+      "locked": true
+    },
+    "autoGain": {
+      "x": 680,
+      "y": 722,
+      "locked": true
+    }
+  },
+  "auraShapes": [
+    {
+      "id": "aura-1779077140857",
+      "enabled": true,
+      "x": 65,
+      "y": 470,
+      "size": 314,
+      "blur": 0,
+      "opacity": 0,
+      "gradientAngle": 0,
+      "color1": "#d5a981",
+      "color2": "#eca57e",
+      "isAnimated": true,
+      "locked": true,
+      "rotate": 0,
+      "blobRadius": "51% 48% 61% 28% / 67% 69% 40% 31%",
+      "outlineEnabled": false,
+      "outlineWidth": 10,
+      "outlineColor": "#f1d8c5",
+      "outlineOpacity": 0.8
+    },
+    {
+      "id": "aura-1777944917420",
+      "enabled": true,
+      "locked": true,
+      "x": 24,
+      "y": 588,
+      "size": 885,
+      "rotate": 27,
+      "opacity": 0.12,
+      "blur": 150,
+      "color1": "#623628",
+      "color2": "#e2d1c0",
+      "gradientAngle": 295,
+      "isAnimated": true,
+      "blobRadius": "70% 62% 43% 75% / 67% 50% 33% 41%"
+    },
+    {
+      "id": "aura-1777948979946",
+      "enabled": true,
+      "locked": true,
+      "x": 622,
+      "y": 731,
+      "size": 621,
+      "rotate": -2,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#b04a4a",
+      "color2": "#edd39a",
+      "gradientAngle": 182,
+      "isAnimated": true,
+      "blobRadius": "51% 27% 59% 55% / 56% 27% 64% 33%"
+    },
+    {
+      "id": "aura-1778074515921",
+      "enabled": true,
+      "locked": true,
+      "x": 749,
+      "y": 735,
+      "size": 805,
+      "rotate": -38,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#9a493c",
+      "color2": "#9b594b",
+      "gradientAngle": 360,
+      "isAnimated": true,
+      "blobRadius": "38% 70% 60% 56% / 26% 64% 40% 72%",
+      "outlineEnabled": false,
+      "outlineWidth": 10,
+      "outlineColor": "#d6cdb6",
+      "outlineOpacity": 0.25
+    },
+    {
+      "id": "aura-1779053759249",
+      "enabled": true,
+      "locked": true,
+      "x": 740,
+      "y": -449,
+      "size": 1800,
+      "rotate": 164.6706919575618,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#e5ddcc",
+      "color2": "#e4d7c4",
+      "gradientAngle": 114,
+      "isAnimated": true,
+      "blobRadius": "38% 73% 64% 52% / 51% 48% 42% 31%",
+      "outlineEnabled": false,
+      "outlineColor": "#9a574c",
+      "outlineWidth": 14,
+      "outlineOpacity": 0.08,
+      "outlineBlur": 0
+    },
+    {
+      "id": "aura-1779078414844",
+      "enabled": true,
+      "locked": true,
+      "x": 772,
+      "y": -463,
+      "size": 1800,
+      "rotate": 164.6706919575618,
+      "opacity": 0.6,
+      "blur": 110,
+      "color1": "#e5ddce",
+      "color2": "#e4d7c4",
+      "gradientAngle": 114,
+      "isAnimated": true,
+      "blobRadius": "38% 73% 64% 52% / 51% 48% 42% 31%",
+      "outlineEnabled": false,
+      "outlineColor": "#9a574c",
+      "outlineWidth": 14,
+      "outlineOpacity": 0.1,
+      "outlineBlur": 0
+    },
+    {
+      "id": "aura-1779077395352",
+      "enabled": true,
+      "locked": true,
+      "x": 723,
+      "y": 751,
+      "size": 764,
+      "rotate": -38,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#9a493c",
+      "color2": "#9b594b",
+      "gradientAngle": 360,
+      "isAnimated": true,
+      "blobRadius": "38% 70% 60% 56% / 26% 64% 40% 72%",
+      "outlineEnabled": false,
+      "outlineWidth": 12,
+      "outlineColor": "#d6cdb6",
+      "outlineOpacity": 0.28
+    },
+    {
+      "id": "aura-1779079657594",
+      "enabled": true,
+      "locked": true,
+      "x": 639,
+      "y": 770,
+      "size": 742,
+      "rotate": -90,
+      "opacity": 1,
+      "blur": 0,
+      "color1": "#9a493c",
+      "color2": "#9b594b",
+      "gradientAngle": 345,
+      "isAnimated": true,
+      "blobRadius": "45% 69% 32% 48% / 72% 74% 61% 66%",
+      "outlineEnabled": true,
+      "outlineWidth": 11,
+      "outlineColor": "#d6cdb6",
+      "outlineOpacity": 0.28
+    },
+    {
+      "id": "aura-1779082464726",
+      "enabled": true,
+      "locked": true,
+      "x": 360,
+      "y": 844,
+      "size": 548,
+      "rotate": 46,
+      "opacity": 0,
+      "blur": 0,
+      "color1": "#d3bdab",
+      "color2": "#c8b9a5",
+      "gradientAngle": 327,
+      "isAnimated": true,
+      "blobRadius": "42% 71% 29% 60% / 31% 36% 56% 52%",
+      "outlineEnabled": false,
+      "outlineColor": "#e66a53",
+      "outlineWidth": 8,
+      "outlineOpacity": 1,
+      "outlineBlur": 0
+    },
+    {
+      "id": "aura-1779054599532",
+      "enabled": true,
+      "x": 73,
+      "y": 463,
+      "size": 314,
+      "blur": 0,
+      "opacity": 1,
+      "gradientAngle": 360,
+      "color1": "#b8856f",
+      "color2": "#c49d82",
+      "isAnimated": true,
+      "locked": true,
+      "rotate": 0,
+      "blobRadius": "51% 48% 61% 28% / 67% 69% 40% 31%",
+      "outlineEnabled": true,
+      "outlineWidth": 11,
+      "outlineColor": "#e7d9d0",
+      "outlineOpacity": 0.34,
+      "outlineBlur": 0
+    }
+  ],
+  "ioScaleStyle": 6,
+  "bottomSectionStyle": 0,
+  "readoutStyleIndex": 5,
+  "topBarStyle": 0,
+  "topBarCustomStyles": [
+    {
+      "barColor": "#1d1b1b",
+      "outlineColor": "#2c2321",
+      "outlineWidth": 2,
+      "dropdownColor": "#070a0a",
+      "selectedRowColor": "#202624",
+      "hoverRowColor": "#aa5041",
+      "textColor": "#f8dbbe",
+      "selectedTextColor": "#ead2a4",
+      "hoverTextColor": "#111111",
+      "mutedTextColor": "#bdb4b2",
+      "brandColor": "#a6503a",
+      "buttonColor": "#1a1514",
+      "activeColor": "#9a4f3c",
+      "copperActiveColor": "#b87333"
+    },
+    {
+      "barColor": "#d8c29a",
+      "outlineColor": "#d0b990",
+      "outlineWidth": 1,
+      "dropdownColor": "#ead7b2",
+      "selectedRowColor": "#8b5a35",
+      "hoverRowColor": "#c87948",
+      "textColor": "#30271e",
+      "selectedTextColor": "#edcf88",
+      "hoverTextColor": "#fff8ea",
+      "mutedTextColor": "#79664b",
+      "brandColor": "#6f4a2f",
+      "buttonColor": "#fff0c9",
+      "activeColor": "#8b5a35",
+      "copperActiveColor": "#b87333"
+    }
+  ],
+  "globalMastering": {
+    "enabled": true,
+    "studioDim": {
+      "enabled": true,
+      "opacity": 2,
+      "color": "#050403",
+      "x": 45,
+      "y": 33,
+      "size": 149,
+      "softness": 79
+    },
+    "light": {
+      "enabled": true,
+      "x": 10,
+      "y": 2,
+      "intensity": 1,
+      "size": 48,
+      "warmth": 100,
+      "color": "#fff2cf"
+    },
+    "vignette": {
+      "enabled": false,
+      "strength": 22,
+      "size": 68,
+      "softness": 45,
+      "color": "#060403"
+    },
+    "grade": {
+      "enabled": false,
+      "warmth": 51,
+      "contrast": 71,
+      "saturation": 28,
+      "lift": 10,
+      "fade": 0,
+      "opacity": 1,
+      "tint": "#9e7961"
+    },
+    "curves": {
+      "enabled": false,
+      "channels": {
+        "rgb": [
+          { "x": 0, "y": 0 },
+          { "x": 0.25, "y": 0.25 },
+          { "x": 0.5, "y": 0.5 },
+          { "x": 0.75, "y": 0.75 },
+          { "x": 1, "y": 1 }
+        ],
+        "r": [
+          { "x": 0, "y": 0 },
+          { "x": 0.25, "y": 0.25 },
+          { "x": 0.5, "y": 0.5 },
+          { "x": 0.75, "y": 0.75 },
+          { "x": 1, "y": 1 }
+        ],
+        "g": [
+          { "x": 0, "y": 0 },
+          { "x": 0.25, "y": 0.25 },
+          { "x": 0.5, "y": 0.5 },
+          { "x": 0.75, "y": 0.75 },
+          { "x": 1, "y": 1 }
+        ],
+        "b": [
+          { "x": 0, "y": 0 },
+          { "x": 0.25, "y": 0.25 },
+          { "x": 0.5, "y": 0.5 },
+          { "x": 0.75, "y": 0.75 },
+          { "x": 1, "y": 1 }
+        ]
+      }
+    },
+    "shadowGlue": {
+      "enabled": true,
+      "opacity": 1,
+      "x": 66,
+      "y": 100,
+      "size": 62,
+      "blur": 0,
+      "color": "#120906"
+    },
+    "bloom": {
+      "enabled": false,
+      "opacity": 0,
+      "size": 58,
+      "blur": 90,
+      "color": "#dd785f"
+    },
+    "grain": {
+      "enabled": false,
+      "opacity": 2,
+      "scale": 3,
+      "contrast": 0,
+      "tone": 44,
+      "hold": 50,
+      "shadow": 2,
+      "highlight": 0
+    },
+    "edgeWash": {
+      "enabled": false,
+      "opacity": 1,
+      "angle": 233,
+      "color": "#20100b"
+    }
+  },
+  "depthModel": {
+    "enabled": true,
+    "preset": 1,
+    "shadowAngle": 57,
+    "lightHeight": 85,
+    "heightScale": 55,
+    "contactStrength": 70,
+    "castStrength": 70,
+    "softness": 48,
+    "opacity": 48,
+    "heights": {
+      "smallKnobs": 1,
+      "bigDial": 16,
+      "modules": 11,
+      "slabs": 5,
+      "buttons": 10
+    }
+  },
+  "centerDepthModel": {
+    "enabled": true,
+    "shadowAngle": 56,
+    "height": 1,
+    "distance": 28,
+    "contactStrength": 38,
+    "castStrength": 28,
+    "softness": 50,
+    "opacity": 45,
+    "size": 90,
+    "x": -22,
+    "y": -40
+  },
+  "hqMode": false,
+  "cableToneEnabled": false,
+  "filterPole": 24,
+  "saturationMode": 0,
+  "saturationStyle": 0,
+  "showWabiSabi": false
+});
+
+
 const textureDataUrl = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 const RUBBER_MATTE_NOISE = textureDataUrl("<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='noise'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%' height='100%' filter='url(#noise)'/></svg>");
 
@@ -744,6 +1729,51 @@ const FACE_TEXTURES = [
     backgroundImage: textureDataUrl('<svg viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg"><filter id="speckle"><feTurbulence type="fractalNoise" baseFrequency="1.35" numOctaves="2" seed="44"/><feColorMatrix type="matrix" values="0 0 0 0 0.22 0 0 0 0 0.18 0 0 0 0 0.12 0 0 0 1 0"/><feComponentTransfer><feFuncA type="discrete" tableValues="0 0 0 0.42"/></feComponentTransfer></filter><rect width="100%" height="100%" filter="url(#speckle)"/></svg>'),
     backgroundSize: '260px 260px',
     mixBlendMode: 'multiply'
+  },
+  {
+    name: 'Leather Texture',
+    backgroundImage: `url("${leatherTextureSrc}"), url("${leatherTextureSrc}"), url("${leatherTextureSrc}")`,
+    backgroundSize: '300px auto, 300px auto, 300px auto',
+    backgroundRepeat: 'repeat, repeat, repeat',
+    backgroundPosition: '0 0, 150px 104px, 75px 52px',
+    backgroundBlendMode: 'multiply, soft-light, overlay',
+    mixBlendMode: 'multiply'
+  },
+  {
+    name: 'Leather Texture 2',
+    backgroundImage: `url("${leatherTexture2Src}"), url("${leatherTexture2Src}"), url("${leatherTexture2Src}")`,
+    backgroundSize: '270px auto, 270px auto, 270px auto',
+    backgroundRepeat: 'repeat, repeat, repeat',
+    backgroundPosition: '0 0, 135px 92px, 68px 46px',
+    backgroundBlendMode: 'multiply, soft-light, overlay',
+    mixBlendMode: 'multiply'
+  },
+  {
+    name: 'Fine Leather',
+    backgroundImage: `url("${fineLeatherTextureSrc}"), url("${fineLeatherTextureSrc}"), url("${fineLeatherTextureSrc}")`,
+    backgroundSize: '240px auto, 240px auto, 240px auto',
+    backgroundRepeat: 'repeat, repeat, repeat',
+    backgroundPosition: '0 0, 120px 80px, 60px 40px',
+    backgroundBlendMode: 'multiply, soft-light, overlay',
+    mixBlendMode: 'multiply'
+  },
+  {
+    name: 'White Leather',
+    backgroundImage: `url("${whiteLeatherTextureSrc}"), url("${whiteLeatherTextureSrc}"), url("${whiteLeatherTextureSrc}")`,
+    backgroundSize: '240px auto, 240px auto, 240px auto',
+    backgroundRepeat: 'repeat, repeat, repeat',
+    backgroundPosition: '0 0, 120px 80px, 60px 40px',
+    backgroundBlendMode: 'soft-light, overlay, multiply',
+    mixBlendMode: 'soft-light'
+  },
+  {
+    name: 'GPT Texture',
+    backgroundImage: `url("${gptTextureSrc}"), url("${gptTextureSrc}"), url("${gptTextureSrc}")`,
+    backgroundSize: '260px auto, 260px auto, 260px auto',
+    backgroundRepeat: 'repeat, repeat, repeat',
+    backgroundPosition: '0 0, 130px 88px, 65px 44px',
+    backgroundBlendMode: 'overlay, soft-light, multiply',
+    mixBlendMode: 'overlay'
   },
   {
     name: 'Mottled Wash',
@@ -861,7 +1891,10 @@ const generateRandomBlob = () => {
   return `${r()}% ${100-r()}% ${r()}% ${100-r()}% / ${r()}% ${r()}% ${100-r()}% ${100-r()}%`;
 };
 
-const DESIGN_DEFAULTS_KEY = 'vintage-drifter-current-default-v5';
+const AURA_SHAPE_MAX_SIZE = 1800;
+
+const DESIGN_DEFAULTS_KEY = 'vintage-drifter-current-default-v6';
+const USER_PRESETS_KEY = 'vintage-drifter-user-presets-v1';
 
 const createDefaultAuraShapes = () => CODE_DEFAULT_DESIGN.auraShapes.map(shape => ({ ...shape }));
 
@@ -882,6 +1915,62 @@ const saveDesignDefaults = (state) => {
   } catch {
     return false;
   }
+};
+
+const loadUserPresets = () => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(USER_PRESETS_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveUserPresets = (presets) => {
+  if (typeof window === 'undefined') return false;
+  try {
+    window.localStorage.setItem(USER_PRESETS_KEY, JSON.stringify(presets));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const USER_PRESET_SETTING_KEYS = [
+  'power',
+  'input',
+  'output',
+  'ioLinkStyle',
+  'ioLinked',
+  'drift',
+  'spread',
+  'character',
+  'sweeten',
+  'biasHF',
+  'noise',
+  'mix',
+  'rate',
+  'depth',
+  'stereoPhase',
+  'depthDisplayStyle',
+  'phaseDisplayStyle',
+  'spreadDisplayStyle',
+  'noiseDisplayStyle',
+  'mode',
+  'lfoEnabled',
+  'lfoSync',
+  'lfoShape',
+  'lfoSyncDiv',
+  'saturationMode'
+];
+
+const pickUserPresetSettings = (settings = {}) => {
+  const picked = {};
+  USER_PRESET_SETTING_KEYS.forEach(key => {
+    if (key in settings) picked[key] = settings[key];
+  });
+  return picked;
 };
 
 const EditableAuraShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stageRef }) => {
@@ -915,7 +2004,7 @@ const EditableAuraShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stage
       }
       if (mode === 'resize') {
         const delta = ((moveEvent.clientX - startClient.x) + (moveEvent.clientY - startClient.y)) / scale;
-        onUpdate(id, { size: Math.round(Math.max(24, Math.min(1200, start.size + delta))) });
+        onUpdate(id, { size: Math.round(Math.max(24, Math.min(AURA_SHAPE_MAX_SIZE, start.size + delta))) });
       }
       if (mode === 'rotate') {
         const point = getLocalPoint(moveEvent);
@@ -932,7 +2021,7 @@ const EditableAuraShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stage
 
   return (
     <>
-      {shapes.map((shape) => {
+      {shapes.map((shape, index) => {
         if (!shape.enabled) return null;
         const selected = selectedId === shape.id && !shape.locked;
         return (
@@ -945,7 +2034,7 @@ const EditableAuraShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stage
               top: shape.y - shape.size / 2,
               width: shape.size,
               height: shape.size,
-              zIndex: selected ? 37 : 1
+              zIndex: index + 1
             }}
           >
             <div
@@ -959,6 +2048,19 @@ const EditableAuraShapes = ({ shapes, selectedId, setSelectedId, onUpdate, stage
                 transformOrigin: 'center'
               }}
             />
+            {(shape.outlineEnabled && (shape.outlineWidth ?? 0) > 0) && (
+              <div
+                className="absolute inset-0 pointer-events-none transition-all duration-300"
+                style={{
+                  border: `${shape.outlineWidth}px solid ${shape.outlineColor || '#e66a53'}`,
+                  borderRadius: shape.blobRadius,
+                  filter: shape.outlineBlur ? `blur(${shape.outlineBlur}px)` : undefined,
+                  opacity: shape.outlineOpacity ?? shape.opacity ?? 1,
+                  transform: `rotate(${shape.rotate}deg)`,
+                  transformOrigin: 'center'
+                }}
+              />
+            )}
             {selected && (
               <>
                 <div className="absolute -inset-4 rounded-full border border-white/40 border-dashed pointer-events-none" />
@@ -1153,7 +2255,7 @@ const OriginalWobblyAura = ({ drift, spread, active, rate, originalFlutter = fal
   );
 };
 
-const KnobFlutterRing = ({ drift, active, rate, mode, color = '#e66a53', strokeWidth = 2.5, filled = false, sizeOffset = 0 }) => {
+const KnobFlutterRing = ({ drift, active, rate, mode, color = '#e66a53', strokeWidth = 2.5, filled = false, sizeOffset = 0, filledColors = DEFAULT_KNOB_FLUTTER_FILLED_COLORS }) => {
   const ringRef = useRef(null);
   const requestRef = useRef();
   const tRef = useRef(0);
@@ -1206,6 +2308,9 @@ const KnobFlutterRing = ({ drift, active, rate, mode, color = '#e66a53', strokeW
   const travel = Math.min(1, drift / 100);
   const startAngle = 225; // Matches the knob's visual start (-135deg in CSS rotation is 225deg in conic-gradient)
   const sweepAngle = travel * 270;
+  const filledHighlight = filledColors?.highlight || DEFAULT_KNOB_FLUTTER_FILLED_COLORS.highlight;
+  const filledMid = filledColors?.mid || DEFAULT_KNOB_FLUTTER_FILLED_COLORS.mid;
+  const filledTail = filledColors?.tail || DEFAULT_KNOB_FLUTTER_FILLED_COLORS.tail;
 
   return (
     <div 
@@ -1253,11 +2358,11 @@ const KnobFlutterRing = ({ drift, active, rate, mode, color = '#e66a53', strokeW
           className="w-full h-full"
           style={{
             background: filled 
-              ? `conic-gradient(from ${startAngle}deg, hsl(11, 99%, 81%) 0deg, hsl(10, 74%, 61%) ${sweepAngle * 0.52}deg, hsl(4, 55%, 32%) ${sweepAngle}deg, transparent ${sweepAngle}deg)` 
+              ? `conic-gradient(from ${startAngle}deg, ${filledHighlight} 0deg, ${filledMid} ${sweepAngle * 0.52}deg, ${filledTail} ${sweepAngle}deg, transparent ${sweepAngle}deg)` 
               : 'transparent',
             border: filled ? 'none' : `${strokeWidth}px solid ${color}`,
             borderRadius: '50%',
-            filter: `url(#${filterId}) drop-shadow(0 0 7.45px ${color})`,
+            filter: `url(#${filterId}) drop-shadow(0 0 7.45px ${filled ? filledMid : color})`,
             opacity: filled ? 1.0 : (color === '#e66a53' ? 0.88 : 0.94),
             animation: filled ? 'none' : `spin ${spinDuration} linear infinite`,
             transition: 'border-radius 0.1s ease-out'
@@ -1268,7 +2373,47 @@ const KnobFlutterRing = ({ drift, active, rate, mode, color = '#e66a53', strokeW
   );
 };
 
-const KnobDriftExperiment = ({ drift, spread, active, rate, variant }) => {
+const KnobFlutterSpillLight = ({ drift, rate, animationStyle, filledColors = DEFAULT_KNOB_FLUTTER_FILLED_COLORS }) => {
+  const spillEnabled = true;
+  if (!spillEnabled) return null;
+
+  const styleName = DRIFT_ANIMATION_STYLES[normalizeDriftAnimationStyle(animationStyle)] || DRIFT_ANIMATION_STYLES[0];
+  if (styleName !== 'Knob Flutter Coral Filled') return null;
+
+  const travel = Math.max(0, Math.min(1, drift / 100));
+  if (travel <= 0.01) return null;
+
+  const startAngle = 225;
+  const sweepAngle = travel * 270;
+  const fadeIn = Math.min(1, travel / 0.08);
+  const spillOpacity = 0.038;
+  const edgeOpacity = 0.064;
+  const featherAngle = 30;
+  const highlight = filledColors?.highlight || DEFAULT_KNOB_FLUTTER_FILLED_COLORS.highlight;
+  const mid = filledColors?.mid || DEFAULT_KNOB_FLUTTER_FILLED_COLORS.mid;
+  const tail = filledColors?.tail || DEFAULT_KNOB_FLUTTER_FILLED_COLORS.tail;
+  const spillSpeed = `${Math.max(1.55, 3.45 - (Number(rate) || 0) / 55)}s`;
+
+  return (
+    <div
+      className="knob-flutter-spill absolute inset-[4px] rounded-full pointer-events-none"
+      style={{
+        '--spill-speed': spillSpeed,
+        background: `
+          radial-gradient(circle at 18% 68%, ${hexToRgba(highlight, 0.052)} 0%, ${hexToRgba(mid, 0.032)} 14%, transparent 34%),
+          conic-gradient(from ${startAngle}deg, ${hexToRgba(highlight, edgeOpacity * 0.62)} 0deg, ${hexToRgba(highlight, edgeOpacity)} 10deg, ${hexToRgba(mid, spillOpacity)} ${Math.max(12, sweepAngle * 0.46)}deg, ${hexToRgba(tail, spillOpacity * 0.46)} ${Math.max(13, sweepAngle)}deg, ${hexToRgba(tail, spillOpacity * 0.18)} ${Math.max(15, sweepAngle + featherAngle * 0.45)}deg, transparent ${Math.max(18, sweepAngle + featherAngle)}deg, transparent 360deg)
+        `,
+        WebkitMask: 'radial-gradient(circle, transparent 0 61%, rgba(0,0,0,0.2) 64%, rgba(0,0,0,0.78) 70%, rgba(0,0,0,0.42) 78%, transparent 87%)',
+        mask: 'radial-gradient(circle, transparent 0 61%, rgba(0,0,0,0.2) 64%, rgba(0,0,0,0.78) 70%, rgba(0,0,0,0.42) 78%, transparent 87%)',
+        mixBlendMode: 'screen',
+        filter: 'blur(1.25px) saturate(1.06)',
+        opacity: 0.32 * fadeIn
+      }}
+    />
+  );
+};
+
+const KnobDriftExperiment = ({ drift, spread, active, rate, variant, knobFlutterFilledColors = DEFAULT_KNOB_FLUTTER_FILLED_COLORS }) => {
   const intensity = Math.max(0.08, drift / 100);
   const spreadIntensity = Math.max(0.08, spread / 100);
   const baseSpeed = Math.max(4.2, 14 - rate / 8);
@@ -1286,7 +2431,8 @@ const KnobDriftExperiment = ({ drift, spread, active, rate, variant }) => {
     '--knob-drift-speed-slow': `${slowSpeed}s`,
     '--knob-drift-opacity': glowOpacity
   };
-  const stageClass = `absolute left-1/2 top-1/2 z-30 w-[236px] h-[236px] -translate-x-1/2 -translate-y-1/2 pointer-events-none overflow-hidden rounded-full transition-all duration-500 ease-out ${active ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`;
+  const inactiveScaleClass = variant === 'dualSmoothOuterRibbonSpreadOnly' ? 'scale-100' : 'scale-75';
+  const stageClass = `absolute left-1/2 top-1/2 z-30 w-[236px] h-[236px] -translate-x-1/2 -translate-y-1/2 pointer-events-none overflow-hidden rounded-full transition-all duration-500 ease-out ${active ? 'opacity-100 scale-100' : `opacity-0 ${inactiveScaleClass}`}`;
   const normalizeAngle = (angle) => ((angle + 180) % 360 + 360) % 360 - 180;
   const travelProgressForAngle = (angle) => {
     const normalizedAngle = normalizeAngle(angle);
@@ -1765,7 +2911,8 @@ const KnobDriftExperiment = ({ drift, spread, active, rate, variant }) => {
   }
 
   if (variant?.startsWith('dualSmooth')) {
-    if (variant === 'dualSmoothOuterRibbon' || variant === 'dualSmoothOuterRibbonClean') {
+    if (variant === 'dualSmoothOuterRibbon' || variant === 'dualSmoothOuterRibbonClean' || variant === 'dualSmoothOuterRibbonSpreadOnly') {
+      const spreadOnly = variant === 'dualSmoothOuterRibbonSpreadOnly';
       const outerStageSize = 313;
       const outerCenter = outerStageSize / 2;
       const outerRadius = 126;
@@ -1777,17 +2924,27 @@ const KnobDriftExperiment = ({ drift, spread, active, rate, variant }) => {
       const outerDash = Math.max(0.001, spreadTravel * outerMaxArc);
       const outerGap = outerCircumference;
       const outerGradientId = 'dualSpreadOuterRibbonStroke';
+      const spreadRibbonHighlight = spreadOnly ? knobFlutterFilledColors.highlight || DEFAULT_KNOB_FLUTTER_FILLED_COLORS.highlight : '#ffb09e';
+      const spreadRibbonMid = spreadOnly ? knobFlutterFilledColors.mid || DEFAULT_KNOB_FLUTTER_FILLED_COLORS.mid : '#e66a53';
+      const spreadRibbonTail = spreadOnly ? knobFlutterFilledColors.tail || DEFAULT_KNOB_FLUTTER_FILLED_COLORS.tail : '#7e2a24';
+      const spreadRibbonStart = spreadOnly ? spreadRibbonMid : '#ffb09e';
+      const spreadRibbonEnd = spreadOnly ? spreadRibbonMid : '#7e2a24';
+      const spreadRibbonOpacity = spreadOnly ? 0.38 : 0.34 + spreadIntensity * 0.5;
+      const spreadRibbonGlow = spreadOnly
+        ? `drop-shadow(0 0 4px ${hexToRgba(spreadRibbonMid, 0.34)})`
+        : `drop-shadow(0 0 ${4 + spreadIntensity * 8}px rgba(230,106,83,0.62))`;
       return (
         <div className={stageClass} style={{ ...stageStyle, width: outerStageSize, height: outerStageSize }}>
           <svg className="absolute inset-0 h-full w-full mix-blend-screen" viewBox={`0 0 ${outerStageSize} ${outerStageSize}`} aria-hidden="true">
             <defs>
               <linearGradient id={outerGradientId} x1="14%" y1="12%" x2="86%" y2="88%">
-                <stop offset="0%" stopColor="#ffb09e" stopOpacity="0.95" />
-                <stop offset="52%" stopColor="#e66a53" stopOpacity="0.95" />
-                <stop offset="100%" stopColor="#7e2a24" stopOpacity="0.64" />
+                <stop offset="0%" stopColor={spreadRibbonStart} stopOpacity={spreadOnly ? 0.48 : 0.95} />
+                <stop offset="7%" stopColor={spreadRibbonMid} stopOpacity={spreadOnly ? 0.64 : 0.95} />
+                <stop offset="52%" stopColor={spreadRibbonMid} stopOpacity={spreadOnly ? 0.66 : 0.95} />
+                <stop offset="100%" stopColor={spreadRibbonEnd} stopOpacity={spreadOnly ? 0.7 : 0.64} />
               </linearGradient>
             </defs>
-            {variant !== 'dualSmoothOuterRibbonClean' && (
+            {variant !== 'dualSmoothOuterRibbonClean' && !spreadOnly && (
               <circle
                 cx={outerCenter}
                 cy={outerCenter}
@@ -1810,18 +2967,20 @@ const KnobDriftExperiment = ({ drift, spread, active, rate, variant }) => {
               strokeWidth="6"
               strokeLinecap="round"
               strokeDasharray={`${outerDash} ${outerGap}`}
-              opacity={0.34 + spreadIntensity * 0.5}
+              opacity={spreadRibbonOpacity}
               transform={`rotate(135 ${outerCenter} ${outerCenter})`}
               vectorEffect="non-scaling-stroke"
               style={{
-                filter: `drop-shadow(0 0 ${4 + spreadIntensity * 8}px rgba(230,106,83,0.62))`,
-                transition: 'stroke-dasharray 150ms ease-out, opacity 150ms ease-out, filter 150ms ease-out'
+                filter: spreadRibbonGlow,
+                transition: 'stroke-dasharray 45ms ease-out, opacity 45ms ease-out, filter 45ms ease-out'
               }}
             />
           </svg>
-          <div className="absolute left-1/2 top-1/2 h-[236px] w-[236px] -translate-x-1/2 -translate-y-1/2">
-            {renderFineDriftNeedles()}
-          </div>
+          {!spreadOnly && (
+            <div className="absolute left-1/2 top-1/2 h-[236px] w-[236px] -translate-x-1/2 -translate-y-1/2">
+              {renderFineDriftNeedles()}
+            </div>
+          )}
         </div>
       );
     }
@@ -1843,7 +3002,7 @@ const KnobDriftExperiment = ({ drift, spread, active, rate, variant }) => {
       transform: 'rotate(135 118 118)',
       vectorEffect: 'non-scaling-stroke'
     };
-    const svgTransition = 'stroke-dasharray 150ms ease-out, stroke-dashoffset 150ms ease-out, opacity 150ms ease-out, filter 150ms ease-out';
+    const svgTransition = 'stroke-dasharray 45ms ease-out, stroke-dashoffset 45ms ease-out, opacity 45ms ease-out, filter 45ms ease-out';
     const renderSpreadSvg = (children) => (
       <svg className="absolute inset-0 h-full w-full mix-blend-screen" viewBox="0 0 236 236" aria-hidden="true">
         <defs>
@@ -2174,7 +3333,7 @@ const WobblyAura = ({ mode, ...props }) => {
     case 'Knob Flutter Coral Thin':
       return <KnobFlutterRing {...props} mode={mode} color="#e66a53" strokeWidth={1.35} />;
     case 'Knob Flutter Coral Filled':
-      return <KnobFlutterRing {...props} mode={mode} color="#c26650" strokeWidth={1.35} filled={true} sizeOffset={-30} />;
+      return <KnobFlutterRing {...props} mode={mode} color="#c26650" strokeWidth={1.35} filled={true} sizeOffset={-30} filledColors={props.knobFlutterFilledColors} />;
     case 'Coral Drift Needles':
       return <KnobDriftExperiment {...props} variant="needles" />;
     case 'Coral Needles Fine':
@@ -2214,6 +3373,13 @@ const WobblyAura = ({ mode, ...props }) => {
         <>
           <KnobDriftExperiment {...props} variant="dualSmoothOuterRibbonClean" />
           <KnobFlutterRing {...props} color="#e66a53" strokeWidth={1.35} />
+        </>
+      );
+    case 'Knob Flutter Coral Filled + Spread Ribbon':
+      return (
+        <>
+          <KnobDriftExperiment {...props} variant="dualSmoothOuterRibbonSpreadOnly" />
+          <KnobFlutterRing {...props} mode={mode} color="#c26650" strokeWidth={1.35} filled={true} sizeOffset={-30} filledColors={props.knobFlutterFilledColors} />
         </>
       );
     default:
@@ -2349,6 +3515,804 @@ const SakuraRange = ({ label, value, min, max, step = 1, onChange }) => (
     <span className="text-white/80 text-[9px] font-bold tabular-nums text-right">{value}</span>
   </label>
 );
+
+const MasteringToggle = ({ active, onClick, label = 'On' }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`rounded-full border px-3 py-1.5 text-[8px] font-black uppercase tracking-widest transition-all ${active ? 'border-[#edd39a]/70 bg-[#edd39a]/20 text-[#edd39a]' : 'border-white/10 bg-white/5 text-white/45 hover:text-white/70'}`}
+  >
+    {label}
+  </button>
+);
+
+const MasteringColor = ({ label, value, onChange }) => (
+  <label className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+    <span className="text-white/50 text-[8px] font-black uppercase tracking-[0.18em]">{label}</span>
+    <div className="flex items-center gap-2">
+      <span className="text-white/35 text-[8px] font-bold uppercase tracking-widest">{value}</span>
+      <span className="relative h-7 w-7 overflow-hidden rounded-lg border border-white/15" style={{ backgroundColor: value }}>
+        <input
+          type="color"
+          value={value}
+          onChange={event => onChange(event.target.value)}
+          className="absolute -inset-2 h-[calc(100%+16px)] w-[calc(100%+16px)] cursor-pointer border-none bg-transparent"
+        />
+      </span>
+    </div>
+  </label>
+);
+
+const MasteringModule = ({ title, enabled, onToggle, children }) => (
+  <div className={`rounded-2xl border p-3 transition-colors ${enabled ? 'border-[#edd39a]/25 bg-[#edd39a]/[0.08]' : 'border-white/10 bg-white/[0.035]'}`}>
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <span className="text-white/60 text-[9px] font-black uppercase tracking-[0.2em]">{title}</span>
+      <MasteringToggle active={enabled} onClick={onToggle} />
+    </div>
+    <div className={`flex flex-col gap-2 ${enabled ? 'opacity-100' : 'opacity-45'}`}>
+      {children}
+    </div>
+  </div>
+);
+
+const CurvesEditor = ({ curves, onChange }) => {
+  const [activeChannel, setActiveChannel] = useState('rgb');
+  const svgRef = useRef(null);
+  const dragStateRef = useRef(null);
+  const value = curves || DEFAULT_GLOBAL_CURVES;
+  const points = value.channels?.[activeChannel] || DEFAULT_GLOBAL_CURVES.channels[activeChannel];
+  const strokeColor = activeChannel === 'rgb' ? '#f8f4ec' : activeChannel === 'r' ? '#ff7f6c' : activeChannel === 'g' ? '#98d59c' : '#82b7ff';
+  const updatePoint = (pointIndex, clientX, clientY) => {
+    const bounds = svgRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    const rawX = clamp01((clientX - bounds.left) / bounds.width);
+    const rawY = clamp01(1 - (clientY - bounds.top) / bounds.height);
+    const nextPoints = points.map((point, index) => {
+      if (index !== pointIndex) return point;
+      if (index === 0) return { x: 0, y: rawY };
+      if (index === points.length - 1) return { x: 1, y: rawY };
+      const minX = points[index - 1].x + 0.01;
+      const maxX = points[index + 1].x - 0.01;
+      return { x: Math.max(minX, Math.min(maxX, rawX)), y: rawY };
+    });
+    onChange({
+      channels: {
+        ...value.channels,
+        [activeChannel]: nextPoints
+      }
+    });
+  };
+  const resetPoint = (pointIndex) => {
+    const identityPoints = createIdentityCurve();
+    const nextPoints = points.map((point, index) => (
+      index === pointIndex ? { ...identityPoints[index] } : point
+    ));
+    onChange({
+      channels: {
+        ...value.channels,
+        [activeChannel]: nextPoints
+      }
+    });
+  };
+
+  useEffect(() => {
+    const handleMove = (event) => {
+      if (!dragStateRef.current) return;
+      updatePoint(dragStateRef.current.pointIndex, event.clientX, event.clientY);
+    };
+    const handleUp = () => {
+      dragStateRef.current = null;
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+  });
+
+  const pathD = buildSmoothCurvePath(points);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-4 gap-2">
+        {CURVE_CHANNELS.map(channel => (
+          <button
+            key={channel}
+            type="button"
+            onClick={() => setActiveChannel(channel)}
+            className={`h-8 rounded-lg border text-[8px] font-black uppercase tracking-[0.16em] transition-all ${activeChannel === channel ? 'border-[#edd39a]/50 bg-[#edd39a]/15 text-[#edd39a]' : 'border-white/10 bg-white/5 text-white/45 hover:text-white/70'}`}
+          >
+            {channel === 'rgb' ? 'RGB' : channel.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-[#0f0f0f]/45 p-3">
+        <svg ref={svgRef} viewBox="0 0 100 100" className="block h-[220px] w-full touch-none select-none overflow-visible">
+          {[25, 50, 75].map(valueLine => (
+            <React.Fragment key={valueLine}>
+              <line x1={valueLine} y1="0" x2={valueLine} y2="100" stroke="rgba(255,255,255,0.12)" strokeWidth="0.6" />
+              <line x1="0" y1={valueLine} x2="100" y2={valueLine} stroke="rgba(255,255,255,0.12)" strokeWidth="0.6" />
+            </React.Fragment>
+          ))}
+          <rect x="0.5" y="0.5" width="99" height="99" rx="1.5" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+          <path d="M 0 100 L 100 0" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="0.9" />
+          <path d={pathD} fill="none" stroke={strokeColor} strokeWidth="1.8" strokeLinecap="round" />
+          {points.map((point, index) => (
+            <circle
+              key={`${activeChannel}-${index}`}
+              cx={point.x * 100}
+              cy={(1 - point.y) * 100}
+              r="2.6"
+              fill={strokeColor}
+              stroke="rgba(15,15,15,0.85)"
+              strokeWidth="1"
+              onPointerDown={(event) => {
+                dragStateRef.current = { pointIndex: index };
+                updatePoint(index, event.clientX, event.clientY);
+              }}
+              onDoubleClick={(event) => {
+                event.preventDefault();
+                dragStateRef.current = null;
+                resetPoint(index);
+              }}
+            />
+          ))}
+        </svg>
+      </div>
+
+      <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-[0.16em] text-white/35">
+        <span>Shadows</span>
+        <span>Highlights</span>
+      </div>
+    </div>
+  );
+};
+
+const DepthModelControls = ({ settings, centerSettings, onChange, onCenterChange, onPreset }) => {
+  const value = normalizeDepthModel(settings);
+  const centerValue = normalizeCenterDepthModel(centerSettings);
+  const updateHeight = (key, next) => onChange({ heights: { ...value.heights, [key]: next } });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-3">
+        <div className="flex flex-col gap-1">
+          <span className="text-white/70 text-[10px] font-black uppercase tracking-[0.2em]">Depth Model</span>
+          <span className="text-white/35 text-[9px] font-bold uppercase tracking-[0.12em]">{value.enabled ? DEPTH_MODEL_PRESETS[value.preset]?.name || 'Custom' : 'Disabled'}</span>
+        </div>
+        <MasteringToggle active={value.enabled} onClick={() => onChange({ enabled: !value.enabled })} label={value.enabled ? 'On' : 'Off'} />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Preset</span>
+        <div className="relative h-11">
+          <select value={value.preset} onChange={event => onPreset(Number(event.target.value))} className="absolute inset-0 h-full w-full appearance-none rounded-xl border border-white/10 bg-white/5 px-4 text-[11px] font-bold text-[#edd39a] outline-none">
+            {DEPTH_MODEL_PRESETS.map((preset, index) => <option key={preset.name} value={index}>{preset.name}</option>)}
+          </select>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+        <div className="mb-3 text-white/60 text-[9px] font-black uppercase tracking-[0.2em]">Light & Shadow</div>
+        <div className="flex flex-col gap-2">
+          <SakuraRange label="angle" value={value.shadowAngle} min={0} max={180} onChange={next => onChange({ shadowAngle: next })} />
+          <SakuraRange label="height" value={value.lightHeight} min={25} max={95} onChange={next => onChange({ lightHeight: next })} />
+          <SakuraRange label="scale" value={value.heightScale} min={40} max={160} onChange={next => onChange({ heightScale: next })} />
+          <SakuraRange label="contact" value={value.contactStrength} min={0} max={90} onChange={next => onChange({ contactStrength: next })} />
+          <SakuraRange label="cast" value={value.castStrength} min={0} max={90} onChange={next => onChange({ castStrength: next })} />
+          <SakuraRange label="soft" value={value.softness} min={20} max={100} onChange={next => onChange({ softness: next })} />
+          <SakuraRange label="opac" value={value.opacity} min={0} max={100} onChange={next => onChange({ opacity: next })} />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+        <div className="mb-3 text-white/60 text-[9px] font-black uppercase tracking-[0.2em]">Object Heights</div>
+        <div className="flex flex-col gap-2">
+          <SakuraRange label="knobs" value={value.heights.smallKnobs} min={1} max={16} onChange={next => updateHeight('smallKnobs', next)} />
+          <SakuraRange label="dial" value={value.heights.bigDial} min={1} max={16} onChange={next => updateHeight('bigDial', next)} />
+          <SakuraRange label="mods" value={value.heights.modules} min={1} max={14} onChange={next => updateHeight('modules', next)} />
+          <SakuraRange label="slabs" value={value.heights.slabs} min={1} max={10} onChange={next => updateHeight('slabs', next)} />
+          <SakuraRange label="btns" value={value.heights.buttons} min={1} max={12} onChange={next => updateHeight('buttons', next)} />
+        </div>
+      </div>
+
+      <div className={`rounded-2xl border p-3 transition-colors ${centerValue.enabled ? 'border-[#edd39a]/25 bg-[#edd39a]/[0.08]' : 'border-white/10 bg-white/[0.035]'}`}>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-white/60 text-[9px] font-black uppercase tracking-[0.2em]">Center Depth</div>
+            <div className="mt-1 text-white/35 text-[8px] font-bold uppercase tracking-[0.12em]">Middle knob only</div>
+          </div>
+          <MasteringToggle active={centerValue.enabled} onClick={() => onCenterChange({ enabled: !centerValue.enabled })} label={centerValue.enabled ? 'On' : 'Off'} />
+        </div>
+        <div className={`flex flex-col gap-2 ${centerValue.enabled ? 'opacity-100' : 'opacity-45'}`}>
+          <SakuraRange label="angle" value={centerValue.shadowAngle} min={0} max={180} onChange={next => onCenterChange({ shadowAngle: next })} />
+          <SakuraRange label="height" value={centerValue.height} min={1} max={12} onChange={next => onCenterChange({ height: next })} />
+          <SakuraRange label="dist" value={centerValue.distance} min={0} max={90} onChange={next => onCenterChange({ distance: next })} />
+          <SakuraRange label="contact" value={centerValue.contactStrength} min={0} max={70} onChange={next => onCenterChange({ contactStrength: next })} />
+          <SakuraRange label="cast" value={centerValue.castStrength} min={0} max={70} onChange={next => onCenterChange({ castStrength: next })} />
+          <SakuraRange label="soft" value={centerValue.softness} min={20} max={100} onChange={next => onCenterChange({ softness: next })} />
+          <SakuraRange label="opac" value={centerValue.opacity} min={0} max={100} onChange={next => onCenterChange({ opacity: next })} />
+          <SakuraRange label="size" value={centerValue.size} min={40} max={120} onChange={next => onCenterChange({ size: next })} />
+          <SakuraRange label="x" value={centerValue.x} min={-40} max={40} onChange={next => onCenterChange({ x: next })} />
+          <SakuraRange label="y" value={centerValue.y} min={-40} max={40} onChange={next => onCenterChange({ y: next })} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const GLOBAL_MASTERING_PRESETS = {
+  clean: normalizeGlobalMastering(DEFAULT_GLOBAL_MASTERING),
+  dimStudio: normalizeGlobalMastering({
+    enabled: true,
+    studioDim: { enabled: true, opacity: 26, x: 34, y: 26, size: 108, softness: 48, color: '#050403' },
+    light: { enabled: true, intensity: 18, x: 18, y: 12, size: 64, warmth: 70, color: '#fff0c8' },
+    vignette: { enabled: true, strength: 22, size: 64, softness: 52, color: '#080403' },
+    grade: { enabled: true, warmth: 58, contrast: 54, saturation: 44, lift: 44, fade: 8, opacity: 15, tint: '#7f3d31' },
+    shadowGlue: { enabled: true, opacity: 20, x: 50, y: 62, size: 74, blur: 38, color: '#100705' },
+    grain: { enabled: true, opacity: 5, scale: 2, contrast: 20 }
+  }),
+  warmFilm: normalizeGlobalMastering({
+    enabled: true,
+    light: { enabled: true, intensity: 20, x: 22, y: 16, size: 78, warmth: 78, color: '#ffe4b7' },
+    grade: { enabled: true, warmth: 68, contrast: 52, saturation: 48, lift: 48, fade: 10, opacity: 20, tint: '#a85a42' },
+    vignette: { enabled: true, strength: 16, size: 72, softness: 56, color: '#100604' },
+    bloom: { enabled: true, opacity: 8, size: 72, blur: 32, color: '#e66a53' },
+    grain: { enabled: true, opacity: 7, scale: 3, contrast: 26 }
+  }),
+  darkConsole: normalizeGlobalMastering({
+    enabled: true,
+    studioDim: { enabled: true, opacity: 32, x: 48, y: 42, size: 116, softness: 42, color: '#030302' },
+    edgeWash: { enabled: true, opacity: 18, angle: 220, color: '#170906' },
+    vignette: { enabled: true, strength: 28, size: 62, softness: 42, color: '#040201' },
+    grade: { enabled: true, warmth: 45, contrast: 58, saturation: 38, lift: 39, fade: 6, opacity: 18, tint: '#4b241d' },
+    shadowGlue: { enabled: true, opacity: 28, x: 52, y: 60, size: 62, blur: 46, color: '#090302' }
+  })
+};
+
+const GlobalMasteringControls = ({ settings, onRootChange, onSectionChange, onPreset, onReset }) => {
+  const value = normalizeGlobalMastering(settings);
+  const presetButton = (id, label) => (
+    <button
+      key={id}
+      type="button"
+      onClick={() => onPreset(id)}
+      className="h-9 rounded-xl border border-white/10 bg-white/5 px-2 text-[8px] font-black uppercase tracking-[0.12em] text-white/50 transition-all hover:border-[#edd39a]/40 hover:text-[#edd39a]"
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-3">
+        <div className="flex flex-col gap-1">
+          <span className="text-white/70 text-[10px] font-black uppercase tracking-[0.2em]">Master Bypass</span>
+          <span className="text-white/35 text-[9px] font-bold uppercase tracking-[0.12em]">{value.enabled ? 'Processing visual stack' : 'Clean original view'}</span>
+        </div>
+        <MasteringToggle active={value.enabled} onClick={() => onRootChange({ enabled: !value.enabled })} label={value.enabled ? 'On' : 'Off'} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {presetButton('dimStudio', 'Dim Studio')}
+        {presetButton('warmFilm', 'Warm Film')}
+        {presetButton('darkConsole', 'Dark Console')}
+        <button
+          type="button"
+          onClick={onReset}
+          className="h-9 rounded-xl border border-white/10 bg-black/20 px-2 text-[8px] font-black uppercase tracking-[0.12em] text-white/40 transition-all hover:text-white/70"
+        >
+          Reset
+        </button>
+      </div>
+
+      <MasteringModule title="Studio Dim" enabled={value.studioDim.enabled} onToggle={() => onSectionChange('studioDim', { enabled: !value.studioDim.enabled })}>
+        <SakuraRange label="opac" value={value.studioDim.opacity} min={0} max={70} onChange={next => onSectionChange('studioDim', { opacity: next })} />
+        <SakuraRange label="x" value={value.studioDim.x} min={0} max={100} onChange={next => onSectionChange('studioDim', { x: next })} />
+        <SakuraRange label="y" value={value.studioDim.y} min={0} max={100} onChange={next => onSectionChange('studioDim', { y: next })} />
+        <SakuraRange label="size" value={value.studioDim.size} min={40} max={180} onChange={next => onSectionChange('studioDim', { size: next })} />
+        <SakuraRange label="soft" value={value.studioDim.softness} min={5} max={90} onChange={next => onSectionChange('studioDim', { softness: next })} />
+        <MasteringColor label="Color" value={value.studioDim.color} onChange={next => onSectionChange('studioDim', { color: next })} />
+      </MasteringModule>
+
+      <MasteringModule title="Key Light" enabled={value.light.enabled} onToggle={() => onSectionChange('light', { enabled: !value.light.enabled })}>
+        <SakuraRange label="int" value={value.light.intensity} min={0} max={70} onChange={next => onSectionChange('light', { intensity: next })} />
+        <SakuraRange label="x" value={value.light.x} min={0} max={100} onChange={next => onSectionChange('light', { x: next })} />
+        <SakuraRange label="y" value={value.light.y} min={0} max={100} onChange={next => onSectionChange('light', { y: next })} />
+        <SakuraRange label="size" value={value.light.size} min={20} max={150} onChange={next => onSectionChange('light', { size: next })} />
+        <SakuraRange label="warm" value={value.light.warmth} min={0} max={100} onChange={next => onSectionChange('light', { warmth: next })} />
+        <MasteringColor label="Color" value={value.light.color} onChange={next => onSectionChange('light', { color: next })} />
+      </MasteringModule>
+
+      <MasteringModule title="Color Grade" enabled={value.grade.enabled} onToggle={() => onSectionChange('grade', { enabled: !value.grade.enabled })}>
+        <SakuraRange label="opac" value={value.grade.opacity} min={0} max={60} onChange={next => onSectionChange('grade', { opacity: next })} />
+        <SakuraRange label="warm" value={value.grade.warmth} min={0} max={100} onChange={next => onSectionChange('grade', { warmth: next })} />
+        <SakuraRange label="cont" value={value.grade.contrast} min={0} max={100} onChange={next => onSectionChange('grade', { contrast: next })} />
+        <SakuraRange label="sat" value={value.grade.saturation} min={0} max={100} onChange={next => onSectionChange('grade', { saturation: next })} />
+        <SakuraRange label="lift" value={value.grade.lift} min={0} max={100} onChange={next => onSectionChange('grade', { lift: next })} />
+        <SakuraRange label="fade" value={value.grade.fade} min={0} max={60} onChange={next => onSectionChange('grade', { fade: next })} />
+        <MasteringColor label="Tint" value={value.grade.tint} onChange={next => onSectionChange('grade', { tint: next })} />
+      </MasteringModule>
+
+      <MasteringModule title="Curves" enabled={value.curves.enabled} onToggle={() => onSectionChange('curves', { enabled: !value.curves.enabled })}>
+        <CurvesEditor curves={value.curves} onChange={next => onSectionChange('curves', next)} />
+      </MasteringModule>
+
+      <MasteringModule title="Vignette" enabled={value.vignette.enabled} onToggle={() => onSectionChange('vignette', { enabled: !value.vignette.enabled })}>
+        <SakuraRange label="str" value={value.vignette.strength} min={0} max={80} onChange={next => onSectionChange('vignette', { strength: next })} />
+        <SakuraRange label="size" value={value.vignette.size} min={20} max={95} onChange={next => onSectionChange('vignette', { size: next })} />
+        <SakuraRange label="soft" value={value.vignette.softness} min={0} max={80} onChange={next => onSectionChange('vignette', { softness: next })} />
+        <MasteringColor label="Color" value={value.vignette.color} onChange={next => onSectionChange('vignette', { color: next })} />
+      </MasteringModule>
+
+      <MasteringModule title="Shadow Glue" enabled={value.shadowGlue.enabled} onToggle={() => onSectionChange('shadowGlue', { enabled: !value.shadowGlue.enabled })}>
+        <SakuraRange label="opac" value={value.shadowGlue.opacity} min={0} max={70} onChange={next => onSectionChange('shadowGlue', { opacity: next })} />
+        <SakuraRange label="x" value={value.shadowGlue.x} min={0} max={100} onChange={next => onSectionChange('shadowGlue', { x: next })} />
+        <SakuraRange label="y" value={value.shadowGlue.y} min={0} max={100} onChange={next => onSectionChange('shadowGlue', { y: next })} />
+        <SakuraRange label="size" value={value.shadowGlue.size} min={20} max={130} onChange={next => onSectionChange('shadowGlue', { size: next })} />
+        <SakuraRange label="blur" value={value.shadowGlue.blur} min={0} max={80} onChange={next => onSectionChange('shadowGlue', { blur: next })} />
+        <MasteringColor label="Color" value={value.shadowGlue.color} onChange={next => onSectionChange('shadowGlue', { color: next })} />
+      </MasteringModule>
+
+      <MasteringModule title="Bloom Glow" enabled={value.bloom.enabled} onToggle={() => onSectionChange('bloom', { enabled: !value.bloom.enabled })}>
+        <SakuraRange label="opac" value={value.bloom.opacity} min={0} max={50} onChange={next => onSectionChange('bloom', { opacity: next })} />
+        <SakuraRange label="size" value={value.bloom.size} min={20} max={140} onChange={next => onSectionChange('bloom', { size: next })} />
+        <SakuraRange label="blur" value={value.bloom.blur} min={0} max={90} onChange={next => onSectionChange('bloom', { blur: next })} />
+        <MasteringColor label="Color" value={value.bloom.color} onChange={next => onSectionChange('bloom', { color: next })} />
+      </MasteringModule>
+
+      <MasteringModule title="Film Grain" enabled={value.grain.enabled} onToggle={() => onSectionChange('grain', { enabled: !value.grain.enabled })}>
+        <SakuraRange label="opac" value={value.grain.opacity} min={0} max={35} onChange={next => onSectionChange('grain', { opacity: next })} />
+        <SakuraRange label="scale" value={value.grain.scale} min={1} max={8} onChange={next => onSectionChange('grain', { scale: next })} />
+        <SakuraRange label="crisp" value={value.grain.contrast} min={0} max={80} onChange={next => onSectionChange('grain', { contrast: next })} />
+        <SakuraRange label="tone" value={value.grain.tone} min={0} max={100} onChange={next => onSectionChange('grain', { tone: next })} />
+        <SakuraRange label="hold" value={value.grain.hold} min={0} max={100} onChange={next => onSectionChange('grain', { hold: next })} />
+      </MasteringModule>
+
+      <MasteringModule title="Edge Wash" enabled={value.edgeWash.enabled} onToggle={() => onSectionChange('edgeWash', { enabled: !value.edgeWash.enabled })}>
+        <SakuraRange label="opac" value={value.edgeWash.opacity} min={0} max={55} onChange={next => onSectionChange('edgeWash', { opacity: next })} />
+        <SakuraRange label="angle" value={value.edgeWash.angle} min={0} max={360} onChange={next => onSectionChange('edgeWash', { angle: next })} />
+        <MasteringColor label="Color" value={value.edgeWash.color} onChange={next => onSectionChange('edgeWash', { color: next })} />
+      </MasteringModule>
+    </div>
+  );
+};
+
+const GlobalCurvesFilterDefs = ({ settings }) => {
+  const value = normalizeGlobalMastering(settings);
+  const masterPoints = value.curves.channels.rgb;
+  const redValues = composeCurveTables(masterPoints, value.curves.channels.r);
+  const greenValues = composeCurveTables(masterPoints, value.curves.channels.g);
+  const blueValues = composeCurveTables(masterPoints, value.curves.channels.b);
+
+  return (
+    <svg className="absolute h-0 w-0 pointer-events-none" aria-hidden="true" focusable="false">
+      <defs>
+        <filter id={CURVES_FILTER_ID} colorInterpolationFilters="sRGB">
+          <feComponentTransfer>
+            <feFuncR type="table" tableValues={redValues} />
+            <feFuncG type="table" tableValues={greenValues} />
+            <feFuncB type="table" tableValues={blueValues} />
+            <feFuncA type="identity" />
+          </feComponentTransfer>
+        </filter>
+      </defs>
+    </svg>
+  );
+};
+
+const GlobalMasteringOverlay = ({ settings, scene = false }) => {
+  const value = normalizeGlobalMastering(settings);
+  if (!value.enabled) return null;
+
+  const { studioDim, light, vignette, grade, shadowGlue, bloom, grain, edgeWash } = value;
+  const gradeContrast = 0.78 + (grade.contrast / 100) * 0.44;
+  const gradeSaturation = 0.64 + (grade.saturation / 100) * 0.72;
+  const gradeBrightness = 0.86 + (grade.lift / 100) * 0.28;
+  const warmOpacity = grade.enabled ? Math.abs(grade.warmth - 50) / 150 : 0;
+  const warmColor = grade.warmth >= 50 ? '#d88a55' : '#40546a';
+  const grainSize = Math.max(42, 150 - grain.scale * 13);
+  const grainTone = (grain.tone ?? 50) - 50;
+  const grainBaseOpacity = (grain.opacity / 100) * (0.55 + grain.contrast / 150);
+  const grainDarkOpacity = grainBaseOpacity * (1 + Math.max(-grainTone, 0) / 70);
+  const grainLightOpacity = grainBaseOpacity * (0.86 + Math.max(grainTone, 0) / 85);
+  const grainHoldContrast = 1 + (grain.opacity / 100) * ((grain.hold ?? 0) / 100) * 0.22;
+  const grainDarkMask = textureDataUrl('<svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg"><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="3" seed="21" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.33 0.33 0.33 0 0"/><feComponentTransfer><feFuncA type="table" tableValues="0 0.08 0.42 0.9"/></feComponentTransfer></filter><rect width="100%" height="100%" filter="url(#grain)"/></svg>');
+  const grainLightMask = textureDataUrl('<svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg"><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="1.8" numOctaves="3" seed="21" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.33 0.33 0.33 0 0"/><feComponentTransfer><feFuncA type="table" tableValues="0.9 0.42 0.08 0"/></feComponentTransfer></filter><rect width="100%" height="100%" filter="url(#grain)"/></svg>');
+  const wrapperStyle = scene
+    ? { inset: '-38px', borderRadius: '5.25rem' }
+    : undefined;
+
+  return (
+    <div
+      className={`absolute z-[80] pointer-events-none overflow-hidden ${scene ? '' : 'inset-0 rounded-[4rem]'}`}
+      style={wrapperStyle}
+    >
+      {grade.enabled && (
+        <div
+          className="absolute inset-0"
+          style={{
+            backdropFilter: `contrast(${gradeContrast}) saturate(${gradeSaturation}) brightness(${gradeBrightness})`,
+            WebkitBackdropFilter: `contrast(${gradeContrast}) saturate(${gradeSaturation}) brightness(${gradeBrightness})`
+          }}
+        />
+      )}
+
+      {studioDim.enabled && (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(circle at ${studioDim.x}% ${studioDim.y}%, transparent 0%, transparent ${Math.max(0, studioDim.softness)}%, ${hexToRgba(studioDim.color, studioDim.opacity / 100)} ${studioDim.size}%)`,
+            mixBlendMode: 'multiply'
+          }}
+        />
+      )}
+
+      {light.enabled && (
+        <div
+          className="absolute inset-0"
+          style={{
+            opacity: 0.78 + light.warmth / 400,
+            background: `radial-gradient(circle at ${light.x}% ${light.y}%, ${hexToRgba(light.color, light.intensity / 100)} 0%, ${hexToRgba(light.color, light.intensity / 190)} ${Math.max(8, light.size * 0.38)}%, transparent ${light.size}%)`,
+            mixBlendMode: 'screen'
+          }}
+        />
+      )}
+
+      {grade.enabled && (
+        <>
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity: grade.opacity / 100,
+              backgroundColor: grade.tint,
+              mixBlendMode: 'soft-light'
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity: warmOpacity,
+              backgroundColor: warmColor,
+              mixBlendMode: 'soft-light'
+            }}
+          />
+          {grade.fade > 0 && (
+            <div
+              className="absolute inset-0"
+              style={{
+                opacity: grade.fade / 100,
+                background: 'linear-gradient(180deg, rgba(246,222,190,0.28), rgba(34,18,12,0.38))',
+                mixBlendMode: 'screen'
+              }}
+            />
+          )}
+        </>
+      )}
+
+      {shadowGlue.enabled && (
+        <div
+          className="absolute inset-0"
+          style={{
+            filter: `blur(${shadowGlue.blur}px)`,
+            background: `radial-gradient(ellipse at ${shadowGlue.x}% ${shadowGlue.y}%, ${hexToRgba(shadowGlue.color, shadowGlue.opacity / 100)} 0%, ${hexToRgba(shadowGlue.color, shadowGlue.opacity / 180)} ${Math.max(6, shadowGlue.size * 0.5)}%, transparent ${shadowGlue.size}%)`,
+            mixBlendMode: 'multiply'
+          }}
+        />
+      )}
+
+      {bloom.enabled && (
+        <div
+          className="absolute inset-0"
+          style={{
+            filter: `blur(${bloom.blur}px)`,
+            background: `radial-gradient(circle at 50% 48%, ${hexToRgba(bloom.color, bloom.opacity / 100)} 0%, ${hexToRgba(bloom.color, bloom.opacity / 220)} ${Math.max(8, bloom.size * 0.4)}%, transparent ${bloom.size}%)`,
+            mixBlendMode: 'screen'
+          }}
+        />
+      )}
+
+      {edgeWash.enabled && (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(${edgeWash.angle}deg, ${hexToRgba(edgeWash.color, edgeWash.opacity / 100)} 0%, transparent 46%, ${hexToRgba(edgeWash.color, edgeWash.opacity / 180)} 100%)`,
+            mixBlendMode: 'multiply'
+          }}
+        />
+      )}
+
+      {vignette.enabled && (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(circle at 50% 48%, transparent 0%, transparent ${vignette.size}%, ${hexToRgba(vignette.color, vignette.strength / 160)} ${Math.min(98, vignette.size + vignette.softness * 0.35)}%, ${hexToRgba(vignette.color, vignette.strength / 100)} 100%)`,
+            mixBlendMode: 'multiply'
+          }}
+        />
+      )}
+
+      {grain.enabled && (
+        <div
+          className="absolute inset-0"
+          style={{
+            maskImage: CENTER_DIAL_GRAIN_EXCLUSION_MASK,
+            WebkitMaskImage: CENTER_DIAL_GRAIN_EXCLUSION_MASK
+          }}
+        >
+          {(grain.hold ?? 0) > 0 && (
+            <div
+              className="absolute inset-0"
+              style={{
+                backdropFilter: `contrast(${grainHoldContrast})`,
+                WebkitBackdropFilter: `contrast(${grainHoldContrast})`
+              }}
+            />
+          )}
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity: grainDarkOpacity,
+              backgroundColor: '#050302',
+              maskImage: grainDarkMask,
+              WebkitMaskImage: grainDarkMask,
+              maskSize: `${grainSize}px ${grainSize}px`,
+              WebkitMaskSize: `${grainSize}px ${grainSize}px`
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity: grainLightOpacity,
+              backgroundColor: '#f4ead6',
+              maskImage: grainLightMask,
+              WebkitMaskImage: grainLightMask,
+              maskSize: `${grainSize}px ${grainSize}px`,
+              WebkitMaskSize: `${grainSize}px ${grainSize}px`
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ShadowShape = ({ x, y, w, h, dx, dy, opacity, blur, rotation = 28, radius = '50%', color = '42,24,13' }) => (
+  <div
+    className="absolute pointer-events-none"
+    style={{
+      left: x - w / 2 + dx,
+      top: y - h / 2 + dy,
+      width: w,
+      height: h,
+      borderRadius: radius,
+      opacity,
+      filter: `blur(${blur}px)`,
+      background: `radial-gradient(ellipse at 45% 42%, rgba(${color},0.72) 0%, rgba(${color},0.28) 42%, transparent 72%)`,
+      transform: `rotate(${rotation}deg)`,
+      mixBlendMode: 'multiply'
+    }}
+  />
+);
+
+const ObjectContactShadowLayer = ({ styleIndex, hardwarePositions, shadowAngle = 45 }) => {
+  const style = OBJECT_CONTACT_SHADOW_STYLES[styleIndex] || OBJECT_CONTACT_SHADOW_STYLES[0];
+  if (!style.opacity) return null;
+
+  const io = hardwarePositions.io || CONTROL_SECTION_PRESETS.io;
+  const rate = hardwarePositions.rate || CONTROL_SECTION_PRESETS.rate;
+  const lfo = hardwarePositions.lfo || CONTROL_SECTION_PRESETS.lfo;
+  const mode = hardwarePositions.mode || CONTROL_SECTION_PRESETS.mode;
+  const mix = hardwarePositions.autoGain || CONTROL_SECTION_PRESETS.autoGain;
+  const d = style.distance;
+  const contactOpacity = 0.12 * style.opacity * style.contact;
+  const castOpacity = 0.07 * style.opacity * style.cast;
+  const softOpacity = 0.042 * style.opacity;
+  const blur = style.blur;
+  const angle = shadowAngle * Math.PI / 180;
+  const castX = Math.cos(angle);
+  const castY = Math.sin(angle);
+  const castOffset = (amount) => ({
+    dx: castX * amount * d,
+    dy: castY * amount * d
+  });
+
+  const roundObject = (key, x, y, size, weight = 1) => (
+    <React.Fragment key={key}>
+      <ShadowShape x={x} y={y} w={size * 1.05} h={size * 0.82} {...castOffset(3)} opacity={contactOpacity * weight} blur={4.5 * blur} rotation={shadowAngle} />
+      <ShadowShape x={x} y={y} w={size * 1.35} h={size * 0.72} {...castOffset(14)} opacity={castOpacity * weight} blur={9 * blur} rotation={shadowAngle} />
+      <ShadowShape x={x} y={y} w={size * 1.9} h={size * 0.55} {...castOffset(27)} opacity={softOpacity * weight} blur={17 * blur} rotation={shadowAngle} />
+    </React.Fragment>
+  );
+
+  const rectObject = (key, x, y, w, h, weight = 1, radius = '22px') => (
+    <React.Fragment key={key}>
+      <ShadowShape x={x} y={y} w={w * 1.02} h={h * 0.92} {...castOffset(3)} opacity={contactOpacity * weight} blur={5 * blur} rotation={shadowAngle} radius={radius} />
+      <ShadowShape x={x} y={y} w={w * 1.18} h={h * 0.82} {...castOffset(13)} opacity={castOpacity * weight} blur={11 * blur} rotation={shadowAngle} radius={radius} />
+    </React.Fragment>
+  );
+
+  const inputX = io.x - 61;
+  const outputX = io.x + 61;
+
+  return (
+    <div className="absolute inset-0 z-[9] pointer-events-none">
+      {roundObject('input', inputX, io.y, 68, 0.9)}
+      {roundObject('output', outputX, io.y, 68, 0.9)}
+      {roundObject('noise', RIGHT_KNOB_POSITIONS.noise.x, RIGHT_KNOB_POSITIONS.noise.y, 62, 0.8)}
+      {roundObject('sweeten', RIGHT_KNOB_POSITIONS.sweeten.x, RIGHT_KNOB_POSITIONS.sweeten.y, 62, 0.8)}
+      {roundObject('sat', RIGHT_KNOB_POSITIONS.sat.x, RIGHT_KNOB_POSITIONS.sat.y, 62, 0.86)}
+      {roundObject('filter', RIGHT_KNOB_POSITIONS.filter.x, RIGHT_KNOB_POSITIONS.filter.y, 62, 0.86)}
+      {roundObject('rate', rate.x, rate.y, 84, 0.75)}
+      {roundObject('mix', mix.x, mix.y, 78, 0.8)}
+      {roundObject('center', 425, 441, 305, 1)}
+      {rectObject('display', 697, 585, 190, 58, 0.75, '26px')}
+      {rectObject('flavor', mode.x, mode.y, 98, 240, 0.86, '44px')}
+      {roundObject('lfo-button', lfo.x, lfo.y, 74, 0.72)}
+    </div>
+  );
+};
+
+const DepthModelShadowLayer = ({ settings, hardwarePositions }) => {
+  const model = normalizeDepthModel(settings);
+  if (!model.enabled) return null;
+
+  const heightFactor = model.heightScale / 100;
+  const distanceFactor = (105 - model.lightHeight) / 52;
+  const layerOpacity = (model.opacity ?? 100) / 100;
+  const contactOpacity = (model.contactStrength / 100) * layerOpacity;
+  const castOpacity = (model.castStrength / 100) * layerOpacity;
+  const softness = model.softness / 100;
+  const io = hardwarePositions.io || CONTROL_SECTION_PRESETS.io;
+  const rate = hardwarePositions.rate || CONTROL_SECTION_PRESETS.rate;
+  const lfo = hardwarePositions.lfo || CONTROL_SECTION_PRESETS.lfo;
+  const mode = hardwarePositions.mode || CONTROL_SECTION_PRESETS.mode;
+  const mix = hardwarePositions.autoGain || CONTROL_SECTION_PRESETS.autoGain;
+  const offsetPoint = (id, x, y) => ({
+    x: x + (DEPTH_MODEL_OBJECT_OFFSETS[id]?.x || 0),
+    y: y + (DEPTH_MODEL_OBJECT_OFFSETS[id]?.y || 0)
+  });
+  const rightKnobGrid = RIGHT_KNOB_POSITIONS;
+  const objects = [
+    { id: 'input', type: 'circle', ...offsetPoint('input', io.x, io.y), r: 34, h: model.heights.smallKnobs, w: 68, height: 68 },
+    { id: 'output', type: 'circle', ...offsetPoint('output', io.x, io.y), r: 34, h: model.heights.smallKnobs, w: 68, height: 68 },
+    { id: 'noise', type: 'circle', ...offsetPoint('noise', rightKnobGrid.noise.x, rightKnobGrid.noise.y), r: 31, h: model.heights.smallKnobs, w: 62, height: 62 },
+    { id: 'sweeten', type: 'circle', ...offsetPoint('sweeten', rightKnobGrid.sweeten.x, rightKnobGrid.sweeten.y), r: 31, h: model.heights.smallKnobs, w: 62, height: 62 },
+    { id: 'sat', type: 'circle', ...offsetPoint('sat', rightKnobGrid.sat.x, rightKnobGrid.sat.y), r: 31, h: model.heights.smallKnobs, w: 62, height: 62 },
+    { id: 'filter', type: 'circle', ...offsetPoint('filter', rightKnobGrid.filter.x, rightKnobGrid.filter.y), r: 31, h: model.heights.smallKnobs, w: 62, height: 62 },
+    { id: 'rate', type: 'circle', ...offsetPoint('rate', rate.x, rate.y), r: 42, h: model.heights.smallKnobs * 0.9, w: 84, height: 84 },
+    { id: 'mix', type: 'circle', ...offsetPoint('mix', mix.x, mix.y), r: 40, h: model.heights.smallKnobs * 0.95, w: 80, height: 80 }
+  ];
+
+  const shadowFor = (object) => {
+    const h = object.h * heightFactor;
+    const base = object.type === 'circle'
+      ? { rx: object.r, ry: object.r * 0.72 }
+      : { rx: object.w / 2, ry: object.height / 2 };
+    const edgeDistance = Math.min(base.rx, base.ry) * 0.72;
+    const contactDistance = edgeDistance + Math.max(1.1, h * 0.14);
+    const midDistance = edgeDistance + h * distanceFactor * 1.35;
+    const castDistance = edgeDistance + h * distanceFactor * 3.05;
+    const contactBlur = 2.6 + softness * 5.8;
+    const midBlur = 5.5 + softness * 12 + h * 0.35;
+    const castBlur = 10 + softness * 19 + h * 0.65;
+    const clipX = edgeDistance * 0.18;
+    const clipY = Math.max(base.ry * 2.9, object.height || object.r * 3);
+    const clipW = Math.max(260, base.rx * 5);
+
+    const shape = (suffix, distance, rxScale, ryScale, opacity, blur) => (
+      <ellipse
+        key={`${object.id}-${suffix}`}
+        cx={distance}
+        cy={0}
+        rx={base.rx * rxScale}
+        ry={base.ry * ryScale}
+        fill={`rgba(40,23,14,${opacity})`}
+        style={{ filter: `blur(${blur}px)` }}
+      />
+    );
+
+    const rectShape = (suffix, distance, scale, opacity, blur) => (
+      <rect
+        key={`${object.id}-${suffix}`}
+        x={distance - (object.w * scale) / 2}
+        y={-(object.height * scale) / 2}
+        width={object.w * scale}
+        height={object.height * scale}
+        rx={(object.radius || 24) * scale}
+        fill={`rgba(40,23,14,${opacity})`}
+        style={{ filter: `blur(${blur}px)` }}
+      />
+    );
+
+    if (object.type === 'rect') {
+      return (
+        <g key={object.id} transform={`translate(${object.x} ${object.y}) rotate(${model.shadowAngle})`}>
+          <clipPath id={`depth-model-cast-${object.id}`}>
+            <rect x={clipX} y={-clipY / 2} width={clipW} height={clipY} />
+          </clipPath>
+          <g clipPath={`url(#depth-model-cast-${object.id})`}>
+            {rectShape('contact', contactDistance, 1.01, 0.13 * contactOpacity, contactBlur)}
+            {rectShape('mid', midDistance, 1.08, 0.07 * castOpacity, midBlur)}
+            {rectShape('cast', castDistance, 1.16, 0.034 * castOpacity, castBlur)}
+          </g>
+        </g>
+      );
+    }
+
+    return (
+      <g key={object.id} transform={`translate(${object.x} ${object.y}) rotate(${model.shadowAngle})`}>
+        <clipPath id={`depth-model-cast-${object.id}`}>
+          <rect x={clipX} y={-clipY / 2} width={clipW} height={clipY} />
+        </clipPath>
+        <g clipPath={`url(#depth-model-cast-${object.id})`}>
+          {shape('contact', contactDistance, 1.02, 0.82, 0.14 * contactOpacity, contactBlur)}
+          {shape('mid', midDistance, 1.22, 0.72, 0.078 * castOpacity, midBlur)}
+          {shape('cast', castDistance, 1.55, 0.56, 0.035 * castOpacity, castBlur)}
+        </g>
+      </g>
+    );
+  };
+
+  return (
+    <svg className="absolute inset-0 z-[9] pointer-events-none overflow-visible" viewBox="0 0 850 850" width="850" height="850" aria-hidden="true">
+      <g style={{ mixBlendMode: 'multiply' }}>
+        {objects.map(shadowFor)}
+      </g>
+    </svg>
+  );
+};
+
+const CenterDepthShadowLayer = ({ settings, canvasSize = 850, centerX = 425, centerY = 441, className = 'absolute inset-0 z-[9] pointer-events-none overflow-visible' }) => {
+  const model = normalizeCenterDepthModel(settings);
+  if (!model.enabled) return null;
+
+  const cx = centerX + model.x;
+  const cy = centerY + model.y;
+  const h = model.height;
+  const contactDistance = 112 + Math.max(1, h * 0.5);
+  const midDistance = 112 + model.distance * 0.48;
+  const castDistance = 112 + model.distance;
+  const sizeScale = model.size / 100;
+  const contactBlur = 5 + model.softness * 0.08;
+  const midBlur = 10 + model.softness * 0.16;
+  const castBlur = 18 + model.softness * 0.28;
+  const layerOpacity = (model.opacity ?? 100) / 100;
+  const contactOpacity = (model.contactStrength / 100) * layerOpacity;
+  const castOpacity = (model.castStrength / 100) * layerOpacity;
+  const clipX = 40;
+  const clipY = 360;
+
+  const shape = (key, distance, rx, ry, opacity, blur) => (
+    <ellipse
+      key={key}
+      cx={distance}
+      cy={0}
+      rx={rx * sizeScale}
+      ry={ry * sizeScale}
+      fill={`rgba(40,23,14,${opacity})`}
+      style={{ filter: `blur(${blur}px)` }}
+    />
+  );
+
+  return (
+    <svg className={className} viewBox={`0 0 ${canvasSize} ${canvasSize}`} width={canvasSize} height={canvasSize} aria-hidden="true">
+      <g style={{ mixBlendMode: 'multiply' }} transform={`translate(${cx} ${cy}) rotate(${model.shadowAngle})`}>
+        <clipPath id="center-depth-model-cast">
+          <rect x={clipX} y={-clipY / 2} width="470" height={clipY} />
+        </clipPath>
+        <g clipPath="url(#center-depth-model-cast)">
+          {shape('center-contact', contactDistance, 124, 78, 0.11 * contactOpacity, contactBlur)}
+          {shape('center-mid', midDistance, 146, 66, 0.07 * castOpacity, midBlur)}
+          {shape('center-cast', castDistance, 178, 52, 0.032 * castOpacity, castBlur)}
+        </g>
+      </g>
+    </svg>
+  );
+};
 
 const ScrewHead = ({ styleIndex = 0, size: sizeOverride }) => {
   const style = SCREW_STYLES[styleIndex] || SCREW_STYLES[0];
@@ -2907,6 +4871,20 @@ const KNOB_STYLES = [
     edgeMask: 'radial-gradient(circle, transparent 0 68%, #000 70% 100%)',
     faceOverlay: 'radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%)'
   },
+  {
+    name: 'Original Graphite Grip Cream Dark Shadow',
+    boxShadow: '4px 12px 20px rgba(0,0,0,0.45), 2px 4px 8px rgba(0,0,0,0.54), inset 0px 1px 3px rgba(255,255,255,0.4), inset 0px -2px 5px rgba(0,0,0,0.9)',
+    backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
+    backgroundColor: '#111',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.14) 0deg 1deg, rgba(0,0,0,0.24) 1deg 3deg)',
+    edgeOpacity: 0.48,
+    edgeMask: 'radial-gradient(circle, transparent 0 68%, #000 70% 100%)',
+    faceOverlay: 'radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%)',
+    indicator: {
+      background: 'linear-gradient(to bottom, #f3dcae, #c79f59)',
+      boxShadow: '0 0 8px rgba(243,220,174,0.34), 0 2px 4px rgba(0,0,0,0.48), inset 0 1px 1px rgba(255,246,224,0.78)'
+    }
+  },
   
 ];
 
@@ -2917,8 +4895,115 @@ const PRESERVED_SMALL_KNOB_STYLES = new Set([
   'Graphite Anodized Grip',
   'Original Graphite Grip',
   'Original Graphite Grip Cream Pointer',
-  'Original Graphite Grip Dark Shadow'
+  'Original Graphite Grip Dark Shadow',
+  'Original Graphite Grip Cream Dark Shadow'
 ]);
+
+const OBSIDIAN_STUDIO_POINTER = {
+  background: 'linear-gradient(to bottom, #e9725d, #b84c39)',
+  boxShadow: '0 0 5px rgba(230,106,83,0.22), 0 2px 4px rgba(0,0,0,0.48), inset 0 1px 1px rgba(255,196,181,0.36)'
+};
+
+const RATE_MATCH_MIX_BODY = KNOB_STYLES.find(style => style.name === 'Original Graphite Grip Cream Dark Shadow') || KNOB_STYLES[0];
+
+const MIX_KNOB_STYLES = [
+  {
+    name: 'Obsidian Studio',
+    backgroundColor: '#111',
+    backgroundImage: 'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.13), transparent 30%), radial-gradient(circle at 50% 58%, rgba(255,255,255,0.04), transparent 48%), conic-gradient(from 180deg at 50% 50%, #090909, #2a2b2c, #0b0b0b, #242526, #090909)',
+    boxShadow: '8px 12px 18px rgba(0,0,0,0.44), 2px 4px 7px rgba(0,0,0,0.36), inset 1px 1px 2px rgba(255,255,255,0.22), inset -2px -3px 6px rgba(0,0,0,0.88)',
+    faceOverlay: 'radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.07) 63%, rgba(0,0,0,0.34) 84%, transparent 90%)',
+    indicator: OBSIDIAN_STUDIO_POINTER
+  },
+  {
+    ...RATE_MATCH_MIX_BODY,
+    name: 'Rate Match Obsidian Pointer',
+    indicator: OBSIDIAN_STUDIO_POINTER
+  },
+  {
+    ...RATE_MATCH_MIX_BODY,
+    name: 'Rate Match 1:1 Cream Pointer'
+  },
+  {
+    name: 'Champagne Cap',
+    backgroundColor: '#74684d',
+    backgroundImage: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.42), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 62%, rgba(255,240,196,0.14) 74%, rgba(35,30,22,0.44) 96%), conic-gradient(from 180deg, #74684d, #c2b58a, #75684c, #d0c093, #74684d, #b6a775, #6b6047, #c7b88b, #74684d)',
+    boxShadow: '8px 11px 17px rgba(0,0,0,0.38), 2px 4px 7px rgba(0,0,0,0.28), inset 2px 2px 5px rgba(255,255,255,0.28), inset -3px -4px 7px rgba(0,0,0,0.42)',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(255,243,207,0.18) 0deg 0.8deg, rgba(65,52,34,0.22) 0.8deg 2.6deg)',
+    edgeMask: 'radial-gradient(circle, transparent 0 68%, #000 70% 100%)',
+    edgeOpacity: 0.38,
+    edgeBlendMode: 'soft-light',
+    indicator: { background: 'linear-gradient(to bottom, #f3dcae, #c79f59)', boxShadow: '0 0 7px rgba(243,220,174,0.24), 0 2px 4px rgba(0,0,0,0.44), inset 0 1px 1px rgba(255,246,224,0.64)' }
+  },
+  {
+    name: 'Smoked Coral Glass',
+    backgroundColor: '#2a1512',
+    backgroundImage: 'radial-gradient(circle at 31% 28%, rgba(255,167,140,0.2), transparent 30%), radial-gradient(circle at 50% 50%, rgba(230,106,83,0.15), transparent 52%), conic-gradient(from 180deg, #160d0b, #4a211b, #1a0d0b, #6a2c23, #160d0b, #3c1a16, #120907, #52231c, #160d0b)',
+    boxShadow: '8px 12px 18px rgba(60,18,12,0.38), 2px 4px 7px rgba(0,0,0,0.36), inset 1px 1px 3px rgba(255,190,170,0.18), inset -3px -4px 8px rgba(0,0,0,0.78)',
+    faceOverlay: 'radial-gradient(circle at 50% 50%, transparent 0 56%, rgba(230,106,83,0.12) 64%, rgba(0,0,0,0.28) 86%, transparent 92%)',
+    indicator: { background: 'linear-gradient(to bottom, #ffc0a4, #e36f55)', boxShadow: '0 0 8px rgba(230,106,83,0.34), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,218,204,0.52)' }
+  },
+  {
+    name: 'Walnut Inlay',
+    backgroundColor: '#2a170e',
+    backgroundImage: 'radial-gradient(circle at 34% 28%, rgba(183,121,78,0.2), transparent 32%), repeating-conic-gradient(from 180deg, #2d190e 0deg 4deg, #634020 4deg 8deg, #25130a 8deg 11deg, #7a4d2a 11deg 16deg)',
+    boxShadow: '9px 12px 18px rgba(0,0,0,0.42), 2px 4px 7px rgba(0,0,0,0.34), inset 1px 1px 2px rgba(208,144,92,0.17), inset -3px -4px 8px rgba(0,0,0,0.68)',
+    faceOverlay: 'radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,210,160,0.06) 63%, rgba(0,0,0,0.34) 85%, transparent 92%)',
+    indicator: { background: 'linear-gradient(to bottom, #d6cdb6, #9d8463)', boxShadow: '0 0 5px rgba(214,205,182,0.2), 0 2px 4px rgba(0,0,0,0.48), inset 0 1px 1px rgba(255,246,224,0.44)' }
+  },
+  {
+    name: 'Ivory Porcelain',
+    backgroundColor: '#efe0c6',
+    backgroundImage: 'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.72), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 62%, rgba(118,88,50,0.12) 75%, rgba(60,42,25,0.22) 96%), conic-gradient(from 180deg, #d7c5a5, #fff3d8, #d2bf9e, #f3dfbd, #d7c5a5, #ead6b1, #cdb895, #f7e6c8, #d7c5a5)',
+    boxShadow: '8px 11px 18px rgba(93,62,38,0.26), 2px 4px 7px rgba(0,0,0,0.2), inset 2px 2px 5px rgba(255,255,255,0.62), inset -3px -4px 8px rgba(91,61,34,0.3)',
+    indicator: { background: 'linear-gradient(to bottom, #a44838, #6e2b24)', boxShadow: '0 0 4px rgba(164,72,56,0.24), 0 2px 4px rgba(0,0,0,0.38), inset 0 1px 1px rgba(255,190,174,0.36)' }
+  },
+  {
+    name: 'Black Nickel',
+    backgroundColor: '#151718',
+    backgroundImage: 'linear-gradient(145deg, rgba(255,255,255,0.14), transparent 38%, rgba(0,0,0,0.34)), conic-gradient(from 200deg, #111314, #3a3c3d, #141617, #2b2d2f, #111314, #454748, #151718, #303335, #111314)',
+    boxShadow: '7px 11px 17px rgba(0,0,0,0.46), 2px 4px 7px rgba(0,0,0,0.4), inset 1px 1px 2px rgba(255,255,255,0.2), inset -3px -4px 8px rgba(0,0,0,0.82)',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(230,235,235,0.12) 0deg 1deg, rgba(0,0,0,0.25) 1deg 3deg)',
+    edgeMask: 'radial-gradient(circle, transparent 0 69%, #000 71% 100%)',
+    edgeOpacity: 0.46,
+    indicator: { background: 'linear-gradient(to bottom, #d6cdb6, #9c8a68)', boxShadow: '0 0 5px rgba(214,205,182,0.2), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,246,224,0.42)' }
+  },
+  {
+    name: 'Muted Copper',
+    backgroundColor: '#6b3422',
+    backgroundImage: 'radial-gradient(circle at 33% 29%, rgba(255,197,148,0.28), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 60%, rgba(255,190,132,0.1) 72%, rgba(54,23,14,0.42) 96%), conic-gradient(from 180deg, #6b3422, #a9623d, #65301f, #bd7450, #6b3422, #9c5634, #5c2a1b, #b56c45, #6b3422)',
+    boxShadow: '8px 12px 18px rgba(63,24,13,0.4), 2px 4px 7px rgba(0,0,0,0.3), inset 2px 2px 4px rgba(255,197,148,0.22), inset -3px -4px 8px rgba(45,18,10,0.58)',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(230,145,92,0.16) 0deg 0.8deg, rgba(44,18,10,0.24) 0.8deg 2.6deg)',
+    edgeMask: 'radial-gradient(circle, transparent 0 68%, #000 70% 100%)',
+    edgeOpacity: 0.42,
+    indicator: { background: 'linear-gradient(to bottom, #f0ccb2, #d17261)', boxShadow: '0 0 6px rgba(209,114,97,0.22), 0 2px 4px rgba(0,0,0,0.46), inset 0 1px 1px rgba(255,220,204,0.45)' }
+  },
+  {
+    name: 'Frosted Sage',
+    backgroundColor: '#26342d',
+    backgroundImage: 'radial-gradient(circle at 32% 28%, rgba(215,232,210,0.22), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 60%, rgba(215,232,210,0.08) 72%, rgba(9,18,13,0.42) 96%), conic-gradient(from 180deg, #202b25, #536d5e, #1f2a24, #6d8373, #202b25, #465f50, #17211b, #5b7464, #202b25)',
+    boxShadow: '8px 12px 18px rgba(0,0,0,0.4), 2px 4px 7px rgba(0,0,0,0.3), inset 1px 1px 3px rgba(230,245,220,0.16), inset -3px -4px 8px rgba(0,0,0,0.62)',
+    indicator: { background: 'linear-gradient(to bottom, #f0ccb2, #d17261)', boxShadow: '0 0 6px rgba(209,114,97,0.22), 0 2px 4px rgba(0,0,0,0.46), inset 0 1px 1px rgba(255,220,204,0.42)' }
+  },
+  {
+    name: 'Piano Lacquer',
+    backgroundColor: '#090909',
+    backgroundImage: 'radial-gradient(circle at 30% 24%, rgba(255,255,255,0.2), transparent 28%), radial-gradient(circle at 50% 52%, rgba(255,255,255,0.04), transparent 48%), linear-gradient(145deg, #030303, #1a1a1a 45%, #050505)',
+    boxShadow: '8px 12px 18px rgba(0,0,0,0.48), 2px 4px 7px rgba(0,0,0,0.38), inset 1px 1px 2px rgba(255,255,255,0.24), inset -2px -3px 7px rgba(0,0,0,0.9)',
+    faceOverlay: 'linear-gradient(135deg, rgba(255,255,255,0.16), transparent 34%, rgba(0,0,0,0.2))',
+    indicator: { background: 'linear-gradient(to bottom, #e9725d, #b84c39)', boxShadow: '0 0 5px rgba(230,106,83,0.2), 0 2px 4px rgba(0,0,0,0.52), inset 0 1px 1px rgba(255,196,181,0.34)' }
+  },
+  {
+    name: 'Warm Gunmetal',
+    backgroundColor: '#24211e',
+    backgroundImage: 'radial-gradient(circle at 32% 28%, rgba(255,235,205,0.12), transparent 30%), conic-gradient(from 180deg, #171615, #3f3b35, #1a1816, #4a443d, #171615, #34312d, #12110f, #3e3933, #171615)',
+    boxShadow: '8px 12px 18px rgba(0,0,0,0.42), 2px 4px 7px rgba(0,0,0,0.34), inset 1px 1px 3px rgba(255,232,205,0.12), inset -3px -4px 8px rgba(0,0,0,0.74)',
+    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(255,232,205,0.1) 0deg 0.9deg, rgba(0,0,0,0.22) 0.9deg 3deg)',
+    edgeMask: 'radial-gradient(circle, transparent 0 68%, #000 70% 100%)',
+    edgeOpacity: 0.38,
+    indicator: { background: 'linear-gradient(to bottom, #d6cdb6, #a68c67)', boxShadow: '0 0 5px rgba(214,205,182,0.18), 0 2px 4px rgba(0,0,0,0.48), inset 0 1px 1px rgba(255,246,224,0.38)' }
+  }
+];
 
 const KNOB_READOUT_STYLES = [
   { name: 'Classic Digital', type: 'digital' },
@@ -2964,42 +5049,44 @@ export const formatKnobValue = (label, value) => {
 };
 
 export const renderReadout = (type, val) => {
+  const stableReadoutClass = 'min-w-[54px] text-center tabular-nums';
   switch (type) {
     case 'digital':
-      return <div className="text-[10px] font-mono text-red-500 drop-shadow-[0_0_4px_rgba(239,68,68,0.8)] bg-black/80 px-1.5 py-0.5 rounded border border-red-900/50 whitespace-nowrap">{val}</div>;
+      return <div className={`${stableReadoutClass} text-[12px] font-mono text-red-500 drop-shadow-[0_0_4px_rgba(239,68,68,0.8)] bg-black/80 px-1.5 py-0.5 rounded border border-red-900/50 whitespace-nowrap`}>{val}</div>;
     case 'glass':
-      return <div className="text-[9px] text-black/80 backdrop-blur-md bg-white/10 px-2 py-0.5 rounded-full border border-white/20 shadow-lg whitespace-nowrap font-bold tracking-wider">{val}</div>;
+      return <div className={`${stableReadoutClass} text-[11px] text-black/80 backdrop-blur-md bg-white/10 px-2 py-0.5 rounded-full border border-white/20 shadow-lg whitespace-nowrap font-bold tracking-wider`}>{val}</div>;
     case 'coral-glass':
-      return <div className="text-[9px] text-[#e66a53] backdrop-blur-md bg-white/15 px-2 py-0.5 rounded-full border border-[#e66a53]/30 shadow-lg whitespace-nowrap font-bold tracking-wider">{val}</div>;
+      return <div className={`${stableReadoutClass} text-[11px] text-[#e66a53] backdrop-blur-md bg-white/15 px-2 py-0.5 rounded-full border border-[#e66a53]/30 shadow-lg whitespace-nowrap font-bold tracking-wider`}>{val}</div>;
     case 'obsidian-coral':
-      return <div className="text-[9px] text-[#e66a53] backdrop-blur-lg bg-black/40 px-2.5 py-0.5 rounded-lg border border-white/10 shadow-xl whitespace-nowrap font-bold tracking-widest uppercase">{val}</div>;
+      return <div className={`${stableReadoutClass} text-[11px] text-[#e66a53] backdrop-blur-lg bg-black/40 px-2.5 py-0.5 rounded-lg border border-white/10 shadow-xl whitespace-nowrap font-bold tracking-widest uppercase`}>{val}</div>;
     case 'minimal-coral':
-      return <div className="text-[10px] font-bold text-[#e66a53] drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] whitespace-nowrap tracking-widest" style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
+      return <div className={`${stableReadoutClass} text-[12px] font-bold text-[#e66a53] drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] whitespace-nowrap tracking-widest`} style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
     case 'stealth-modern':
-      return <div className="text-[9px] text-white/90 backdrop-blur-md bg-black/60 px-2.5 py-0.5 rounded border border-white/10 shadow-xl whitespace-nowrap font-bold tracking-wider">{val}</div>;
+      return <div className={`${stableReadoutClass} text-[11px] text-[#fff8ee]/90 backdrop-blur-md bg-black/60 px-2.5 py-0.5 rounded border border-white/10 shadow-xl whitespace-nowrap font-bold tracking-wider`}>{val}</div>;
     case 'rounded-stealth-ivory':
-      return <div className="text-[10px] text-[#edd39a] backdrop-blur-md bg-black/60 px-2.5 py-0.5 rounded-full border border-[#edd39a]/20 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase" style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
+      return <div className={`${stableReadoutClass} text-[12px] text-[#edd39a] backdrop-blur-md bg-black/60 px-2.5 py-0.5 rounded-full border border-[#edd39a]/20 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase`} style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
     case 'hardware-label':
-      return <div className="text-[9px] font-black text-black bg-[#e66a53] px-2 py-0.5 rounded shadow-[0_2px_4px_rgba(0,0,0,0.3)] whitespace-nowrap uppercase tracking-widest">{val}</div>;
+      return <div className={`${stableReadoutClass} text-[11px] font-black text-black bg-[#e66a53] px-2 py-0.5 rounded shadow-[0_2px_4px_rgba(0,0,0,0.3)] whitespace-nowrap uppercase tracking-widest`}>{val}</div>;
     case 'stealth-ghost':
-      return <div className="text-[10px] text-white backdrop-blur-md bg-black/60 px-2 py-0.5 rounded border border-white/10 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase" style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
+      return <div className={`${stableReadoutClass} text-[12px] text-white backdrop-blur-md bg-black/60 px-2 py-0.5 rounded border border-white/10 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase`} style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
     case 'stealth-coral':
-      return <div className="text-[10px] text-[#e66a53] backdrop-blur-md bg-black/60 px-2 py-0.5 rounded border border-[#e66a53]/20 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase" style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
+      return <div className={`${stableReadoutClass} text-[12px] text-[#e66a53] backdrop-blur-md bg-black/60 px-2 py-0.5 rounded border border-[#e66a53]/20 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase`} style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
     case 'stealth-ivory':
-      return <div className="text-[10px] text-[#edd39a] backdrop-blur-md bg-black/60 px-2 py-0.5 rounded border border-[#edd39a]/20 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase" style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
+      return <div className={`${stableReadoutClass} text-[12px] text-[#edd39a] backdrop-blur-md bg-black/60 px-2 py-0.5 rounded border border-[#edd39a]/20 shadow-xl whitespace-nowrap font-bold tracking-[0.18em] uppercase`} style={{ fontFamily: "'Figtree', sans-serif" }}>{val}</div>;
     default:
       return null;
   }
 };
 
 const DISPLAY_ACCENT = '#e66a53';
+const DRIFT_VISUAL_FIXED_RATE = 24.5;
 const DISPLAY_FONT_STACK = "'Chakra Petch', 'DIN Condensed', 'Avenir Next Condensed', 'Helvetica Neue', Arial, sans-serif";
 
 const DISPLAY_PARAMETER_CONFIG = {
   input: { name: 'INPUT', label: 'INPUT', anim: 'bars' },
   output: { name: 'OUTPUT', label: 'OUTPUT', anim: 'bars' },
   noise: { name: 'NOISE', label: 'NOISE', anim: 'static' },
-  sweeten: { name: 'SWEETEN', label: 'SWEETEN', anim: 'sparkle' },
+  sweeten: { name: 'COLOR', label: 'COLOR', anim: 'sparkle' },
   sat: { name: 'SAT', label: 'SAT', anim: 'heat' },
   filter: { name: 'FILTER', label: 'FILTER', anim: 'curve' },
   drift: { name: 'DRIFT', label: 'DRIFT', anim: 'drift' },
@@ -3007,7 +5094,95 @@ const DISPLAY_PARAMETER_CONFIG = {
   rate: { name: 'RATE', label: 'RATE', anim: 'rateWave' },
   depth: { name: 'DEPTH', label: 'DEPTH ◍', anim: 'pulse' },
   phase: { name: 'PHASE', label: 'PHASE ◐', anim: 'circle' },
-  autoGain: { name: 'AUTO', label: 'AUTO GAIN', anim: 'pulse' }
+  mix: { name: 'MIX', label: 'MIX', anim: 'mixBlend' }
+};
+
+const DEPTH_DISPLAY_ANIMATION_STYLES = [
+  'Current Pulse',
+  'Rising Columns',
+  'Pressure Rings',
+  'Liquid Chamber',
+  'Tunnel Stack',
+  'Breathing Lens',
+  'Step Ladder',
+  'Needle Sweep',
+  'Shadow Well',
+  'Wave Folding Shaper',
+  'Torus Thickness Girth',
+  'Feedback Echo Line',
+  '3D Tesseract Projection',
+  'Organic Pitch Drift Orbit',
+  'Instability Tape Ribbons',
+  'Harmonic Weaver Sway'
+];
+
+const PHASE_DISPLAY_ANIMATION_STYLES = [
+  'Current Wave',
+  'Lissajous Orbit',
+  'Split Rails',
+  'Phase Scope',
+  'Crossing Waves',
+  'Comet Arc',
+  'Stereo Dots',
+  'Vector Tilt',
+  'Polarity Shutters',
+  'Split Polarity Disc',
+  'Phase Eclipse',
+  'Mirror Half Pulse',
+  'Polarity Orbit',
+  'Clean Split Flip',
+  'Waveform Morph',
+  'Lissajous Vector Scope',
+  '3D Isometric Coin'
+];
+
+const SPREAD_DISPLAY_ANIMATION_STYLES = [
+  'Current Width',
+  'Stereo Rails',
+  'Twin Halos',
+  'Expanding Brackets',
+  'Panorama Glow',
+  'Mirror Comets',
+  'Width Ladder',
+  'Elastic Band',
+  'Split Lens',
+  'Width Stereo Dots'
+];
+
+const NOISE_DISPLAY_ANIMATION_STYLES = [
+  'Current Static',
+  'Dust Field',
+  'Tape Speckles',
+  'Hash Lines',
+  'Granular Cloud',
+  'Crackle Dots',
+  'Snow Bands',
+  'Noise Gate',
+  'Radio Mist'
+];
+
+const normalizeDepthDisplayAnimationStyle = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(DEPTH_DISPLAY_ANIMATION_STYLES.length - 1, numericValue));
+};
+
+const normalizePhaseDisplayAnimationStyle = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(PHASE_DISPLAY_ANIMATION_STYLES.length - 1, numericValue));
+};
+
+const normalizeSpreadDisplayAnimationStyle = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(SPREAD_DISPLAY_ANIMATION_STYLES.length - 1, numericValue));
+};
+
+const normalizeNoiseDisplayAnimationStyle = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(NOISE_DISPLAY_ANIMATION_STYLES.length - 1, numericValue));
 };
 
 const splitDisplayValue = (formatted) => {
@@ -3019,29 +5194,28 @@ const splitDisplayValue = (formatted) => {
 
 const createDisplayParameter = (id, value, options = {}) => {
   const config = DISPLAY_PARAMETER_CONFIG[id] || DISPLAY_PARAMETER_CONFIG.sat;
-  if (id === 'autoGain') {
-    return {
-      ...config,
-      id,
-      val: value ? 'ON' : 'OFF',
-      unit: '',
-      level: value ? 1 : 0.08
-    };
-  }
-
   const formatted = formatKnobValue(config.label, value);
   const split = splitDisplayValue(formatted);
+  const valueDisplay = id === 'rate' && options.lfoSync
+    ? { val: SYNC_DIVS[options.lfoSyncDiv] || SYNC_DIVS[0], unit: '' }
+    : split;
   return {
     ...config,
     id,
-    ...split,
+    ...valueDisplay,
     level: Math.max(0.04, Math.min(1, (Number(value) || 0) / 100)),
     signalIn: Math.max(0.12, Math.min(1, (Number(options.input) || 0) / 100)),
     signalOut: Math.max(0.12, Math.min(1, (Number(options.output) || 0) / 100)),
     mode: options.mode,
     rate: options.rate,
     waveShape: options.waveShape,
-    driftAnimation: options.driftAnimation
+    displayTime: options.displayTime,
+    depthDisplayStyle: normalizeDepthDisplayAnimationStyle(options.depthDisplayStyle),
+    phaseDisplayStyle: normalizePhaseDisplayAnimationStyle(options.phaseDisplayStyle),
+    spreadDisplayStyle: normalizeSpreadDisplayAnimationStyle(options.spreadDisplayStyle),
+    noiseDisplayStyle: normalizeNoiseDisplayAnimationStyle(options.noiseDisplayStyle),
+    driftAnimation: options.driftAnimation,
+    filterPole: normalizeFilterPole(options.filterPole)
   };
 };
 
@@ -3062,17 +5236,56 @@ const getLfoWavePoints = (waveShape = 0, cycles = 2, amplitude = 6, yMid = 11, s
 };
 
 const SideDisplayButtons = ({ onPrev, onNext }) => {
-  const buttonClass = 'w-6 h-6 rounded-full bg-gradient-to-b from-[#3A2D25] to-[#1A1410] border border-[#5A4535]/40 shadow-[0_2px_4px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.1)] flex items-center justify-center text-[#8D7B68] hover:text-[#FF6B4A] hover:border-[#FF6B4A]/50 active:scale-95 transition-all outline-none';
+  const [prevSettleTick, setPrevSettleTick] = useState(0);
+  const [nextSettleTick, setNextSettleTick] = useState(0);
+  const buttonClass = 'relative flex h-[25px] w-[25px] items-center justify-center overflow-hidden rounded-full border border-[#151515] bg-[#181818] text-[#a4998e] outline-none transition-[border-color,color,filter,box-shadow] duration-200 ease-out hover:border-[#df6f5a]/55 hover:text-[#df6f5a] hover:shadow-[0_0_0_1px_rgba(223,111,90,0.26),2px_3px_5px_rgba(0,0,0,0.38),1px_2px_2px_rgba(0,0,0,0.2),inset_1px_1px_1px_rgba(255,255,255,0.07),inset_-1px_-1px_2px_rgba(0,0,0,0.2)] active:border-[#df6f5a]/75 active:brightness-[0.94]';
+  const buttonStyle = {
+    boxShadow: '2px 3px 5px rgba(0,0,0,0.38), 1px 2px 2px rgba(0,0,0,0.2), inset 1px 1px 1px rgba(255,255,255,0.12), inset -1px -1px 2px rgba(0,0,0,0.2)'
+  };
+  const faceClass = 'pointer-events-none absolute inset-[0.5px] rounded-full bg-[#262626]';
+  const faceStyle = {
+    boxShadow: 'inset 1px 1px 1px rgba(255,255,255,0.12), inset -1px -2px 3px rgba(0,0,0,0.26)'
+  };
+  const handlePrev = () => {
+    setPrevSettleTick(tick => tick + 1);
+    onPrev();
+  };
+  const handleNext = () => {
+    setNextSettleTick(tick => tick + 1);
+    onNext();
+  };
 
   return (
     <>
-      <button type="button" onClick={onPrev} className={buttonClass} aria-label="Previous option">
-        <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 16 16" aria-hidden="true">
+      <button
+        type="button"
+        onClick={handlePrev}
+        className={buttonClass}
+        style={buttonStyle}
+        aria-label="Previous option"
+      >
+        <span
+          key={`option-prev-face-${prevSettleTick}`}
+          className={`${prevSettleTick > 0 ? 'option-button-settle' : ''} ${faceClass}`}
+          style={faceStyle}
+        />
+        <svg className="relative z-10 h-2.5 w-2.5 fill-current" viewBox="0 0 16 16" aria-hidden="true">
           <path d="M10 14L4 8l6-6v12z" />
         </svg>
       </button>
-      <button type="button" onClick={onNext} className={buttonClass} aria-label="Next option">
-        <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 16 16" aria-hidden="true">
+      <button
+        type="button"
+        onClick={handleNext}
+        className={buttonClass}
+        style={buttonStyle}
+        aria-label="Next option"
+      >
+        <span
+          key={`option-next-face-${nextSettleTick}`}
+          className={`${nextSettleTick > 0 ? 'option-button-settle' : ''} ${faceClass}`}
+          style={faceStyle}
+        />
+        <svg className="relative z-10 h-2.5 w-2.5 fill-current" viewBox="0 0 16 16" aria-hidden="true">
           <path d="M6 2l6 6-6 6V2z" />
         </svg>
       </button>
@@ -3080,10 +5293,200 @@ const SideDisplayButtons = ({ onPrev, onNext }) => {
   );
 };
 
+const ArchivedSaturationMotionDisplay = ({ mode = 0, level = 0.5, power = true }) => {
+  const activeMode = normalizeSaturationMode(mode);
+  const tapeActive = activeMode === 0;
+  const glowLevel = level * 0.28;
+  const activeGlow = power ? 0.2 + glowLevel * 0.34 : 0.08;
+  const inactiveOpacity = power ? 0.32 : 0.16;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10 flex translate-x-[6px] translate-y-[2px] items-center justify-center overflow-hidden">
+      <div
+        className="absolute inset-x-[7px] bottom-[5px] h-[15px] rounded-full transition-all duration-300"
+        style={{
+          background: tapeActive
+            ? `linear-gradient(90deg, rgba(230,106,83,${0.08 + glowLevel * 0.2}), rgba(255,178,112,${0.08 + glowLevel * 0.16}), rgba(230,106,83,${0.08 + glowLevel * 0.2}))`
+            : `radial-gradient(ellipse at 50% 50%, rgba(255,178,112,${0.12 + glowLevel * 0.24}), rgba(230,106,83,${0.08 + glowLevel * 0.22}) 48%, transparent 78%)`,
+          filter: `blur(${2 + glowLevel * 3}px)`,
+          opacity: activeGlow
+        }}
+      />
+      {tapeActive ? (
+        <svg
+          viewBox="0 0 200 100"
+          className="relative h-[42px] w-[76px] -translate-x-[1px] translate-y-[2px]"
+          aria-hidden="true"
+          style={{
+            filter: `drop-shadow(0.8px 0.8px 0 rgba(105,35,28,${0.34 + level * 0.14})) drop-shadow(0 0 ${1.6 + level * 1.6}px rgba(230,106,83,${0.16 + level * 0.18}))`,
+            opacity: power ? 0.32 + level * 0.34 : 0.18
+          }}
+        >
+          <path
+            d="M45 75 C50 82 58 87 62 87 L74 81 L100 87 L122 81 L126 86 C130 86 140 82 155 75"
+            fill="none"
+            stroke="#e66a53"
+            strokeWidth="3"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            opacity={0.58 + level * 0.28}
+          />
+          {[
+            { cx: 45, cy: 45, yOffset: -1.4 },
+            { cx: 155, cy: 45, yOffset: -2 }
+          ].map(({ cx, cy, yOffset }) => (
+            <g key={cx} transform={`translate(0 ${yOffset})`}>
+              <g
+                className="hud-sat-reel"
+                style={{
+                  transformOrigin: `${cx}px ${cy}px`,
+                  animationDuration: `${Math.max(2.3, 3.1 - level * 0.6)}s`
+                }}
+              >
+                <circle cx={cx} cy={cy} r="32" fill="none" stroke="#e66a53" strokeWidth="4" />
+                <circle cx={cx} cy={cy} r="12" fill="none" stroke="#e66a53" strokeWidth="3.2" opacity="0.7" />
+                <circle cx={cx} cy={cy} r="3.5" fill="#e66a53" opacity="0.82" />
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <line
+                    key={`spoke-${cx}-${i}`}
+                    x1={cx}
+                    y1={cy - 12}
+                    x2={cx}
+                    y2={cy - 31}
+                    stroke="#e66a53"
+                    strokeWidth="3.2"
+                    strokeLinecap="round"
+                    transform={`rotate(${i * 120} ${cx} ${cy})`}
+                  />
+                ))}
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <line
+                    key={`notch-${cx}-${i}`}
+                    x1={cx}
+                    y1={cy - 12}
+                    x2={cx}
+                    y2={cy - 17}
+                    stroke="#e66a53"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    opacity="0.62"
+                    transform={`rotate(${i * 120 + 60} ${cx} ${cy})`}
+                  />
+                ))}
+              </g>
+            </g>
+          ))}
+          <g transform="translate(100, 70)" opacity={0.76 + level * 0.18}>
+            <rect x="-8" y="8" width="16" height="12" rx="1.5" fill="none" stroke="#e66a53" strokeWidth="3" />
+            <line x1="0" y1="8" x2="0" y2="16" stroke="#ffd0bc" strokeWidth="2.6" strokeLinecap="round" />
+            <line x1="-2" y1="20" x2="2" y2="20" stroke="#e66a53" strokeWidth="2.8" strokeLinecap="round" />
+            <line x1="0" y1="20" x2="0" y2="24" stroke="#e66a53" strokeWidth="2.8" strokeLinecap="round" />
+            <line x1="-6" y1="-13" x2="-6" y2="1" stroke="#e66a53" strokeWidth="3" strokeLinecap="round" />
+            <line x1="6" y1="-13" x2="6" y2="1" stroke="#e66a53" strokeWidth="3" strokeLinecap="round" />
+            <rect x="-1.5" y="-9" width="3" height="3" fill="#ffd0bc" opacity="0.72" />
+            <rect x="-1.5" y="-3" width="3" height="3" fill="#ffd0bc" opacity="0.72" />
+          </g>
+          <circle cx="60" cy="85" r="3" fill="none" stroke="#e66a53" strokeWidth="3" />
+          <circle cx="76" cy="82" r="4" fill="none" stroke="#e66a53" strokeWidth="3" />
+          <circle cx="76" cy="82" r="1.7" fill="#ffd0bc" opacity="0.82" />
+          <circle cx="124" cy="82" r="4" fill="none" stroke="#e66a53" strokeWidth="3" />
+          <line x1="121" y1="79" x2="127" y2="85" stroke="#ffd0bc" strokeWidth="2.8" strokeLinecap="round" opacity="0.76" />
+          <circle cx="140" cy="80" r="2.5" fill="none" stroke="#e66a53" strokeWidth="3" />
+        </svg>
+      ) : (
+        <svg
+          viewBox="0 0 82 48"
+          className="relative h-[44px] w-[78px] -translate-x-[1px] translate-y-[1px]"
+          aria-hidden="true"
+          style={{ opacity: power ? 0.38 + level * 0.3 : 0.18 }}
+        >
+          <defs>
+            <linearGradient id="satTubeGlass" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f9efe5" stopOpacity={power ? 0.18 : 0.08} />
+              <stop offset="52%" stopColor="#e66a53" stopOpacity={power ? 0.16 + level * 0.22 : 0.06} />
+              <stop offset="100%" stopColor="#0f0c0b" stopOpacity="0.5" />
+            </linearGradient>
+          </defs>
+          <g className="hud-sat-tube" style={{ animationDuration: `${Math.max(1.2, 3.3 - level * 1.7)}s` }}>
+            <path d="M31 10 H51 C54 10 56 13 56 16 V30 C56 36 51 40 41 40 C31 40 26 36 26 30 V16 C26 13 28 10 31 10Z" fill="url(#satTubeGlass)" stroke="#e66a53" strokeWidth="1.55" opacity={0.38 + level * 0.42} />
+            <path d="M35 37 C37 29 45 29 47 37" fill="none" stroke="#ffba83" strokeWidth="2.2" strokeLinecap="round" opacity={0.34 + level * 0.56} />
+            <path d="M35 21 H47 M35 25 H47" stroke="#f1d0ba" strokeWidth="1.1" strokeLinecap="round" opacity={0.18 + level * 0.24} />
+            <rect x="33" y="38" width="16" height="3" rx="1" fill="#171110" stroke="#e66a53" strokeWidth="1" opacity="0.72" />
+            {[36, 41, 46].map((x) => <line key={x} x1={x} y1="40" x2={x} y2="43" stroke="#8f4538" strokeWidth="1.15" opacity="0.85" />)}
+          </g>
+        </svg>
+      )}
+      <div className="absolute left-0 right-0 top-[4px] h-[7px]">
+        {['TAPE', 'DESK'].map((label, index) => {
+          const active = activeMode === index;
+          return (
+            <span
+              key={label}
+              className="absolute text-[5.5px] font-black uppercase tracking-[0.16em] transition-all duration-200"
+              style={{
+                left: index === 0 ? '18px' : '54px',
+                color: active && power ? '#ffd0bc' : `rgba(230,106,83,${inactiveOpacity})`,
+                textShadow: active && power ? `0 0 ${3 + level * 4}px rgba(230,106,83,${0.35 + level * 0.35})` : 'none'
+              }}
+            >
+              {label}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const SaturationDisplayGraphic = ({ mode = 0, level = 0.5, power = true }) => {
+  const activeMode = normalizeSaturationMode(mode);
+  const glowLevel = level * 0.5;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden">
+      <div
+        className="absolute inset-x-[8px] bottom-[7px] top-[16px] rounded-full transition-all duration-300"
+        style={{
+          background: `radial-gradient(ellipse at 50% 54%, rgba(255,208,188,${0.11 + glowLevel * 0.2}), rgba(230,106,83,${0.1 + glowLevel * 0.2}) 48%, transparent 78%)`,
+          filter: `blur(${4 + glowLevel * 3}px)`,
+          opacity: power ? 0.3 + glowLevel * 0.32 : 0.08
+        }}
+      />
+      <div className="relative flex w-[70px] translate-x-[6px] items-center justify-between">
+        <span
+          className="absolute left-1/2 top-1/2 h-[14px] w-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{
+            background: power ? 'rgba(255,208,188,0.68)' : 'rgba(230,106,83,0.2)',
+            boxShadow: power ? '0 0 3px rgba(230,106,83,0.42)' : 'none',
+            transform: 'translate(calc(-50% - 1px), -50%)'
+          }}
+        />
+        {['TAPE', 'DESK'].map((label, index) => {
+          const active = activeMode === index;
+          return (
+            <span
+              key={label}
+              className="text-[9px] font-black uppercase tracking-[0.14em] transition-colors duration-200"
+              style={{
+                color: active && power ? 'rgba(255,241,232,0.88)' : `rgba(230,106,83,${power ? 0.3 : 0.16})`,
+                textShadow: active && power ? `0 0 ${3 + glowLevel * 5}px rgba(230,106,83,${0.3 + glowLevel * 0.22})` : 'none',
+                transform: index === 1 ? 'translateX(-1px)' : undefined
+              }}
+            >
+              {label}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const DisplayFeatureAnimation = ({ parameter }) => {
   const level = parameter.level ?? 0.5;
   const accent = DISPLAY_ACCENT;
   const speed = `${Math.max(0.85, 3.4 - level * 2.1)}s`;
+  const time = parameter.displayTime ?? 0;
 
   switch (parameter.anim) {
     case 'bars':
@@ -3105,18 +5508,157 @@ const DisplayFeatureAnimation = ({ parameter }) => {
         );
       }
     case 'static':
-      return (
-        <div className="flex h-full w-full items-center justify-center p-2">
-          <div
-            className="h-full w-full rounded-sm"
-            style={{
-              opacity: 0.16 + level * 0.56,
-              backgroundImage: `radial-gradient(${accent} 1px, transparent 1px)`,
-              backgroundSize: `${Math.max(2, 5 - level * 2)}px ${Math.max(2, 5 - level * 2)}px`
-            }}
-          />
-        </div>
-      );
+      {
+        const styleIndex = normalizeNoiseDisplayAnimationStyle(parameter.noiseDisplayStyle);
+        const density = Math.max(2, 5 - level * 2);
+        const dots = [
+          [7, 8, 0.7, 0.28], [14, 20, 0.5, 0.22], [21, 11, 0.8, 0.34], [29, 26, 0.6, 0.25],
+          [36, 7, 0.5, 0.2], [44, 18, 0.9, 0.36], [52, 9, 0.6, 0.26], [48, 28, 0.45, 0.2],
+          [11, 29, 0.55, 0.24], [32, 16, 0.45, 0.19], [39, 25, 0.65, 0.28], [24, 4, 0.5, 0.22]
+        ];
+        switch (styleIndex) {
+          case 1:
+            return (
+              <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }} aria-hidden="true">
+                <g className="hud-static" opacity={0.24 + level * 0.56}>
+                  {dots.map(([cx, cy, r, opacity], i) => (
+                    <circle key={i} cx={cx} cy={cy} r={r + level * 0.45} fill="currentColor" opacity={opacity + level * 0.22} />
+                  ))}
+                  <path d="M4,18 H54" stroke="currentColor" strokeWidth="0.6" opacity={0.08 + level * 0.18} />
+                </g>
+              </svg>
+            );
+          case 2:
+            return (
+              <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }} aria-hidden="true">
+                <g className="hud-static" opacity={0.22 + level * 0.58}>
+                  {[9, 18, 31, 45, 52].map((x, i) => (
+                    <line key={x} x1={x} y1={4 + (i % 2) * 3} x2={x + (i % 2 ? 1 : -1)} y2={28 - (i % 3)} stroke="currentColor" strokeWidth={0.35 + level * 0.55} opacity={0.18 + level * 0.24} />
+                  ))}
+                  {dots.slice(0, 8).map(([cx, cy, r, opacity], i) => (
+                    <circle key={i} cx={cx} cy={cy} r={r} fill="#ffd0bc" opacity={opacity + level * 0.18} />
+                  ))}
+                </g>
+              </svg>
+            );
+          case 3:
+            return (
+              <div className="relative flex h-full w-full items-center justify-center overflow-hidden p-2">
+                <div
+                  className="hud-static h-full w-full rounded-sm"
+                  style={{
+                    opacity: 0.12 + level * 0.54,
+                    backgroundImage: `repeating-linear-gradient(135deg, ${accent} 0 1px, transparent 1px ${7 - level * 2}px)`,
+                    boxShadow: `inset 0 0 ${4 + level * 8}px rgba(230,106,83,${0.08 + level * 0.18})`
+                  }}
+                />
+              </div>
+            );
+          case 4:
+            return (
+              <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+                <div
+                  className="hud-depth-soft absolute rounded-full"
+                  style={{
+                    width: `${36 + level * 38}px`,
+                    height: `${15 + level * 13}px`,
+                    background: `radial-gradient(ellipse, rgba(230,106,83,${0.2 + level * 0.42}), rgba(255,208,188,${0.08 + level * 0.18}) 44%, transparent 76%)`,
+                    filter: `blur(${4 + level * 4}px)`,
+                    opacity: 0.24 + level * 0.52
+                  }}
+                />
+                <svg viewBox="0 0 58 34" className="absolute h-full w-full p-1" style={{ color: accent }} aria-hidden="true">
+                  {dots.map(([cx, cy, r, opacity], i) => (
+                    <circle key={i} cx={cx} cy={cy} r={r + level * 0.25} fill="currentColor" opacity={opacity + level * 0.18} />
+                  ))}
+                </svg>
+              </div>
+            );
+          case 5:
+            return (
+              <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }} aria-hidden="true">
+                <g className="hud-phase-soft">
+                  {dots.map(([cx, cy, r, opacity], i) => (
+                    <circle key={i} cx={cx} cy={cy} r={r + (i % 3) * 0.25 + level * 0.38} fill="none" stroke="currentColor" strokeWidth="0.7" opacity={opacity + level * 0.28} />
+                  ))}
+                  <path d="M6,22 L16,18 L25,22 L36,13 L52,16" fill="none" stroke="currentColor" strokeWidth="0.6" opacity={0.1 + level * 0.28} />
+                </g>
+              </svg>
+            );
+          case 6:
+            return (
+              <div className="relative flex h-full w-full flex-col justify-center gap-[3px] px-2">
+                {[0, 1, 2, 3, 4].map(i => (
+                  <div key={i} className="hud-static h-[2px] rounded-full bg-[#331812]/70" style={{ animationDelay: `${-i * 0.05}s` }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${22 + level * (58 + i * 4)}%`,
+                        backgroundColor: accent,
+                        opacity: 0.13 + level * (0.34 + i * 0.03)
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          case 7:
+            return (
+              <div className="relative flex h-full w-full items-center justify-center overflow-hidden px-2">
+                <div className="absolute h-[22px] w-[82%] rounded-md border border-[#331812]" />
+                <div
+                  className="hud-static h-[18px] rounded-sm"
+                  style={{
+                    width: `${12 + level * 68}%`,
+                    backgroundImage: `radial-gradient(${accent} 0.8px, transparent 0.8px)`,
+                    backgroundSize: `${4 - level}px ${4 - level}px`,
+                    opacity: 0.18 + level * 0.5
+                  }}
+                />
+                <span className="absolute left-[15%] h-[20px] w-px bg-current opacity-25" style={{ color: accent }} />
+                <span className="absolute right-[15%] h-[20px] w-px bg-current opacity-25" style={{ color: accent }} />
+              </div>
+            );
+          case 8:
+            return (
+              <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+                {[0, 1, 2].map(i => (
+                  <div
+                    key={i}
+                    className="hud-depth-soft absolute rounded-full"
+                    style={{
+                      width: `${26 + level * 30 + i * 12}px`,
+                      height: `${8 + level * 8 + i * 4}px`,
+                      background: `radial-gradient(ellipse, rgba(230,106,83,${0.16 + level * 0.26}), transparent 72%)`,
+                      transform: `translate(${(i - 1) * 13}px, ${(i % 2 ? -1 : 1) * (2 + level * 3)}px)`,
+                      filter: `blur(${3 + i * 1.5}px)`,
+                      opacity: 0.18 + level * 0.3,
+                      animationDelay: `${-i * 0.45}s`
+                    }}
+                  />
+                ))}
+                <svg viewBox="0 0 58 34" className="absolute h-full w-full p-1" style={{ color: accent }} aria-hidden="true">
+                  {dots.slice(0, 9).map(([cx, cy, r, opacity], i) => (
+                    <circle key={i} cx={cx} cy={cy} r={r} fill="currentColor" opacity={opacity + level * 0.16} />
+                  ))}
+                </svg>
+              </div>
+            );
+          default:
+            return (
+              <div className="flex h-full w-full items-center justify-center p-2">
+                <div
+                  className="h-full w-full rounded-sm"
+                  style={{
+                    opacity: 0.16 + level * 0.56,
+                    backgroundImage: `radial-gradient(${accent} 1px, transparent 1px)`,
+                    backgroundSize: `${density}px ${density}px`
+                  }}
+                />
+              </div>
+            );
+        }
+      }
     case 'sparkle':
       return (
         <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
@@ -3167,22 +5709,86 @@ const DisplayFeatureAnimation = ({ parameter }) => {
       );
     case 'curve':
       {
-        const cutoffX = 8 + level * 45;
-        const highTail = 29 - level * 5;
-        const lowTail = 9 + level * 1.5;
+        const filterPole = normalizeFilterPole(parameter.filterPole);
+        const isSteep = filterPole === 24;
+        const cutoffX = 7 + level * 36;
+        const passY = 18.4;
+        const falloffRun = isSteep ? 13.5 : 17;
+        const endX = Math.min(55, cutoffX + falloffRun);
+        const endY = 36.2;
+        const bottomY = 37;
+        const leftBleedX = -12;
+        const curvePath = `M${leftBleedX},${passY} H${cutoffX.toFixed(1)} C${(cutoffX + falloffRun * 0.36).toFixed(1)},${passY} ${(endX - falloffRun * 0.18).toFixed(1)},${(endY - 4.9).toFixed(1)} ${endX.toFixed(1)},${endY}`;
+        const responseFillPath = `${curvePath} L${endX.toFixed(1)},${bottomY} H${leftBleedX} Z`;
+        const markerPath = `M${cutoffX.toFixed(1)},${passY} V${bottomY}`;
+        const poleText = (pole, x) => {
+          const selected = filterPole === pole;
+          return (
+            <text
+              key={pole}
+              x={x}
+              y="11.4"
+              textAnchor="middle"
+              fill={selected ? '#fff1e8' : 'currentColor'}
+              opacity={selected ? 0.9 : 0.34}
+              style={{
+                fontSize: 7.8,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                filter: selected ? 'drop-shadow(0 0 3px rgba(230,106,83,0.58))' : 'none',
+                transition: 'opacity 180ms ease-out, filter 180ms ease-out'
+              }}
+            >
+              {pole}
+            </text>
+          );
+        };
         return (
-          <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }}>
-            <path d="M3,10 H48 C53,10 55,14 55,25" fill="none" stroke="#2b1712" strokeWidth="2" strokeLinecap="round" opacity="0.68" />
-            <path
-              d={`M3,${lowTail.toFixed(1)} H${cutoffX.toFixed(1)} C${(cutoffX + 4.5).toFixed(1)},${lowTail.toFixed(1)} ${(cutoffX + 7.5).toFixed(1)},${highTail - 8} 55,${highTail}`}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              className="transition-all duration-200 drop-shadow-[0_0_3px_rgba(230,106,83,0.85)]"
-            />
-            <line x1={cutoffX} y1="7" x2={cutoffX} y2="28" stroke="currentColor" strokeWidth="0.8" opacity="0.38" className="transition-all duration-200" />
-          </svg>
+          <div className="relative h-full w-full">
+            <svg viewBox="0 0 58 14" className="absolute left-0 top-0 h-[24px] w-full" style={{ color: accent }}>
+              {poleText(12, 21.5)}
+              <line x1="30.4" y1="4.7" x2="30.4" y2="12.8" stroke="currentColor" strokeWidth="0.55" opacity="0.32" />
+              {poleText(24, 39.5)}
+            </svg>
+            <div className="absolute inset-y-0 left-0 right-[-16px] overflow-hidden rounded-full">
+              <svg viewBox="-12 0 82 39" className="h-full w-full overflow-visible" style={{ color: accent }}>
+                <defs>
+                  <linearGradient id="filter-response-fill" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="currentColor" stopOpacity="0.133" />
+                    <stop offset="62%" stopColor="currentColor" stopOpacity="0.086" />
+                    <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                  </linearGradient>
+                  <linearGradient id="filter-response-fade" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="white" stopOpacity="0.171" />
+                    <stop offset="100%" stopColor="white" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d={responseFillPath}
+                  fill="url(#filter-response-fill)"
+                  opacity="0.78"
+                  style={{ transition: 'd 280ms cubic-bezier(0.22, 1, 0.36, 1)' }}
+                />
+                <path
+                  d={`M${leftBleedX},${passY + 2} H${Math.max(4, cutoffX - 1).toFixed(1)} V${bottomY} H${leftBleedX} Z`}
+                  fill="url(#filter-response-fade)"
+                  opacity="0.17"
+                  style={{ transition: 'd 280ms cubic-bezier(0.22, 1, 0.36, 1)' }}
+                />
+                <path
+                  d={curvePath}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="drop-shadow-[0_0_3px_rgba(230,106,83,0.64)]"
+                  style={{ transition: 'd 280ms cubic-bezier(0.22, 1, 0.36, 1)' }}
+                />
+                <path d={markerPath} fill="none" stroke="currentColor" strokeWidth="0.7" opacity="0.34" style={{ transition: 'd 280ms cubic-bezier(0.22, 1, 0.36, 1)' }} />
+              </svg>
+            </div>
+          </div>
         );
       }
     case 'rateWave':
@@ -3260,16 +5866,223 @@ const DisplayFeatureAnimation = ({ parameter }) => {
         </div>
       );
     case 'width':
-      return (
-        <div className="relative flex h-full w-full items-center justify-center">
-          <div className="absolute h-px rounded-full transition-all duration-200" style={{ width: `${18 + level * 76}%`, backgroundColor: accent, opacity: 0.7 }} />
-          <div className="absolute flex items-center justify-between transition-all duration-200" style={{ width: `${22 + level * 68}%` }}>
-            <span className="h-3 w-[3px] rounded-sm" style={{ backgroundColor: accent }} />
-            <span className="h-3 w-[3px] rounded-sm" style={{ backgroundColor: accent }} />
+      {
+        const styleIndex = normalizeSpreadDisplayAnimationStyle(parameter.spreadDisplayStyle);
+        const railWidth = 18 + level * 66;
+        const bracketWidth = railWidth;
+        const split = 9 + level * 18;
+        switch (styleIndex) {
+          case 1:
+            return (
+              <div className="relative flex h-full w-full items-center justify-center px-2">
+                {[-1, 1].map((side, i) => (
+                  <div
+                    key={side}
+                    className="hud-phase-soft absolute h-[3px] rounded-full"
+                    style={{
+                      width: `${18 + level * 28}%`,
+                      backgroundColor: accent,
+                      opacity: 0.36 + level * 0.42,
+                      transform: `translate(${side * split}px, ${i ? 5 : -5}px)`
+                    }}
+                  />
+                ))}
+                <div className="absolute h-px rounded-full bg-[#331812]" style={{ width: `${railWidth}%` }} />
+              </div>
+            );
+          case 2:
+            return (
+              <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }} aria-hidden="true">
+                <g className="hud-phase-soft">
+                  <circle cx={29 - split * 0.72} cy="17" r={4 + level * 5} fill="none" stroke="currentColor" strokeWidth="1.1" opacity={0.28 + level * 0.42} />
+                  <circle cx={29 + split * 0.72} cy="17" r={4 + level * 5} fill="none" stroke="currentColor" strokeWidth="1.1" opacity={0.28 + level * 0.42} />
+                  <line x1={29 - split * 0.72} y1="17" x2={29 + split * 0.72} y2="17" stroke="currentColor" strokeWidth="0.8" opacity={0.16 + level * 0.24} />
+                </g>
+              </svg>
+            );
+          case 3:
+            return (
+              <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }} aria-hidden="true">
+                <g className="hud-depth-soft" fill="none" stroke="currentColor" strokeLinecap="round">
+                  <path d={`M${24 - split * 0.82},9 H${17 - split * 0.52} V25 H${24 - split * 0.82}`} strokeWidth="1.5" opacity={0.38 + level * 0.42} />
+                  <path d={`M${34 + split * 0.82},9 H${41 + split * 0.52} V25 H${34 + split * 0.82}`} strokeWidth="1.5" opacity={0.38 + level * 0.42} />
+                  <line x1="22" y1="17" x2="36" y2="17" strokeWidth="0.7" opacity="0.2" />
+                </g>
+              </svg>
+            );
+          case 4:
+            return (
+              <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+                <div
+                  className="hud-depth-soft absolute rounded-full"
+                  style={{
+                    width: `${22 + level * 62}px`,
+                    height: `${10 + level * 16}px`,
+                    background: `radial-gradient(ellipse, rgba(230,106,83,${0.18 + level * 0.4}) 0%, rgba(255,208,188,${0.1 + level * 0.18}) 42%, transparent 76%)`,
+                    filter: `blur(${3 + level * 4}px)`,
+                    opacity: 0.28 + level * 0.48
+                  }}
+                />
+                <div className="absolute h-px rounded-full" style={{ width: `${railWidth}%`, backgroundColor: accent, opacity: 0.42 + level * 0.28 }} />
+              </div>
+            );
+          case 5:
+            return (
+              <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }} aria-hidden="true">
+                <g className="hud-phase-soft" fill="none" stroke="currentColor" strokeLinecap="round">
+                  <path d={`M29,17 C${25 - split * 0.4},${13 - level * 4} ${19 - split * 0.55},${12 + level * 2} ${11 - split * 0.35},17`} strokeWidth="1.4" opacity={0.48 + level * 0.34} />
+                  <path d={`M29,17 C${33 + split * 0.4},${21 + level * 4} ${39 + split * 0.55},${22 - level * 2} ${47 + split * 0.35},17`} strokeWidth="1.4" opacity={0.48 + level * 0.34} />
+                  <circle cx={11 - split * 0.35} cy="17" r="1.7" fill="currentColor" opacity={0.42 + level * 0.38} />
+                  <circle cx={47 + split * 0.35} cy="17" r="1.7" fill="currentColor" opacity={0.42 + level * 0.38} />
+                </g>
+              </svg>
+            );
+          case 6:
+            return (
+              <div className="relative flex h-full w-full items-center justify-center gap-[3px] px-2">
+                {Array.from({ length: 11 }).map((_, i) => {
+                  const distance = Math.abs(i - 5);
+                  const active = distance <= Math.ceil(level * 5);
+                  return (
+                    <span
+                      key={i}
+                      className="hud-depth-soft w-[3px] rounded-full"
+                      style={{
+                        height: `${8 + (5 - distance) * 2}px`,
+                        backgroundColor: accent,
+                        opacity: active ? 0.26 + level * 0.52 : 0.08
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            );
+          case 7:
+            return (
+              <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }} aria-hidden="true">
+                <path d={`M${8 + (1 - level) * 8},17 C18,${10 - level * 4} 24,${24 + level * 4} 29,17 S40,${10 - level * 4} ${50 - (1 - level) * 8},17`} fill="none" stroke="#331812" strokeWidth="3" strokeLinecap="round" opacity="0.7" />
+                <path className="hud-phase-soft" d={`M${8 + (1 - level) * 8},17 C18,${10 - level * 4} 24,${24 + level * 4} 29,17 S40,${10 - level * 4} ${50 - (1 - level) * 8},17`} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity={0.48 + level * 0.34} />
+              </svg>
+            );
+          case 8:
+            return (
+              <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }} aria-hidden="true">
+                <g className="hud-depth-soft">
+                  <ellipse cx={29 - split * 0.58} cy="17" rx={5 + level * 7} ry={9 + level * 3} fill="currentColor" opacity={0.08 + level * 0.18} />
+                  <ellipse cx={29 + split * 0.58} cy="17" rx={5 + level * 7} ry={9 + level * 3} fill="currentColor" opacity={0.08 + level * 0.18} />
+                  <ellipse cx={29 - split * 0.58} cy="17" rx={5 + level * 7} ry={9 + level * 3} fill="none" stroke="currentColor" strokeWidth="1" opacity={0.28 + level * 0.34} />
+                  <ellipse cx={29 + split * 0.58} cy="17" rx={5 + level * 7} ry={9 + level * 3} fill="none" stroke="currentColor" strokeWidth="1" opacity={0.28 + level * 0.34} />
+                </g>
+              </svg>
+            );
+          case 9:
+            return (
+              <div className="relative flex h-full w-full items-center justify-center">
+                <div className="absolute h-px rounded-full" style={{ width: `${railWidth}%`, backgroundColor: accent, opacity: 0.62 }} />
+                <div className="absolute flex items-center justify-between" style={{ width: `${bracketWidth}%` }}>
+                  <span className="h-3 w-[3px] rounded-sm" style={{ backgroundColor: accent, opacity: 0.86 }} />
+                  <span className="h-3 w-[3px] rounded-sm" style={{ backgroundColor: accent, opacity: 0.86 }} />
+                </div>
+                {[0, 1].map(i => (
+                  <div
+                    key={i}
+                    className="hud-phase-soft absolute h-2.5 w-2.5 rounded-full"
+                    style={{
+                      transform: `translate(${(i === 0 ? -1 : 1) * (7 + level * 15)}px, ${i === 0 ? -5 : 5}px)`,
+                      backgroundColor: i === 0 ? accent : '#ffd0bc',
+                      opacity: i === 0 ? 0.72 : 0.5,
+                      boxShadow: '0 0 6px rgba(230,106,83,0.55)',
+                      animationDelay: i === 0 ? '0s' : '-0.65s'
+                    }}
+                  />
+                ))}
+                <div className="relative h-1.5 w-1.5 rounded-full shadow-[0_0_7px_rgba(230,106,83,0.9)]" style={{ backgroundColor: accent }} />
+              </div>
+            );
+          default:
+            return (
+              <div className="relative flex h-full w-full items-center justify-center">
+                <div className="absolute h-px rounded-full" style={{ width: `${railWidth}%`, backgroundColor: accent, opacity: 0.7 }} />
+                <div className="absolute flex items-center justify-between" style={{ width: `${bracketWidth}%` }}>
+                  <span className="h-3 w-[3px] rounded-sm" style={{ backgroundColor: accent }} />
+                  <span className="h-3 w-[3px] rounded-sm" style={{ backgroundColor: accent }} />
+                </div>
+                <div className="relative h-1.5 w-1.5 rounded-full shadow-[0_0_7px_rgba(230,106,83,0.9)]" style={{ backgroundColor: accent }} />
+              </div>
+            );
+        }
+      }
+    case 'mixBlend':
+      {
+        const wet = Math.max(0, Math.min(1, level));
+        const dry = 1 - wet;
+        const activity = wet;
+        const dryPresence = 0.07 + wet * 0.12;
+        const wetPresence = Math.pow(wet, 1.25);
+        const dryDotOpacity = 0.03 + activity * 0.065;
+        const wetDotOpacity = 0.04 + wetPresence * 0.3;
+        return (
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+            <svg viewBox="0 0 58 34" className="absolute h-full w-full" aria-hidden="true">
+              <defs>
+                <radialGradient id="hudMixDry" cx="34%" cy="44%" r="63%">
+                  <stop offset="0%" stopColor="#f2d7ad" stopOpacity={dryPresence} />
+                  <stop offset="52%" stopColor="#c79266" stopOpacity={dryPresence * 0.58} />
+                  <stop offset="100%" stopColor="#c79266" stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id="hudMixWet" cx="64%" cy="48%" r="64%">
+                  <stop offset="0%" stopColor="#ffb49d" stopOpacity={0.055 + wetPresence * 0.52} />
+                  <stop offset="50%" stopColor={accent} stopOpacity={0.03 + wetPresence * 0.38} />
+                  <stop offset="100%" stopColor={accent} stopOpacity="0" />
+                </radialGradient>
+                <filter id="hudMixSoft" x="-25%" y="-70%" width="150%" height="240%">
+                  <feGaussianBlur stdDeviation={0.7 + wet * 1.25} />
+                </filter>
+              </defs>
+              <g filter="url(#hudMixSoft)" className="hud-mix-float">
+                <ellipse
+                  cx={20 + wet * 1.5}
+                  cy="17"
+                  rx={5 + wet * 10}
+                  ry={3 + wet * 7}
+                  fill="url(#hudMixDry)"
+                  opacity={0.22 + wet * 0.28}
+                />
+                <ellipse
+                  cx={30 + wet * 5}
+                  cy="17"
+                  rx={5 + wet * 16}
+                  ry={3 + wet * 11.4}
+                  fill="url(#hudMixWet)"
+                  opacity={0.16 + wetPresence * 0.78}
+                />
+              </g>
+              <g className="hud-mix-dots" opacity={0.1 + wet * 0.9}>
+                {Array.from({ length: 9 }, (_, i) => (
+                  <circle
+                    key={`dry-${i}`}
+                    cx={13 + i * 2.15}
+                    cy={13 + (i % 3) * 3.2}
+                    r={0.45 + wet * 0.55}
+                    fill="#f2d7ad"
+                    opacity={dryDotOpacity}
+                  />
+                ))}
+                {Array.from({ length: 9 }, (_, i) => (
+                  <circle
+                    key={`wet-${i}`}
+                    cx={29 + i * 2.7}
+                    cy={13 + ((i + 1) % 3) * 3.2}
+                    r={0.35 + wet * 1.1}
+                    fill={accent}
+                    opacity={wetDotOpacity}
+                  />
+                ))}
+              </g>
+            </svg>
           </div>
-          <div className="relative h-1.5 w-1.5 rounded-full shadow-[0_0_7px_rgba(230,106,83,0.9)]" style={{ backgroundColor: accent }} />
-        </div>
-      );
+        );
+      }
     case 'lfo':
       return (
         <svg viewBox="0 0 56 34" className="h-full w-full fill-none p-1" style={{ color: accent }}>
@@ -3278,52 +6091,699 @@ const DisplayFeatureAnimation = ({ parameter }) => {
         </svg>
       );
     case 'pulse':
-      return (
-        <div className="relative flex h-full w-full items-center justify-center">
-          <div className="absolute h-[3px] w-[62%] overflow-hidden rounded-full bg-[#2b1712]">
+      {
+        const styleIndex = normalizeDepthDisplayAnimationStyle(parameter.depthDisplayStyle);
+        if (styleIndex === 1) {
+          return (
+            <div className="flex h-full w-full items-end justify-center gap-[3px] px-3 pb-2">
+              {Array.from({ length: 7 }, (_, i) => {
+                const barLevel = Math.max(0.12, Math.min(1, level * (0.62 + i * 0.07)));
+                return (
+                  <div key={i} className="relative h-[28px] w-[4px] overflow-hidden rounded-full bg-[#2b1712]">
+                    <div
+                      className="hud-depth-soft absolute bottom-0 left-0 w-full rounded-full"
+                      style={{
+                        height: `${20 + barLevel * 76}%`,
+                        background: i % 2 ? '#f0c894' : accent,
+                        boxShadow: '0 0 5px rgba(230,106,83,0.58)',
+                        animationDelay: `${-i * 0.13}s`
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          );
+        }
+        if (styleIndex === 2) {
+          return (
+            <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+              {[0, 1, 2].map(i => (
+                <div
+                  key={i}
+                  className="hud-depth-ring absolute rounded-full border"
+                  style={{
+                    width: 12 + level * 22 + i * 10,
+                    height: 12 + level * 22 + i * 10,
+                    borderColor: i === 0 ? '#ffd0bc' : accent,
+                    opacity: 0.36 - i * 0.08,
+                    animationDelay: `${-i * 0.42}s`
+                  }}
+                />
+              ))}
+              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: accent, boxShadow: '0 0 7px rgba(230,106,83,0.8)' }} />
+            </div>
+          );
+        }
+        if (styleIndex === 3) {
+          return (
+            <div className="relative flex h-full w-full items-center justify-center">
+              <div className="relative h-[24px] w-[44px] overflow-hidden rounded-[10px] border border-[#3a211a] bg-[#1d1210]">
+                <div
+                  className="hud-depth-liquid absolute bottom-0 left-0 w-full"
+                  style={{
+                    height: `${12 + level * 82}%`,
+                    background: 'linear-gradient(180deg, rgba(255,208,188,0.42), rgba(230,106,83,0.66))',
+                    boxShadow: '0 -2px 8px rgba(230,106,83,0.34)'
+                  }}
+                />
+                <svg viewBox="0 0 44 12" className="absolute left-0 top-[4px] h-3 w-full" style={{ color: '#ffd0bc', opacity: 0.58 }}>
+                  <path className="hud-phase-soft" d={`M0,6 C8,${4 - level * 2} 13,${8 + level * 2} 22,6 S36,${4 - level * 2} 44,6`} fill="none" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
+              </div>
+            </div>
+          );
+        }
+        if (styleIndex === 4) {
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }}>
+              {[0, 1, 2, 3].map(i => (
+                <rect
+                  key={i}
+                  x={7 + i * 5}
+                  y={5 + i * 3}
+                  width={44 - i * 10}
+                  height={24 - i * 6}
+                  rx={10 - i * 1.4}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.1"
+                  opacity={0.12 + level * (0.12 + i * 0.07)}
+                  className="hud-depth-soft"
+                  style={{ animationDelay: `${-i * 0.22}s` }}
+                />
+              ))}
+              <path d="M12,17 H46" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity={0.34 + level * 0.34} />
+            </svg>
+          );
+        }
+        if (styleIndex === 5) {
+          return (
+            <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+              <div
+                className="hud-depth-soft absolute rounded-full"
+                style={{
+                  width: 22 + level * 34,
+                  height: 12 + level * 18,
+                  background: `radial-gradient(ellipse, rgba(255,216,184,${0.12 + level * 0.26}), rgba(230,106,83,${0.16 + level * 0.38}) 48%, transparent 75%)`,
+                  filter: `blur(${2 + level * 3}px)`
+                }}
+              />
+              <div className="h-[3px] w-[46px] rounded-full bg-[#2b1712]">
+                <div className="h-full rounded-full" style={{ width: `${16 + level * 78}%`, backgroundColor: accent, boxShadow: '0 0 5px rgba(230,106,83,0.65)' }} />
+              </div>
+            </div>
+          );
+        }
+        if (styleIndex === 6) {
+          return (
+            <div className="grid h-full w-full grid-cols-5 items-center gap-[3px] px-3">
+              {Array.from({ length: 10 }, (_, i) => {
+                const active = i / 9 <= level;
+                return (
+                  <div
+                    key={i}
+                    className="h-[5px] rounded-sm transition-all duration-200"
+                    style={{
+                      backgroundColor: active ? accent : '#2b1712',
+                      opacity: active ? 0.42 + level * 0.42 : 0.55,
+                      boxShadow: active ? '0 0 4px rgba(230,106,83,0.56)' : 'none'
+                    }}
+                  />
+                );
+              })}
+            </div>
+          );
+        }
+        if (styleIndex === 7) {
+          const angle = -122 + level * 244;
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }}>
+              <path d="M12,25 A18,18 0 0 1 46,25" fill="none" stroke="#2b1712" strokeWidth="3" strokeLinecap="round" />
+              <path d="M12,25 A18,18 0 0 1 46,25" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity={0.24 + level * 0.54} />
+              <g transform={`translate(29 25) rotate(${angle})`}>
+                <line x1="0" y1="0" x2="0" y2="-15" stroke="#ffd0bc" strokeWidth="1.6" strokeLinecap="round" />
+                <circle cx="0" cy="0" r="2.2" fill="currentColor" opacity="0.74" />
+              </g>
+            </svg>
+          );
+        }
+        if (styleIndex === 8) {
+          return (
+            <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+              <div
+                className="absolute rounded-full"
+                style={{
+                  width: 44 + level * 20,
+                  height: 20 + level * 10,
+                  background: 'radial-gradient(ellipse, rgba(0,0,0,0.48), rgba(0,0,0,0.12) 58%, transparent 80%)',
+                  filter: 'blur(3px)'
+                }}
+              />
+              <div
+                className="hud-depth-soft absolute rounded-full"
+                style={{
+                  width: 12 + level * 30,
+                  height: 6 + level * 12,
+                  background: `radial-gradient(ellipse, rgba(255,208,188,${0.18 + level * 0.28}), rgba(230,106,83,${0.16 + level * 0.32}) 48%, transparent 74%)`,
+                  filter: 'blur(2px)'
+                }}
+              />
+            </div>
+          );
+        }
+        if (styleIndex === 9) {
+          const points = [];
+          for (let x = 6; x <= 52; x += 1) {
+            const normX = (x - 6) / 46;
+            const baseWave = Math.sin(normX * Math.PI * 2 + time * 1.3);
+            const foldedWave = Math.sin(normX * Math.PI * 6 + time * 2.4) * Math.cos(normX * Math.PI * 2 - time * 0.8);
+            const y = 17 + (baseWave * (1 - level) + foldedWave * level) * 10.5;
+            points.push(`${x},${y.toFixed(2)}`);
+          }
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <circle cx="29" cy="17" r="12.4" fill="none" stroke="currentColor" strokeWidth="0.8" opacity="0.18" />
+              <path
+                d={`M ${points.join(' L ')}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={0.56 + level * 0.3}
+                className="hud-phase-soft"
+              />
+            </svg>
+          );
+        }
+        if (styleIndex === 10) {
+          const pulse = 0.5 + 0.5 * Math.sin(time * 2.4);
+          const animatedLevel = Math.max(0, Math.min(1, level * 0.82 + pulse * level * 0.18));
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <circle cx="29" cy="17" r="9.8" fill="none" stroke="#2b1712" strokeWidth={1.4 + animatedLevel * 6.2} opacity="0.8" />
+              <circle
+                cx="29"
+                cy="17"
+                r="9.8"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.1 + animatedLevel * 5}
+                opacity={0.38 + animatedLevel * 0.42}
+                className="hud-depth-soft"
+              />
+              <circle cx="29" cy="17" r={2.4 + animatedLevel * 1.8} fill="currentColor" opacity={0.16 + animatedLevel * 0.28} />
+            </svg>
+          );
+        }
+        if (styleIndex === 11) {
+          return (
+            <svg viewBox="0 0 100 100" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <circle cx="50" cy="50" r="12" fill="none" stroke="currentColor" strokeWidth="3" opacity="0.84" />
+              <circle cx="50" cy="50" r="24" fill="none" stroke="currentColor" strokeWidth="2.5" opacity={Math.max(0, (level - 0.2) * 1.2)} />
+              <circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" strokeWidth="1.5" opacity={Math.max(0, (level - 0.5) * 2)} />
+            </svg>
+          );
+        }
+        if (styleIndex === 12) {
+          const vertices = [
+            [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+            [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
+          ];
+          const rotY = level * Math.PI * 0.6 + time * (0.45 + level * 0.9);
+          const rotX = level * Math.PI * 0.3 + time * (0.22 + level * 0.45);
+          const project = (scale) => vertices.map(([x, y, z]) => {
+            const x1 = x * Math.cos(rotY) - z * Math.sin(rotY);
+            const z1 = x * Math.sin(rotY) + z * Math.cos(rotY);
+            const y2 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
+            return [29 + x1 * scale, 17 + y2 * scale];
+          });
+          const outer = project(7.6 + level * 3.2);
+          const inner = project(3.8 + level * 1.9);
+          const cubePath = (pts) => (
+            <>
+              <path d={`M ${pts[0][0]},${pts[0][1]} L ${pts[1][0]},${pts[1][1]} L ${pts[2][0]},${pts[2][1]} L ${pts[3][0]},${pts[3][1]} Z`} />
+              <path d={`M ${pts[4][0]},${pts[4][1]} L ${pts[5][0]},${pts[5][1]} L ${pts[6][0]},${pts[6][1]} L ${pts[7][0]},${pts[7][1]} Z`} />
+              {[0, 1, 2, 3].map(i => <line key={i} x1={pts[i][0]} y1={pts[i][1]} x2={pts[i + 4][0]} y2={pts[i + 4][1]} />)}
+            </>
+          );
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <g className="hud-phase-soft" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" opacity={0.5 + level * 0.3}>
+                {cubePath(outer)}
+              </g>
+              <g fill="none" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" strokeLinejoin="round" opacity={0.18 + level * 0.18}>
+                {cubePath(inner)}
+                {[0, 1, 2, 3, 4, 5, 6, 7].map(i => <line key={i} x1={outer[i][0]} y1={outer[i][1]} x2={inner[i][0]} y2={inner[i][1]} strokeDasharray="1.5 1.5" />)}
+              </g>
+            </svg>
+          );
+        }
+        if (styleIndex === 13) {
+          const points = [];
+          const numPoints = 76;
+          for (let i = 0; i <= numPoints; i++) {
+            const angle = (i / numPoints) * Math.PI * 2;
+            const drift = Math.sin(angle * 5 + time * 4) * 4.2 * level;
+            const flutter = Math.cos(angle * 11 - time * 9) * 1.15 * level;
+            const radius = 9.8 + drift + flutter;
+            points.push(`${(29 + radius * Math.cos(angle)).toFixed(2)},${(17 + radius * Math.sin(angle)).toFixed(2)}`);
+          }
+          const particleRadius = 9.8 + Math.sin(time * 5) * 4.2 * level;
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <circle cx="29" cy="17" r="9.8" fill="none" stroke="currentColor" strokeWidth="0.7" strokeDasharray="2 2" opacity="0.18" />
+              <path d={`M ${points.join(' L ')}`} fill="none" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" opacity={0.54 + level * 0.32} className="hud-phase-soft" />
+              <circle cx={29 + particleRadius * Math.cos(time * 1.5)} cy={17 + particleRadius * Math.sin(time * 1.5)} r="1.5" fill="currentColor" opacity="0.82" />
+            </svg>
+          );
+        }
+        if (styleIndex === 14) {
+          const upper = [];
+          const lower = [];
+          for (let x = 7; x <= 51; x += 2) {
+            const normX = (x - 7) / 44;
+            const sag = Math.sin(normX * Math.PI * 2 + time * 4) * 5.2 * level;
+            const microFlutter = Math.sin(normX * Math.PI * 10 - time * 12) * 0.9 * level;
+            upper.push(`${x},${(12 + sag + microFlutter).toFixed(2)}`);
+            lower.push(`${x},${(22 + sag + microFlutter).toFixed(2)}`);
+          }
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <line x1="7" y1="12" x2="51" y2="12" stroke="currentColor" strokeWidth="0.7" strokeDasharray="2 2" opacity="0.18" />
+              <line x1="7" y1="22" x2="51" y2="22" stroke="currentColor" strokeWidth="0.7" strokeDasharray="2 2" opacity="0.18" />
+              <path d={`M ${upper.join(' L ')}`} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" opacity={0.48 + level * 0.32} className="hud-depth-soft" />
+              <path d={`M ${lower.join(' L ')}`} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" opacity={0.4 + level * 0.3} className="hud-phase-soft" />
+            </svg>
+          );
+        }
+        if (styleIndex === 15) {
+          const paths = Array.from({ length: 5 }, (_, i) => {
+            const startX = 17 + i * 6;
+            const points = [];
+            for (let y = 6; y <= 28; y += 2) {
+              const normY = (y - 6) / 22;
+              const sway = Math.sin(normY * Math.PI + time * 5 + i * 0.5) * 5.8 * level;
+              points.push(`${(startX + sway).toFixed(2)},${y}`);
+            }
+            return `M ${points.join(' L ')}`;
+          });
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <line x1="13" y1="6" x2="45" y2="6" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.28" />
+              <line x1="13" y1="28" x2="45" y2="28" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.28" />
+              {paths.map((d, i) => (
+                <path key={i} d={d} fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity={0.72 - i * 0.07} className={i % 2 ? 'hud-depth-soft' : 'hud-phase-soft'} />
+              ))}
+            </svg>
+          );
+        }
+        return (
+          <div className="relative flex h-full w-full items-center justify-center">
             <div
-              className="hud-depth-soft h-full rounded-full"
+              className="absolute rounded-full"
               style={{
-                width: `${18 + level * 76}%`,
-                backgroundColor: accent,
-                boxShadow: '0 0 5px rgba(230,106,83,0.62)'
+                width: 14 + level * 16,
+                height: 14 + level * 16,
+                background: `radial-gradient(circle, rgba(230,106,83,${0.03 + level * 0.08}) 0%, rgba(230,106,83,${0.02 + level * 0.05}) 42%, rgba(230,106,83,0) 72%)`,
+                filter: `blur(${1.2 + level * 1.8}px)`,
+                opacity: 0.45 + level * 0.25
+              }}
+            />
+            <div className="absolute h-[3px] w-[82%] overflow-hidden rounded-full bg-[#2b1712]">
+              <div
+                className="hud-depth-soft h-full rounded-full"
+                style={{
+                  width: `${level * 100}%`,
+                  backgroundColor: accent,
+                  boxShadow: '0 0 5px rgba(230,106,83,0.62)'
+                }}
+              />
+            </div>
+            <div
+              className="absolute rounded-full border"
+              style={{
+                width: 14 + level * 16,
+                height: 14 + level * 16,
+                borderColor: accent,
+                opacity: 0.18 + level * 0.36
               }}
             />
           </div>
-          <div
-            className="absolute rounded-full border"
-            style={{
-              width: 11 + level * 12,
-              height: 11 + level * 12,
-              borderColor: accent,
-              opacity: 0.18 + level * 0.36
-            }}
-          />
-        </div>
-      );
+        );
+      }
     case 'circle':
-      return (
-        <div className="flex h-full w-full items-center justify-center">
-          <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }}>
-            <path d="M8,17 H50" stroke="#2b1712" strokeWidth="2" strokeLinecap="round" opacity="0.9" />
-            <path d={`M8,17 C18,${17 - level * 8} 27,${17 + level * 8} 50,17`} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.78" className="hud-phase-soft" />
-            <circle cx={8 + level * 42} cy="17" r="1.8" fill="currentColor" opacity="0.82" />
-          </svg>
-        </div>
-      );
+      {
+        const styleIndex = normalizePhaseDisplayAnimationStyle(parameter.phaseDisplayStyle);
+        if (styleIndex === 1) {
+          const dotX = 29 + Math.cos(level * Math.PI * 2) * 18;
+          const dotY = 17 + Math.sin(level * Math.PI * 4) * 9;
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }}>
+              <ellipse cx="29" cy="17" rx="21" ry="10" fill="none" stroke="#2b1712" strokeWidth="1.5" opacity="0.9" />
+              <ellipse cx="29" cy="17" rx="21" ry="10" fill="none" stroke="currentColor" strokeWidth="1.1" opacity="0.34" className="hud-phase-soft" />
+              <circle cx={dotX} cy={dotY} r="2" fill="#ffd0bc" opacity="0.9" />
+              <circle cx={58 - dotX} cy={34 - dotY} r="1.4" fill="currentColor" opacity="0.45" />
+            </svg>
+          );
+        }
+        if (styleIndex === 2) {
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }}>
+              <path d="M8,12 H50 M8,22 H50" stroke="#2b1712" strokeWidth="2" strokeLinecap="round" />
+              <path d="M8,12 H50" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.55" />
+              <path d="M50,22 H8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity="0.38" />
+              <circle cx={8 + level * 42} cy="12" r="1.9" fill="#ffd0bc" />
+              <circle cx={50 - level * 42} cy="22" r="1.9" fill="currentColor" opacity="0.74" />
+            </svg>
+          );
+        }
+        if (styleIndex === 3) {
+          const angle = level * 180;
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }}>
+              <circle cx="29" cy="17" r="12" fill="none" stroke="#2b1712" strokeWidth="2" />
+              <circle cx="29" cy="17" r="12" fill="none" stroke="currentColor" strokeWidth="1.1" opacity="0.34" />
+              <g transform={`translate(29 17) rotate(${angle})`}>
+                <line x1="-12" y1="0" x2="12" y2="0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="hud-phase-soft" />
+                <circle cx="12" cy="0" r="1.8" fill="#ffd0bc" />
+              </g>
+            </svg>
+          );
+        }
+        if (styleIndex === 4) {
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }}>
+              <path d={`M4,13 C14,${6 + level * 8} 24,${20 - level * 8} 34,13 S50,${6 + level * 8} 56,13`} fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.72" className="hud-phase-soft" />
+              <path d={`M4,21 C14,${28 - level * 8} 24,${14 + level * 8} 34,21 S50,${28 - level * 8} 56,21`} fill="none" stroke="#ffd0bc" strokeWidth="1.1" strokeLinecap="round" opacity="0.46" className="hud-depth-soft" />
+            </svg>
+          );
+        }
+        if (styleIndex === 5) {
+          const dash = 12 + level * 46;
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }}>
+              <path d="M13,24 A18,18 0 1 1 45,24" fill="none" stroke="#2b1712" strokeWidth="2.4" strokeLinecap="round" />
+              <path d="M13,24 A18,18 0 1 1 45,24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeDasharray={`${dash} 80`} opacity="0.74" className="hud-phase-soft" />
+              <circle cx={13 + level * 32} cy={24 - Math.sin(level * Math.PI) * 18} r="1.8" fill="#ffd0bc" />
+            </svg>
+          );
+        }
+        if (styleIndex === 6) {
+          return (
+            <div className="relative flex h-full w-full items-center justify-center">
+              <div className="absolute h-px w-[72%] rounded-full bg-[#2b1712]" />
+              {[0, 1].map(i => (
+                <div
+                  key={i}
+                  className="hud-phase-soft absolute h-3 w-3 rounded-full"
+                  style={{
+                    transform: `translateX(${(i === 0 ? -1 : 1) * (7 + level * 15)}px)`,
+                    backgroundColor: i === 0 ? accent : '#ffd0bc',
+                    opacity: i === 0 ? 0.72 : 0.48,
+                    boxShadow: '0 0 6px rgba(230,106,83,0.55)',
+                    animationDelay: i === 0 ? '0s' : '-0.65s'
+                  }}
+                />
+              ))}
+            </div>
+          );
+        }
+        if (styleIndex === 7) {
+          const angle = -34 + level * 68;
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }}>
+              <line x1="9" y1="17" x2="49" y2="17" stroke="#2b1712" strokeWidth="2" strokeLinecap="round" />
+              <g transform={`translate(29 17) rotate(${angle})`}>
+                <line x1="-20" y1="0" x2="20" y2="0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" opacity="0.78" className="hud-phase-soft" />
+                <circle cx="0" cy="0" r="2" fill="#ffd0bc" />
+              </g>
+            </svg>
+          );
+        }
+        if (styleIndex === 8) {
+          return (
+            <div className="flex h-full w-full items-center justify-center gap-[3px] px-3">
+              {Array.from({ length: 8 }, (_, i) => {
+                const center = 3.5;
+                const distance = Math.abs(i - center) / center;
+                const active = distance <= level || i % 2 === 0;
+                return (
+                  <div
+                    key={i}
+                    className="hud-phase-soft h-[24px] w-[3px] rounded-full"
+                    style={{
+                      backgroundColor: active ? (i < 4 ? accent : '#ffd0bc') : '#2b1712',
+                      opacity: active ? 0.28 + level * 0.45 : 0.38,
+                      transform: `scaleY(${0.42 + (1 - distance * 0.38) * (0.32 + level * 0.34)})`,
+                      animationDelay: `${-i * 0.08}s`
+                    }}
+                  />
+                );
+              })}
+            </div>
+          );
+        }
+        if (styleIndex === 9) {
+          const splitOffset = (level - 0.5) * 7;
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <defs>
+                <clipPath id="phaseSplitDiscLeft">
+                  <rect x="16" y="5" width="13" height="24" />
+                </clipPath>
+                <clipPath id="phaseSplitDiscRight">
+                  <rect x="29" y="5" width="13" height="24" />
+                </clipPath>
+              </defs>
+              <circle cx="29" cy="17" r="11.5" fill="#2b1712" opacity="0.92" />
+              <circle cx={29 - splitOffset} cy="17" r="10.5" fill="#ffd0bc" opacity={0.34 + level * 0.34} clipPath="url(#phaseSplitDiscLeft)" className="hud-phase-soft" />
+              <circle cx={29 + splitOffset} cy="17" r="10.5" fill="currentColor" opacity={0.26 + level * 0.42} clipPath="url(#phaseSplitDiscRight)" className="hud-depth-soft" />
+              <line x1="29" y1="6.2" x2="29" y2="27.8" stroke="#f4d9b6" strokeWidth="1.1" strokeLinecap="round" opacity="0.64" />
+              <circle cx="29" cy="17" r="11.5" fill="none" stroke="currentColor" strokeWidth="0.9" opacity="0.32" />
+            </svg>
+          );
+        }
+        if (styleIndex === 10) {
+          const eclipseX = 22 + level * 14;
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <circle cx="29" cy="17" r="11.4" fill="currentColor" opacity={0.12 + level * 0.28} className="hud-phase-soft" />
+              <circle cx="29" cy="17" r="11.4" fill="none" stroke="#2b1712" strokeWidth="2" opacity="0.86" />
+              <circle cx={eclipseX} cy="17" r="11.2" fill="#ffd0bc" opacity={0.22 + level * 0.38} className="hud-depth-soft" />
+              <path d="M29,6 V28" stroke="#2b1712" strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
+              <path d="M29,7 V27" stroke="currentColor" strokeWidth="0.6" strokeLinecap="round" opacity="0.5" />
+            </svg>
+          );
+        }
+        if (styleIndex === 11) {
+          const leftScale = 0.72 + (1 - level) * 0.44;
+          const rightScale = 0.72 + level * 0.44;
+          return (
+            <div className="relative flex h-full w-full items-center justify-center">
+              <div className="absolute h-px w-[68%] rounded-full bg-[#2b1712]" />
+              <svg viewBox="0 0 58 34" className="absolute h-full w-full" style={{ color: accent }} aria-hidden="true">
+                <path
+                  className="hud-depth-soft"
+                  d="M29,7 A10,10 0 0 0 29,27 Z"
+                  fill="#ffd0bc"
+                  opacity={0.22 + level * 0.32}
+                  transform={`translate(${(level - 0.5) * -5} 0) scale(${leftScale} 1)`}
+                  style={{ transformOrigin: '29px 17px' }}
+                />
+                <path
+                  className="hud-phase-soft"
+                  d="M29,7 A10,10 0 0 1 29,27 Z"
+                  fill="currentColor"
+                  opacity={0.24 + level * 0.36}
+                  transform={`translate(${(level - 0.5) * 5} 0) scale(${rightScale} 1)`}
+                  style={{ transformOrigin: '29px 17px' }}
+                />
+                <circle cx="29" cy="17" r="10.5" fill="none" stroke="currentColor" strokeWidth="0.8" opacity="0.34" />
+                <line x1="29" y1="7.6" x2="29" y2="26.4" stroke="#f4d9b6" strokeWidth="0.9" strokeLinecap="round" opacity="0.62" />
+              </svg>
+            </div>
+          );
+        }
+        if (styleIndex === 12) {
+          const angle = -90 + level * 180;
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <circle cx="29" cy="17" r="10.8" fill="#2b1712" opacity="0.86" />
+              <path d="M29,6.2 A10.8,10.8 0 0 0 29,27.8 Z" fill="#ffd0bc" opacity={0.3 + level * 0.28} />
+              <path d="M29,6.2 A10.8,10.8 0 0 1 29,27.8 Z" fill="currentColor" opacity={0.22 + level * 0.36} />
+              <circle cx="29" cy="17" r="12.8" fill="none" stroke="currentColor" strokeWidth="0.8" strokeDasharray="3 4" opacity="0.24" />
+              <g className="hud-phase-soft" transform={`translate(29 17) rotate(${angle})`}>
+                <circle cx="0" cy="-12.8" r="1.8" fill="#ffd0bc" opacity="0.92" />
+                <circle cx="0" cy="12.8" r="1.4" fill="currentColor" opacity="0.64" />
+              </g>
+              <line x1="29" y1="6.6" x2="29" y2="27.4" stroke="#f4d9b6" strokeWidth="0.8" strokeLinecap="round" opacity="0.56" />
+            </svg>
+          );
+        }
+        if (styleIndex === 13) {
+          const phaseAngle = level * 180;
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <g
+                className="hud-phase-soft"
+                transform={`rotate(${phaseAngle} 29 17)`}
+                style={{ transition: 'transform 75ms ease-out' }}
+              >
+                <circle cx="29" cy="17" r="11.5" fill="none" stroke="currentColor" strokeWidth="1.3" opacity="0.78" />
+                <path d="M29,5.5 A11.5,11.5 0 0 0 29,28.5 Z" fill="currentColor" opacity={0.48 + level * 0.26} />
+                <line x1="29" y1="5.5" x2="29" y2="28.5" stroke="#121113" strokeWidth="1.3" strokeLinecap="round" opacity="0.9" />
+              </g>
+            </svg>
+          );
+        }
+        if (styleIndex === 14) {
+          const rad = level * Math.PI;
+          const points = [];
+          const waveformClipId = 'phaseWaveformMorphClip';
+          const centerX = 29;
+          const centerY = 17;
+          const radius = 12.5;
+          for (let x = 17; x <= 41; x += 1) {
+            const t = (x - 17) / 24;
+            const angleOffset = t * Math.PI * 2 * 1.5;
+            const y = centerY + Math.sin(angleOffset - rad) * 4.9;
+            points.push(`${x},${y.toFixed(2)}`);
+          }
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <defs>
+                <clipPath id={waveformClipId}>
+                  <circle cx={centerX} cy={centerY} r={radius} />
+                </clipPath>
+              </defs>
+              <circle cx={centerX} cy={centerY} r={radius} fill="#121113" opacity="0.94" />
+              <path
+                d={`M ${points.join(' L ')}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.45"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={0.78 + level * 0.12}
+                className="hud-phase-soft"
+                clipPath={`url(#${waveformClipId})`}
+              />
+              <circle cx={centerX} cy={centerY} r={radius} fill="none" stroke="#2b1712" strokeWidth="1.35" opacity="0.9" />
+              <circle cx={centerX} cy={centerY} r={radius} fill="none" stroke="currentColor" strokeWidth="0.95" opacity="0.44" />
+            </svg>
+          );
+        }
+        if (styleIndex === 15) {
+          const rad = level * Math.PI;
+          const points = [];
+          const radius = 9.8;
+          for (let i = 0; i <= 72; i++) {
+            const t = (i / 72) * Math.PI * 2;
+            const x = 29 + radius * Math.sin(t);
+            const y = 17 - radius * Math.sin(t + rad);
+            points.push(`${x.toFixed(2)},${y.toFixed(2)}`);
+          }
+          return (
+            <svg viewBox="0 0 58 34" className="h-full w-full" style={{ color: accent }} aria-hidden="true">
+              <circle cx="29" cy="17" r="12.2" fill="none" stroke="currentColor" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.25" />
+              <path
+                d={`M ${points.join(' L ')}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={0.56 + level * 0.28}
+                className="hud-phase-soft"
+              />
+            </svg>
+          );
+        }
+        if (styleIndex === 16) {
+          const phaseAngle = level * 180;
+          const squash = Math.max(0.16, Math.abs(Math.cos((phaseAngle * Math.PI) / 180)));
+          return (
+            <div className="relative flex h-full w-full items-center justify-center" style={{ perspective: 320 }}>
+              <div
+                className="relative h-[32px] w-[32px] rounded-full"
+                style={{
+                  transform: `rotateY(${phaseAngle}deg) scaleX(${0.28 + squash * 0.72})`,
+                  transformStyle: 'preserve-3d',
+                  transition: 'transform 75ms ease-out',
+                  filter: 'drop-shadow(0 0 5px rgba(230,106,83,0.34))'
+                }}
+              >
+                <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" style={{ color: accent }} aria-hidden="true">
+                  <circle cx="50" cy="50" r="44" fill="#121113" stroke="currentColor" strokeWidth="4" opacity="0.95" />
+                  <path d="M50,6 A44,44 0 0 0 50,94 Z" fill="currentColor" opacity={0.5 + level * 0.24} />
+                  <line x1="50" y1="6" x2="50" y2="94" stroke="currentColor" strokeWidth="4" opacity="0.9" />
+                </svg>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div className="flex h-full w-full items-center justify-center">
+            <svg viewBox="0 0 58 34" className="h-full w-full p-1" style={{ color: accent }}>
+              {(() => {
+                const startX = 4;
+                const endX = 54;
+                const spanX = endX - startX;
+                const dotX = startX + level * spanX;
+                const t = (dotX - startX) / spanX;
+                const p0 = { x: startX, y: 17 };
+                const p1 = { x: 13.25, y: 17 - level * 16.6 };
+                const p2 = { x: 31.75, y: 17 + level * 16.6 };
+                const p3 = { x: endX, y: 17 };
+                const oneMinusT = 1 - t;
+                const dotY = (oneMinusT ** 3) * p0.y
+                  + 3 * (oneMinusT ** 2) * t * p1.y
+                  + 3 * oneMinusT * (t ** 2) * p2.y
+                  + (t ** 3) * p3.y;
+                return (
+                  <>
+              <path d={`M${startX},17 H${endX}`} stroke="#2b1712" strokeWidth="2" strokeLinecap="round" opacity="0.9" />
+              <path d={`M${startX},17 C12.75,${17 - level * 16.6} 32.25,${17 + level * 16.6} ${endX},17`} fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" opacity="0.82" className="hud-phase-soft" />
+              <circle cx={dotX} cy={dotY} r="2.4" fill="currentColor" opacity="0.82" />
+                  </>
+                );
+              })()}
+            </svg>
+          </div>
+        );
+      }
     default:
       return null;
   }
 };
 
-const ParameterDataDisplay = ({ parameter, power = true }) => {
+const ParameterDataDisplay = ({ parameter, power = true, saturationMode = 0, onSaturationModeChange, filterPole = 12, onFilterPoleChange }) => {
   const level = parameter.level ?? 0.5;
   const inWidth = `${Math.round((parameter.signalIn ?? level) * 82 + 10)}%`;
   const outWidth = `${Math.round((parameter.signalOut ?? level) * 82 + 10)}%`;
+  const isSaturationDisplay = parameter.id === 'sat';
+  const isFilterDisplay = parameter.id === 'filter';
+  const activeSaturationMode = normalizeSaturationMode(saturationMode);
+  const displayAnimationParameter = isSaturationDisplay
+    ? { ...parameter, level: level * 0.44 }
+    : isFilterDisplay
+      ? { ...parameter, filterPole: normalizeFilterPole(filterPole) }
+      : parameter;
+  const selectDisplayOption = (optionIndex) => {
+    if (isSaturationDisplay) {
+      onSaturationModeChange?.(normalizeSaturationMode(optionIndex));
+      return;
+    }
+    if (isFilterDisplay) {
+      onFilterPoleChange?.(optionIndex === 0 ? 12 : 24);
+    }
+  };
 
   return (
     <div
-      className={`relative p-[5px] rounded-full border transition-opacity duration-300 ${power ? 'opacity-95' : 'opacity-50'}`}
+      className={`relative p-[4px] rounded-full border transition-opacity duration-300 ${power ? 'opacity-95' : 'opacity-50'}`}
       style={{
         background: '#1b1917',
         borderColor: 'rgba(70,67,62,0.34)',
@@ -3331,7 +6791,7 @@ const ParameterDataDisplay = ({ parameter, power = true }) => {
       }}
     >
       <div
-        className="relative flex h-[58px] w-44 overflow-hidden rounded-full"
+        className="relative flex h-[60px] w-[178px] overflow-hidden rounded-full"
         style={{
           background: 'linear-gradient(180deg, #191817 0%, #121110 100%)',
           boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.56), inset 0 0 0 1px rgba(255,235,210,0.04)',
@@ -3355,40 +6815,47 @@ const ParameterDataDisplay = ({ parameter, power = true }) => {
           }}
         />
         <div className="pointer-events-none absolute inset-0 z-20 rounded-full shadow-[inset_0_0_12px_rgba(0,0,0,0.24)]" />
-        <div className="hud-screen-soft relative flex h-full w-[50%] items-center overflow-hidden pl-2">
-          <DisplayFeatureAnimation parameter={parameter} />
+        <div className={`hud-screen-soft relative flex h-full w-[50%] items-center overflow-hidden pl-2`}>
+          <DisplayFeatureAnimation parameter={displayAnimationParameter} />
+          {isSaturationDisplay && (
+            <SaturationDisplayGraphic mode={activeSaturationMode} level={level} power={power} />
+          )}
         </div>
-        <div className="hud-screen-soft relative z-10 flex h-full w-[50%] flex-col justify-center px-4">
-          <div className="mb-0.5 text-[8px] font-bold uppercase tracking-[0.2em]" style={{ color: 'rgba(230,106,83,0.86)', textShadow: '0 0 4px rgba(230,106,83,0.35)' }}>{parameter.name}</div>
-          <div className="mb-1 flex items-baseline leading-none tracking-wider" style={{ color: '#f0ece1', textShadow: '0 0 3px rgba(230,106,83,0.32)' }}>
-            <span className={parameter.val.length > 5 ? 'text-[10px]' : 'text-[14px]'} style={{ color: '#f0ece1' }}>{parameter.val}</span>
-            {parameter.unit && <span className="ml-1 text-[8px]" style={{ color: 'rgba(230,106,83,0.78)' }}>{parameter.unit}</span>}
-          </div>
-          <div className="flex flex-col gap-[1.5px]">
-            <div className="flex items-center gap-1">
-              <span className="w-[11px] text-[5px] font-semibold leading-none" style={{ color: 'rgba(230,106,83,0.6)' }}>IN</span>
-              <div className="h-[1.5px] flex-1 overflow-hidden rounded-full bg-[#2b1712]">
-                <div className="h-full rounded-full bg-[#e66a53] shadow-[0_0_3px_rgba(230,106,83,0.72)] transition-all duration-200" style={{ width: inWidth }} />
-              </div>
+        <div className="hud-screen-soft relative z-10 flex h-full w-[50%] translate-x-[-3px] translate-y-[-1px] flex-col justify-center px-4">
+          <div className="mb-0.5 text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: 'rgba(230,106,83,0.86)', textShadow: '0 0 4px rgba(230,106,83,0.35)' }}>{parameter.name}</div>
+          <div className="translate-y-[-1px]">
+            <div className="mb-1 flex items-baseline leading-none tracking-wider" style={{ color: '#f0ece1', textShadow: '0 0 3px rgba(230,106,83,0.32)' }}>
+              <span className={parameter.val.length > 5 ? 'text-[10px]' : 'text-[14px]'} style={{ color: '#f0ece1' }}>{parameter.val}</span>
+              {parameter.unit && <span className={`ml-1 ${parameter.unit === '%' || parameter.unit === 'Hz' ? 'text-[11px]' : 'text-[8px]'}`} style={{ color: 'rgba(230,106,83,0.78)' }}>{parameter.unit}</span>}
             </div>
-            <div className="flex items-center gap-1">
-              <span className="w-[11px] text-[5px] font-semibold leading-none" style={{ color: 'rgba(230,106,83,0.6)' }}>OUT</span>
-              <div className="h-[1.5px] flex-1 overflow-hidden rounded-full bg-[#2b1712]">
-                <div className="h-full rounded-full bg-[#e66a53] shadow-[0_0_3px_rgba(230,106,83,0.64)] transition-all duration-200" style={{ width: outWidth }} />
+            <div className="flex flex-col gap-[1.5px]">
+              <div className="flex items-center gap-1">
+                <span className="w-[11px] text-[5px] font-semibold leading-none" style={{ color: 'rgba(230,106,83,0.6)' }}>IN</span>
+                <div className="h-[1.5px] flex-1 overflow-hidden rounded-full bg-[#2b1712]">
+                  <div className="h-full rounded-full bg-[#e66a53] shadow-[0_0_3px_rgba(230,106,83,0.72)] transition-all duration-200" style={{ width: inWidth }} />
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-[11px] text-[5px] font-semibold leading-none" style={{ color: 'rgba(230,106,83,0.6)' }}>OUT</span>
+                <div className="h-[1.5px] flex-1 overflow-hidden rounded-full bg-[#2b1712]">
+                  <div className="h-full rounded-full bg-[#e66a53] shadow-[0_0_3px_rgba(230,106,83,0.64)] transition-all duration-200" style={{ width: outWidth }} />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
       <div className="pointer-events-auto absolute left-1/2 top-[calc(100%+7px)] flex -translate-x-1/2 items-center gap-2">
-        <SideDisplayButtons onPrev={() => {}} onNext={() => {}} />
-        <span className="text-[9px] font-bold uppercase tracking-[0.28em] text-[#fff8eb] drop-shadow-sm">OPTIONS</span>
+        <SideDisplayButtons onPrev={() => selectDisplayOption(0)} onNext={() => selectDisplayOption(1)} />
+        <span className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#fff8eb]">
+          OPTIONS
+        </span>
       </div>
     </div>
   );
 };
 
-const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride, shadingStyle, labelOffsetY = 0, indicatorActive = true, forceSnappy = false, onDraggingChange, onDisplayFocus, readoutStyleIndex = 0 }) => {
+const MatteKnob = ({ label, displayLabel, value, onChange, onDoubleClick, min = 0, max = 100, size = 60, color = 'charcoal', labelColorOverride, labelSizeClass = 'text-[10px]', labelTrackingClass = 'tracking-[0.2em]', shadingStyle, labelOffsetY = 0, readoutOffsetY = 0, labelTextShadow = PANEL_TEXT_DEPTH_SHADOW, steadyReadout = false, indicatorActive = true, forceSnappy = false, onDraggingChange, onDisplayFocus, readoutStyleIndex = 0, outerRingEnabled = false }) => {
   const [isDragging, setIsDragging] = useState(false);
   const startY = useRef(0);
   const startVal = useRef(0);
@@ -3404,10 +6871,16 @@ const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, 
   const ridgeWidth = Math.max(1, size * 0.017);
   const ridgeHeight = Math.max(3, size * 0.06);
   const ridgeRadius = size * 0.505;
+  const baseBoxShadow = isCoral
+    ? '10px 10px 18px rgba(180,60,40,0.4), 4px 4px 6px rgba(180,60,40,0.3), inset 2px 2px 5px rgba(255,255,255,0.4), inset -2px -2px 5px rgba(0,0,0,0.3)'
+    : (shadingStyle?.boxShadow || '12px 12px 20px rgba(0,0,0,0.45), 4px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)');
+  const ringBoxShadow = outerRingEnabled
+    ? `0 0 0 ${Math.max(1, size * 0.018)}px rgba(18,16,14,0.76), 0 -1px 0 ${Math.max(1.5, size * 0.029)}px rgba(235,210,170,0.075), `
+    : '';
 
   return (
     <div className="flex flex-col items-center justify-center group select-none relative z-10" onDoubleClick={onDoubleClick}>
-      <div className="relative overflow-visible rounded-full cursor-ns-resize touch-none" style={{ width: size, height: size, backgroundColor: isCoral ? '#e66a53' : (shadingStyle?.backgroundColor || '#111'), boxShadow: isCoral ? '10px 10px 18px rgba(180,60,40,0.4), 4px 4px 6px rgba(180,60,40,0.3), inset 2px 2px 5px rgba(255,255,255,0.4), inset -2px -2px 5px rgba(0,0,0,0.3)' : (shadingStyle?.boxShadow || '12px 12px 20px rgba(0,0,0,0.45), 4px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 2px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.9)'), backgroundImage: isCoral ? 'none' : (shadingStyle?.backgroundImage || 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)'), backgroundBlendMode: isCoral ? undefined : shadingStyle?.backgroundBlendMode }}
+      <div className="relative overflow-visible rounded-full cursor-ns-resize touch-none" style={{ width: size, height: size, backgroundColor: isCoral ? '#e66a53' : (shadingStyle?.backgroundColor || '#111'), boxShadow: `${ringBoxShadow}${baseBoxShadow}`, backgroundImage: isCoral ? 'none' : (shadingStyle?.backgroundImage || 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)'), backgroundBlendMode: isCoral ? undefined : shadingStyle?.backgroundBlendMode }}
         onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
         {hasPronouncedGrip && (
           <div
@@ -3495,11 +6968,28 @@ const MatteKnob = ({ label, value, onChange, onDoubleClick, min = 0, max = 100, 
         </div>
       </div>
       <div
-        className={`mt-4 text-[10px] font-black tracking-[0.2em] uppercase relative ${labelColorOverride || (isCoral ? 'text-[#fff] drop-shadow-md' : 'text-[#7a7465]')}`}
-        style={{ transform: labelOffsetY ? `translateY(${labelOffsetY}px)` : undefined }}
+        className={`mt-4 ${labelSizeClass} font-black ${labelTrackingClass} uppercase relative ${labelColorOverride || (isCoral ? 'text-[#fff]' : 'text-[#726c5e]')}`}
+        style={{
+          transform: labelOffsetY ? `translateY(${labelOffsetY}px)` : undefined,
+          textShadow: labelTextShadow
+        }}
       >
-        {label}
-        <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 pointer-events-none transition-opacity duration-300 ${isDragging ? 'opacity-100' : 'opacity-0'} z-50`}>
+        {displayLabel ? (
+          <>
+            <span className="invisible">{label}</span>
+            <span className="absolute inset-0 flex items-center justify-center">{displayLabel}</span>
+          </>
+        ) : label}
+        <div
+          className={`absolute top-full left-1/2 mt-1 pointer-events-none ${steadyReadout ? '' : 'transition-opacity duration-300'} ${isDragging ? 'opacity-100' : 'opacity-0'} z-50`}
+          style={{
+            transform: `translate3d(-50%, ${readoutOffsetY}px, 0)`,
+            backfaceVisibility: 'hidden',
+            contain: 'layout paint',
+            willChange: 'opacity',
+            textShadow: 'none'
+          }}
+        >
           {renderReadout(readoutStyle.type, formattedVal)}
         </div>
       </div>
@@ -3527,6 +7017,9 @@ const MetalGradient = ({ className = '' }) => (
   <span className={`bg-gradient-to-b from-[#444] via-[#222] to-[#111] ${className}`} />
 );
 
+const IO_LINK_CORAL = '#d85f50';
+const IO_LINK_CORAL_LIGHT = '#f0aa99';
+
 const FiberOpticLink = ({ active, onToggle, accent = '#df6f5a', accentLight = '#ff9c8a' }) => (
   <button onClick={onToggle} className="relative flex h-10 w-16 items-center justify-center outline-none group" aria-pressed={active} aria-label="Toggle I/O link">
     <span className="relative h-[3px] w-full overflow-hidden rounded-full border-b border-[#333] bg-[#111] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]">
@@ -3546,19 +7039,25 @@ const FiberOpticLink = ({ active, onToggle, accent = '#df6f5a', accentLight = '#
 );
 
 const FiberOpticCoralLink = (props) => (
-  <FiberOpticLink {...props} accent="#e66a53" accentLight="#ffb29f" />
+  <FiberOpticLink {...props} accent={IO_LINK_CORAL} accentLight={IO_LINK_CORAL_LIGHT} />
 );
 
 const FiberOpticCoralGreyRingLink = ({ active, onToggle }) => (
   <button onClick={onToggle} className="relative flex h-10 w-16 items-center justify-center outline-none group" aria-pressed={active} aria-label="Toggle I/O link">
     <span className="relative h-[3px] w-full overflow-hidden rounded-full border-b border-[#333] bg-[#111] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]">
       <span
-        className={`absolute left-1/2 top-0 h-full -translate-x-1/2 bg-[#e66a53] transition-all duration-500 ease-out ${active ? 'w-full opacity-100' : 'w-0 opacity-0'}`}
-        style={{ boxShadow: active ? '0 0 10px #e66a53' : undefined }}
+        className={`absolute left-1/2 top-0 h-full -translate-x-1/2 transition-all duration-500 ease-out ${active ? 'w-full opacity-100' : 'w-0 opacity-0'}`}
+        style={{ backgroundColor: IO_LINK_CORAL, boxShadow: active ? `0 0 9px ${IO_LINK_CORAL}` : undefined }}
       />
     </span>
-    <span className={`absolute flex h-3 w-3 items-center justify-center rounded-full border-[1.5px] transition-all duration-300 ${active ? 'border-[#444] bg-[#1a1a1a] shadow-[0_0_10px_#e66a53]' : 'border-[#444] bg-[#1a1a1a] shadow-[0_2px_4px_rgba(0,0,0,0.5)] group-hover:border-[#666]'}`}>
-      <span className={`h-[9px] w-[9px] rounded-full transition-all duration-300 ${active ? 'bg-[#e66a53] shadow-[0_0_8px_#e66a53]' : 'bg-transparent'}`} />
+    <span
+      className={`absolute flex h-3 w-3 items-center justify-center rounded-full border-[1.5px] transition-all duration-300 ${active ? 'border-[#444] bg-[#1a1a1a]' : 'border-[#444] bg-[#1a1a1a] shadow-[0_2px_4px_rgba(0,0,0,0.5)] group-hover:border-[#666]'}`}
+      style={active ? { boxShadow: `0 0 9px ${IO_LINK_CORAL}` } : undefined}
+    >
+      <span
+        className={`h-[9px] w-[9px] rounded-full transition-all duration-300 ${active ? '' : 'bg-transparent'}`}
+        style={active ? { backgroundColor: IO_LINK_CORAL, boxShadow: `0 0 7px ${IO_LINK_CORAL}` } : undefined}
+      />
     </span>
   </button>
 );
@@ -3567,13 +7066,13 @@ const FiberOpticCoralCenterLink = ({ active, onToggle }) => (
   <button onClick={onToggle} className="relative flex h-10 w-16 items-center justify-center outline-none group" aria-pressed={active} aria-label="Toggle I/O link">
     <span className="relative h-[3px] w-full overflow-hidden rounded-full border-b border-[#333] bg-[#111] shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)]">
       <span
-        className={`absolute left-1/2 top-0 h-full -translate-x-1/2 bg-[#e66a53] transition-all duration-500 ease-out ${active ? 'w-full opacity-100' : 'w-0 opacity-0'}`}
-        style={{ boxShadow: active ? '0 0 10px #e66a53' : undefined }}
+        className={`absolute left-1/2 top-0 h-full -translate-x-1/2 transition-all duration-500 ease-out ${active ? 'w-full opacity-100' : 'w-0 opacity-0'}`}
+        style={{ backgroundColor: IO_LINK_CORAL, boxShadow: active ? `0 0 9px ${IO_LINK_CORAL}` : undefined }}
       />
     </span>
     <span
       className={`absolute h-3 w-3 rounded-full border-[1.5px] transition-all duration-300 ${active ? '' : 'border-[#444] bg-[#1a1a1a] shadow-[0_2px_4px_rgba(0,0,0,0.5)] group-hover:border-[#666]'}`}
-      style={active ? { backgroundColor: '#e66a53', borderColor: '#ffb29f', boxShadow: '0 0 10px #e66a53' } : undefined}
+      style={active ? { backgroundColor: IO_LINK_CORAL, borderColor: IO_LINK_CORAL_LIGHT, boxShadow: `0 0 9px ${IO_LINK_CORAL}` } : undefined}
     />
   </button>
 );
@@ -3739,24 +7238,34 @@ const MiniBottomKnob = ({ label, value, onChange, accent = '#d4af37', labelColor
 };
 
 const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, styleIndex, lfoActive = true, readoutStyleIndex = 0, screwStyle = 5 }) => {
-  const HiddenRange = ({ value, onChange }) => (
-    <input
-      type="range"
-      min="0"
-      max="100"
-      value={value}
-      onChange={event => onChange(Number(event.target.value))}
-      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-      style={{ WebkitAppearance: 'none' }}
-    />
-  );
+  const [floatingReadout, setFloatingReadout] = useState(null);
+  const readoutType = (KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0]).type;
 
-  const DragSurface = ({ onChange, onDragStart, onDragEnd }) => {
+  const HiddenRange = ({ value, onChange, onDragStart, onDragEnd }) => {
+    return (
+      <input
+        type="range"
+        min="0"
+        max="100"
+        value={value}
+        onChange={event => onChange(Number(event.target.value))}
+        onPointerDown={() => onDragStart?.()}
+        onPointerUp={() => onDragEnd?.()}
+        onPointerCancel={() => onDragEnd?.()}
+        onBlur={() => onDragEnd?.()}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        style={{ WebkitAppearance: 'none' }}
+      />
+    );
+  };
+
+  const DragSurface = ({ onChange, onDragStart, onDragMove, onDragEnd }) => {
     const surfaceRef = useRef(null);
-    const updateFromPointer = (clientX, rect) => {
+    const updateFromPointer = (clientX, clientY, rect) => {
       if (!rect) return;
-      const next = Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * 100);
+      const next = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * 100;
       onChange(next);
+      onDragMove?.(next, clientX, clientY, rect);
     };
     return (
       <div
@@ -3764,12 +7273,12 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
         className="absolute inset-0 cursor-pointer touch-none"
         onPointerDown={event => {
           event.preventDefault();
-          onDragStart?.();
+          onDragStart?.(event.clientX, event.clientY);
           const rect = surfaceRef.current?.getBoundingClientRect();
-          updateFromPointer(event.clientX, rect);
+          updateFromPointer(event.clientX, event.clientY, rect);
           const handleMove = (moveEvent) => {
             moveEvent.preventDefault();
-            updateFromPointer(moveEvent.clientX, rect);
+            updateFromPointer(moveEvent.clientX, moveEvent.clientY, rect);
           };
           const handleUp = () => {
             window.removeEventListener('pointermove', handleMove);
@@ -3843,7 +7352,7 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
               boxShadow: '3px 5px 8px rgba(0,0,0,0.46), inset 1px 1px 2px rgba(255,255,255,0.55), inset -1px -1px 2px rgba(0,0,0,0.38)'
             }}
           />
-          <HiddenRange value={value} onChange={onChange} />
+          <HiddenRange value={value} onChange={onChange} onDragStart={() => setIsDragging(true)} onDragEnd={() => setIsDragging(false)} />
         </div>
         <span className="text-[9px] font-black uppercase leading-[8px] tracking-[0.22em]" style={{ color: labelColor }}>
           {label === 'Phase ◐' ? <>Phase <span className="ml-[2px] text-[10px] leading-none">◐</span></> : label === 'Depth ◍' ? <>Depth <span className="relative -top-[1px] ml-[2px] text-[12px] leading-none">◍</span></> : label}
@@ -3884,12 +7393,22 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
   );
 
   const IlluminatedRubberFader = ({ label, value, onChange, active = true }) => {
-    const [isDragging, setIsDragging] = useState(false);
+    const faderRef = useRef(null);
     const thumbLeft = `calc(8px + ${value} * (100% - 16px) / 100)`;
+    const updateFloatingReadout = (nextValue = value) => {
+      const rect = faderRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setFloatingReadout({
+        left: rect.left + rect.width / 2,
+        top: rect.bottom + 16,
+        label,
+        scale: rect.width / (faderRef.current?.offsetWidth || rect.width || 1)
+      });
+    };
     return (
-    <div className="relative z-10 flex w-[88px] flex-col gap-1">
-	      <div className="flex h-2 items-center pl-[8px] pr-0 text-[9px] font-black uppercase leading-[8px] tracking-[0.18em] text-[#aaa39a] drop-shadow-md relative">
-          {label === 'Phase ◐' ? <>Phase <span className="ml-[2px] text-[10px] leading-none">◐</span></> : label === 'Depth ◍' ? <>Depth <span className="relative -top-[1px] ml-[2px] text-[12px] leading-none">◍</span></> : label}
+    <div ref={faderRef} className="relative z-10 flex w-[88px] flex-col gap-1">
+	      <div className="flex h-2 items-center pl-[8px] pr-0 text-[10px] font-black uppercase leading-[8px] tracking-[0.18em] text-[#aaa39a] drop-shadow-md relative">
+          {label === 'Phase ◐' ? <>Phase <span className="ml-[2px] text-[11px] leading-none">◐</span></> : label === 'Depth ◍' ? <>Depth <span className="relative -top-[1px] ml-[2px] text-[13px] leading-none">◍</span></> : label}
         </div>
       <div className="relative h-8">
         <div className="absolute left-2 right-2 top-1/2 h-2 -translate-y-1/2 rounded-full border-b border-[#333] bg-[#141414] shadow-[inset_0_3px_5px_rgba(0,0,0,0.8)]" />
@@ -3901,9 +7420,6 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
           className="absolute top-1/2 h-7 w-5 -translate-x-1/2 -translate-y-1/2 rounded-md border border-black bg-[#262626] shadow-[0_4px_6px_rgba(0,0,0,0.8),inset_1px_1px_1px_rgba(255,255,255,0.09)] group"
           style={{ left: thumbLeft }}
         >
-          <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none transition-opacity duration-300 z-50 ${isDragging ? 'opacity-100' : 'opacity-0'}`}>
-            {renderReadout((KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0]).type, formatKnobValue(label, value))}
-          </div>
           <div
             className="absolute left-1/2 top-1/2 h-3 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-300"
             style={{
@@ -3916,31 +7432,63 @@ const BottomSectionEngine = ({ depth, setDepth, stereoPhase, setStereoPhase, sty
           />
         </div>
         <div className="absolute left-[1px] right-[1px] top-[-7px] bottom-[-7px]">
-          <DragSurface onChange={onChange} onDragStart={() => setIsDragging(true)} onDragEnd={() => setIsDragging(false)} />
+          <DragSurface
+            onChange={onChange}
+            onDragStart={() => {
+              updateFloatingReadout(value);
+            }}
+            onDragMove={(nextValue) => updateFloatingReadout(nextValue)}
+            onDragEnd={() => setFloatingReadout(null)}
+          />
         </div>
       </div>
     </div>
   );
   };
 
+  const FloatingReadoutPortal = () => (
+    floatingReadout && typeof document !== 'undefined'
+      ? createPortal(
+        <div
+          className="pointer-events-none fixed z-[9999] font-sans"
+          style={{
+            left: floatingReadout.left,
+            top: floatingReadout.top,
+            transform: `translateX(-50%) scale(${floatingReadout.scale || 1})`,
+            transformOrigin: 'top center'
+          }}
+        >
+          {renderReadout(
+            readoutType,
+            formatKnobValue(floatingReadout.label, floatingReadout.label.startsWith('Depth') ? depth : stereoPhase)
+          )}
+        </div>,
+        document.body
+      )
+      : null
+  );
+
   switch (styleIndex) {
     case 0:
       return (
-        <div className="absolute bottom-[12%] left-[50%] z-10 -translate-x-1/2">
-          <div className="mb-1.5 text-center text-[10px] font-bold uppercase tracking-[0.32em] text-[#fff8eb] drop-shadow-sm">LFO INTENSITY</div>
-          <div className="relative flex w-[248px] justify-center gap-4 overflow-hidden rounded-full border border-[#1a1a1a] bg-[#242423] px-5 py-3 shadow-[0_8px_14px_rgba(0,0,0,0.22),0_2px_4px_rgba(0,0,0,0.18),inset_0_1px_2px_rgba(255,255,255,0.07),inset_0_-1px_2px_rgba(0,0,0,0.22)]">
-            <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-80 scale-75">
-              <ScrewHead styleIndex={screwStyle} size={12} />
+        <>
+          <FloatingReadoutPortal />
+          <div className="absolute bottom-[12%] left-[50%] z-10 -translate-x-1/2 translate-y-[2px]">
+            <div className="mb-1.5 translate-y-[-2px] text-center text-[10px] font-bold uppercase tracking-[0.32em] text-[#fff8eb]" style={{ textShadow: PANEL_TEXT_DEPTH_SHADOW }}>LFO INTENSITY</div>
+            <div className="relative flex w-[248px] justify-center gap-4 overflow-visible rounded-full border border-[#181818] bg-[#212121] px-5 py-3 shadow-[0_8px_14px_rgba(0,0,0,0.232),0_2px_4px_rgba(0,0,0,0.192),inset_0_1px_2px_rgba(255,255,255,0.062),inset_0_-1px_2px_rgba(0,0,0,0.242)]">
+              <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-80 scale-75">
+                <ScrewHead styleIndex={screwStyle} size={12} />
+              </div>
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-80 scale-75">
+                <ScrewHead styleIndex={screwStyle} size={12} />
+              </div>
+              <div className="absolute inset-0 rounded-full bg-gradient-to-b from-[#ffffff08] to-transparent pointer-events-none" />
+              <div className="absolute inset-0 rounded-full opacity-30 mix-blend-overlay pointer-events-none" style={{ backgroundImage: RUBBER_MATTE_NOISE }} />
+              <IlluminatedRubberFader label="Depth ◍" value={depth} onChange={setDepth} active={lfoActive} />
+              <IlluminatedRubberFader label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} active={lfoActive} />
             </div>
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-80 scale-75">
-              <ScrewHead styleIndex={screwStyle} size={12} />
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-b from-[#ffffff08] to-transparent pointer-events-none" />
-            <div className="absolute inset-0 opacity-30 mix-blend-overlay pointer-events-none" style={{ backgroundImage: RUBBER_MATTE_NOISE }} />
-            <IlluminatedRubberFader label="Depth ◍" value={depth} onChange={setDepth} active={lfoActive} />
-            <IlluminatedRubberFader label="Phase ◐" value={stereoPhase} onChange={setStereoPhase} active={lfoActive} />
           </div>
-        </div>
+        </>
       );
     case 1:
       return (
@@ -4089,6 +7637,10 @@ const DropdownSelect = ({ options, value, onChange, width = 80 }) => (
 const OrbitalLfoControl = ({ active, setActive, sync, setSync, waveIndex, setWaveIndex, rateIndex, setRateIndex }) => {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [dropdownAnchor, setDropdownAnchor] = useState(null);
+  const [lfoSettleTick, setLfoSettleTick] = useState(0);
+  const [syncGlowTick, setSyncGlowTick] = useState(0);
+  const [waveSettleTick, setWaveSettleTick] = useState(0);
+  const [rateSettleTick, setRateSettleTick] = useState(0);
   const dropdownRef = useRef(null);
   const waveButtonRef = useRef(null);
   const rateButtonRef = useRef(null);
@@ -4136,12 +7688,47 @@ const OrbitalLfoControl = ({ active, setActive, sync, setSync, waveIndex, setWav
   };
 
   const stopControlDrag = (event) => event.stopPropagation();
+  const toggleLfoActive = () => {
+    setLfoSettleTick(tick => tick + 1);
+    setActive(!active);
+  };
+  const toggleSync = () => {
+    setSyncGlowTick(tick => tick + 1);
+    setSync(!sync);
+  };
+  const toggleWaveDropdown = () => {
+    setWaveSettleTick(tick => tick + 1);
+    setOpenDropdown(openDropdown === 'wave' ? null : 'wave');
+  };
+  const toggleRateDropdown = () => {
+    setRateSettleTick(tick => tick + 1);
+    setOpenDropdown(openDropdown === 'rate' ? null : 'rate');
+  };
   const wave = SHAPES[waveIndex] || SHAPES[0];
   const waveSymbol = SHAPE_BUTTON_SYMBOLS[waveIndex] || SHAPE_BUTTON_SYMBOLS[0];
   const waveSymbolStyle = SHAPE_BUTTON_SYMBOL_STYLES[waveIndex] || SHAPE_BUTTON_SYMBOL_STYLES[0];
   const rate = SYNC_DIVS[rateIndex] || SYNC_DIVS[0];
   const textActiveClass = active ? 'text-[#edcf88]' : 'text-[#666]';
   const rateActiveClass = active && sync ? 'text-[#e8d19e]' : 'text-[#666]';
+  const satelliteButtonStyle = (pressed = false) => ({
+    background: pressed ? '#5b332f' : '#151515',
+    borderColor: pressed ? '#874842' : '#111',
+    boxShadow: pressed
+      ? '2px 3px 5px rgba(0,0,0,0.34), inset 1px 1px 1px rgba(255,255,255,0.05), inset -1px -1px 2px rgba(0,0,0,0.26)'
+      : '2px 3px 5px rgba(0,0,0,0.42), 1px 2px 2px rgba(0,0,0,0.24), inset 1px 1px 1px rgba(255,255,255,0.06), inset -1px -1px 2px rgba(0,0,0,0.28)'
+  });
+  const satelliteFaceStyle = (pressed = false) => ({
+    background: pressed ? '#ac534c' : '#262626',
+    boxShadow: pressed
+      ? 'inset 0 -1px 2px rgba(72,18,12,0.24)'
+      : 'inset 1px 1px 1px rgba(255,255,255,0.12), inset -1px -2px 3px rgba(0,0,0,0.26)'
+  });
+  const renderSatelliteGlow = (lit, color = 'rgba(237,207,136,0.14)') => lit ? (
+    <span
+      className="pointer-events-none absolute -inset-[3px] rounded-full lfo-satellite-glow-on"
+      style={{ '--lfo-satellite-glow': color }}
+    />
+  ) : null;
   const renderDropdownPortal = () => {
     if (!openDropdown || !dropdownAnchor) return null;
     const isRate = openDropdown === 'rate';
@@ -4164,7 +7751,7 @@ const OrbitalLfoControl = ({ active, setActive, sync, setSync, waveIndex, setWav
               setValue(i);
               setOpenDropdown(null);
             }}
-            className={`${isRate ? 'py-2' : 'px-3 py-2.5'} cursor-pointer text-center text-[10px] font-bold transition-colors hover:bg-[#df6f5a] hover:text-[#111] ${selected ? 'text-[#edcf88]' : 'text-[#888]'}`}
+            className={`${isRate ? 'py-2' : 'px-3 py-2.5'} cursor-pointer text-center text-[10px] font-bold transition-colors hover:bg-[#aa5041] hover:text-[#111] ${selected ? 'text-[#edcf88]' : 'text-[#888]'}`}
           >
             {option}
           </button>
@@ -4189,42 +7776,64 @@ const OrbitalLfoControl = ({ active, setActive, sync, setSync, waveIndex, setWav
       </svg>
 
       <div className="pointer-events-none absolute inset-[-100px] z-0 flex items-center justify-center" style={{ filter: 'url(#lfoOrbitalGoo)' }}>
-        <div className="absolute h-[50px] w-[50px] rounded-full bg-[#1a1a1a]" />
-        <div className="absolute h-[37px] w-[37px] rounded-full bg-[#1a1a1a] transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)]" style={{ transform: active ? `translate(${positions.sync.x}px, ${positions.sync.y}px)` : 'translate(0px, 0px)' }} />
-        <div className="absolute h-[37px] w-[37px] rounded-full bg-[#1a1a1a] transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)]" style={{ transform: active ? `translate(${positions.wave.x}px, ${positions.wave.y}px)` : 'translate(0px, 0px)' }} />
-        <div className="absolute h-[37px] w-[37px] rounded-full bg-[#1a1a1a] transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)]" style={{ transform: active ? `translate(${positions.rate.x}px, ${positions.rate.y}px)` : 'translate(0px, 0px)' }} />
+        <div className="absolute h-[37px] w-[37px] rounded-full bg-[#1a1a1a]" style={{ transform: `translate(${positions.sync.x}px, ${positions.sync.y}px)` }} />
+        <div className="absolute h-[37px] w-[37px] rounded-full bg-[#1a1a1a]" style={{ transform: `translate(${positions.wave.x}px, ${positions.wave.y}px)` }} />
+        <div className="absolute h-[37px] w-[37px] rounded-full bg-[#1a1a1a]" style={{ transform: `translate(${positions.rate.x}px, ${positions.rate.y}px)` }} />
       </div>
+      <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-[49px] w-[49px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1a1a1a]" />
 
       <button
+        key={lfoSettleTick}
         onPointerDown={stopControlDrag}
-        onClick={() => setActive(!active)}
-        className={`relative z-30 flex h-[46px] w-[46px] items-center justify-center rounded-full border-b border-r border-[#111] border-l border-t border-[#444] bg-[#2c2c2c] outline-none transition-all duration-300 ${active ? 'shadow-[2px_4px_8px_rgba(0,0,0,0.46),inset_0_-5px_10px_rgba(0,0,0,0.8)]' : 'shadow-[3px_5px_9px_rgba(0,0,0,0.42),0_1px_0_#111,inset_1px_2px_2px_rgba(255,255,255,0.1),inset_-2px_-3px_5px_rgba(0,0,0,0.22)]'}`}
+        onClick={toggleLfoActive}
+        className={`${lfoSettleTick > 0 ? 'lfo-button-settle' : ''} relative z-30 flex h-[46px] w-[46px] items-center justify-center rounded-full border-b border-r border-[#111] border-l border-t border-[#444] bg-[#2c2c2c] outline-none transition-[box-shadow,filter] duration-[760ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${active ? 'shadow-[2px_4px_8px_rgba(0,0,0,0.44),inset_0_-5px_10px_rgba(0,0,0,0.72)] brightness-[0.985]' : 'shadow-[3px_5px_9px_rgba(0,0,0,0.42),0_1px_0_#111,inset_1px_2px_2px_rgba(255,255,255,0.1),inset_-2px_-3px_5px_rgba(0,0,0,0.22)] brightness-100'}`}
       >
-        <div className={`flex h-[31px] w-[31px] items-center justify-center rounded-full transition-all duration-500 ${active ? 'bg-[#111] shadow-[inset_0_0_15px_rgba(0,0,0,1)]' : 'bg-[#222] shadow-[inset_0_0_10px_rgba(0,0,0,0.8)]'}`}>
-          <span className={`text-[9px] font-bold tracking-widest transition-colors duration-500 ${active ? 'text-[#df6f5a] drop-shadow-[0_0_6px_rgba(223,111,90,1)]' : 'text-[#666]'}`}>LFO</span>
+        <div className={`flex h-[31px] w-[31px] items-center justify-center rounded-full transition-[background-color,box-shadow,filter] duration-[760ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${active ? 'bg-[#131313] shadow-[inset_0_0_15px_rgba(0,0,0,0.9)] brightness-[0.96]' : 'bg-[#222] shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] brightness-100'}`}>
+          <span className={`text-[9px] font-bold tracking-widest transition-colors duration-[620ms] ease-out ${active ? 'text-[#df6f5a] lfo-main-glow-on' : 'text-[#666] lfo-main-glow-off'}`}>LFO</span>
         </div>
       </button>
 
-      <div className={`absolute z-20 transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)] ${active ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} style={{ transform: active ? `translate(${positions.sync.x}px, ${positions.sync.y}px)` : 'translate(0px, 0px)' }}>
+      <div className={`absolute z-20 transition-opacity duration-300 ${active ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ transform: `translate(${positions.sync.x}px, ${positions.sync.y}px)` }}>
         <button
+          disabled={!active}
           onPointerDown={stopControlDrag}
-          onClick={() => setSync(!sync)}
-          className={`flex h-[37px] w-[37px] items-center justify-center rounded-full outline-none transition-colors shadow-[2px_3px_6px_rgba(0,0,0,0.26),inset_0_2px_2px_rgba(255,255,255,0.16)] ${sync ? 'bg-[#e86b5d]' : 'bg-[#2a2622]'}`}
+          onClick={toggleSync}
+          className="relative flex h-[37px] w-[37px] items-center justify-center overflow-hidden rounded-full border outline-none transition-all duration-300 ease-out"
+          style={satelliteButtonStyle(active && sync)}
         >
-          <span className={`text-[9px] font-black tracking-wider ${sync ? 'text-white drop-shadow-sm' : 'text-[#a4998e]'}`}>SYNC</span>
+          <span
+            className="pointer-events-none absolute inset-[0.5px] rounded-full"
+            style={satelliteFaceStyle(active && sync)}
+          />
+          {renderSatelliteGlow(active && sync, 'rgba(168,77,69,0.22)')}
+          {syncGlowTick > 0 && (
+            <span
+              key={`sync-ember-${syncGlowTick}`}
+              className={`pointer-events-none absolute inset-[0.5px] rounded-full ${active && sync ? 'sync-button-ember-on' : 'sync-button-ember-off'}`}
+            />
+          )}
+          <span className={`relative z-10 text-[9px] font-black tracking-wider transition-all duration-300 ease-out ${active && sync ? 'text-white drop-shadow-sm' : 'text-[#a4998e]'}`}>SYNC</span>
         </button>
       </div>
 
-      <div className={`absolute z-20 transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)] ${active ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} style={{ transform: active ? `translate(${positions.wave.x}px, ${positions.wave.y}px)` : 'translate(0px, 0px)' }}>
+      <div className={`absolute z-20 transition-opacity duration-300 ${active ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ transform: `translate(${positions.wave.x}px, ${positions.wave.y}px)` }}>
         <div className="relative">
           <button
+            disabled={!active}
             ref={waveButtonRef}
             onPointerDown={stopControlDrag}
-            onClick={() => setOpenDropdown(openDropdown === 'wave' ? null : 'wave')}
-            className="flex h-[37px] w-[37px] items-center justify-center rounded-full border border-[#333] bg-[#1a1a1a] outline-none shadow-[2px_3px_6px_rgba(0,0,0,0.28),inset_0_1px_2px_rgba(255,255,255,0.05)] transition-colors hover:bg-[#222]"
+            onClick={toggleWaveDropdown}
+            className="relative flex h-[37px] w-[37px] items-center justify-center overflow-hidden rounded-full border outline-none transition-all duration-300"
+            style={satelliteButtonStyle()}
           >
             <span
-              className={`absolute inset-0 flex items-center justify-center leading-none transition-colors duration-300 ${textActiveClass}`}
+              key={`wave-face-${waveSettleTick}`}
+              className={`${waveSettleTick > 0 ? 'option-button-settle' : ''} pointer-events-none absolute inset-[0.5px] rounded-full`}
+              style={satelliteFaceStyle()}
+            />
+            {renderSatelliteGlow(active)}
+            <span
+              className={`absolute inset-0 z-10 flex items-center justify-center leading-none transition-colors duration-300 ${textActiveClass}`}
               style={waveSymbolStyle}
             >
               {waveSymbol}
@@ -4233,16 +7842,24 @@ const OrbitalLfoControl = ({ active, setActive, sync, setSync, waveIndex, setWav
         </div>
       </div>
 
-      <div className={`absolute z-20 transition-all duration-700 ease-[cubic-bezier(0.68,-0.55,0.26,1.55)] ${active ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} style={{ transform: active ? `translate(${positions.rate.x}px, ${positions.rate.y}px)` : 'translate(0px, 0px)' }}>
+      <div className={`absolute z-20 transition-opacity duration-300 ${active ? 'pointer-events-auto' : 'pointer-events-none'}`} style={{ transform: `translate(${positions.rate.x}px, ${positions.rate.y}px)` }}>
         <div className="relative">
           <button
+            disabled={!active}
             ref={rateButtonRef}
             onPointerDown={stopControlDrag}
-            onClick={() => setOpenDropdown(openDropdown === 'rate' ? null : 'rate')}
-            className="flex h-[37px] w-[37px] items-center justify-center rounded-full border border-[#333] bg-[#1a1a1a] outline-none shadow-[2px_3px_6px_rgba(0,0,0,0.28),inset_0_1px_2px_rgba(255,255,255,0.05)] transition-colors hover:bg-[#222]"
-          >
-            <span className={`text-[9px] font-bold tracking-wide transition-colors duration-300 ${rateActiveClass}`}>{rate}</span>
-          </button>
+            onClick={toggleRateDropdown}
+            className="relative flex h-[37px] w-[37px] items-center justify-center overflow-hidden rounded-full border outline-none transition-all duration-300"
+            style={satelliteButtonStyle()}
+        >
+          <span
+            key={`rate-face-${rateSettleTick}`}
+            className={`${rateSettleTick > 0 ? 'option-button-settle' : ''} pointer-events-none absolute inset-[0.5px] rounded-full`}
+            style={satelliteFaceStyle()}
+          />
+          {renderSatelliteGlow(active && sync)}
+          <span className={`relative z-10 text-[9px] font-bold tracking-wide transition-colors duration-300 ${rateActiveClass}`}>{rate}</span>
+        </button>
         </div>
       </div>
     </div>
@@ -4424,6 +8041,30 @@ const CENTER_DIAL_SURFACES = [
     indicator: { width: 8, height: 25, top: '7%', background: '#f26b55', boxShadow: '0 0 13px rgba(242,107,85,0.72)' }
   },
   {
+    name: 'Nocturne Brass - Walnut Rim Deep Inset Arc Rings',
+    decoration: 'nocturne-brass',
+    outerRim: true,
+    outerRimTexture: true,
+    ringOnlyShadow: true,
+    ringBottomShadow: true,
+    ringSeatBevel: true,
+    ringFlavorMatch: true,
+    partialGuideRings: true,
+    rimWidth: 28,
+    rimBackgroundColor: '#3a2114',
+    rimBackgroundImage: 'linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.12)), url("/textures/walnut.png")',
+    rimBackgroundSize: 'cover',
+    reducedRimShadow: true,
+    softNocturneRings: true,
+    hideGenericGrooves: true,
+    allowGrooveOverlay: true,
+    size: 313,
+    backgroundColor: '#171614',
+    backgroundImage: 'radial-gradient(circle at 50% 17%, rgba(255,236,180,0.09), rgba(255,255,255,0.018) 24%, transparent 42%), conic-gradient(from 0deg at 50% 50%, #111, #2a2925, #12110f, #24231f, #111)',
+    boxShadow: 'none',
+    indicator: { width: 8, height: 25, top: '7%', background: '#f26b55', boxShadow: '0 0 13px rgba(242,107,85,0.72)' }
+  },
+  {
     name: 'Nocturne Brass - Walnut Rim Deep Inset Soft Previous',
     decoration: 'nocturne-brass',
     outerRim: true,
@@ -4582,45 +8223,35 @@ const CENTER_DIAL_NUMBER_STYLES = [
 const MIDDLE_KNOB_STYLES = [
   { name: 'Original Copper' },
   {
+    name: 'Original Copper 9px Ring',
+    useOriginalBackground: true,
+    originalCenterOverlay: true,
+    originalCenterOverlayOpacity: 1,
+    originalCenterOverlayInset: 9,
+    sheenOpacity: 0.34
+  },
+  {
+    name: 'Original Copper 10px Ring Test',
+    originalInset: '8.5px'
+  },
+  {
+    name: 'Original Copper Thick Outer Ring',
+    background: 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 20%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #a88842 0deg, #edd39a 45deg, #a88842 90deg, #edd39a 135deg, #a88842 180deg, #edd39a 225deg, #a88842 270deg, #edd39a 315deg, #a88842 360deg)',
+    shadow: '15px 15px 30px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.9), inset -4px -4px 8px rgba(0,0,0,0.6)',
+    centerDiscInset: 8,
+    centerDiscBackground: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.34), transparent 30%), conic-gradient(from 180deg at 50% 50%, #9f8b5b 0deg, #cfbd8b 45deg, #a28d5e 90deg, #d7c695 135deg, #9f8b5b 180deg, #cab884 225deg, #988455 270deg, #d4c28f 315deg, #9f8b5b 360deg)',
+    centerDiscShadow: 'inset 1px 1px 2px rgba(255,255,255,0.16), inset -1px -2px 3px rgba(0,0,0,0.18)',
+    originalCenterOverlay: true,
+    originalCenterOverlayOpacity: 1,
+    originalCenterOverlayInset: 8,
+    sheenOpacity: 0.34
+  },
+  {
     name: 'Original Copper Soft',
     shadow: '14px 16px 30px rgba(0,0,0,0.48), inset 2px 2px 6px rgba(255,255,255,0.6), inset -5px -7px 13px rgba(0,0,0,0.5), 0 0 0 1.2px rgba(33,24,11,0.4)',
     edgeInset: 5,
     edgeBorder: '1px solid rgba(255,255,255,0.15)',
     edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.15), inset 0 -5px 9px rgba(0,0,0,0.25)',
-  },
-  {
-    name: 'Original Graphite Grip',
-    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
-    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
-    edgeInset: 8,
-    edgeBorder: '1px solid rgba(210,225,225,0.18)',
-    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.11), inset 0 -5px 10px rgba(0,0,0,0.58), 0 0 0 1px rgba(0,0,0,0.46)',
-    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.16) 0deg 0.75deg, rgba(0,0,0,0.26) 0.75deg 2.5deg)',
-    edgeMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
-    edgeOpacity: 0.42,
-    edgeBlendMode: 'screen',
-    innerInset: 17,
-    innerOpacity: 0.2,
-    sheenOpacity: 0.22
-  },
-  {
-    name: 'Original Graphite Grip Coral Pointer',
-    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
-    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
-    edgeInset: 8,
-    edgeBorder: '1px solid rgba(210,225,225,0.18)',
-    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.11), inset 0 -5px 10px rgba(0,0,0,0.58), 0 0 0 1px rgba(0,0,0,0.46)',
-    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.16) 0deg 0.75deg, rgba(0,0,0,0.26) 0.75deg 2.5deg)',
-    edgeMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
-    edgeOpacity: 0.42,
-    edgeBlendMode: 'screen',
-    innerInset: 17,
-    innerOpacity: 0.2,
-    sheenOpacity: 0.22,
-    pointerStyle: {
-      background: 'linear-gradient(to bottom, #e9725d, #b84c39)',
-      boxShadow: '0 0 5px rgba(255,107,74,0.18), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,196,181,0.36)'
-    }
   },
   {
     name: 'Original Graphite Grip Copper Ring Coral Pointer',
@@ -4661,21 +8292,6 @@ const MIDDLE_KNOB_STYLES = [
     }
   },
   {
-    name: 'Original Copper Grip Coral Pointer',
-    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
-    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
-    outerBackground: 'radial-gradient(circle at 34% 28%, rgba(255,202,153,0.2), transparent 38%), conic-gradient(from 180deg at 50% 50%, #6b2e18 0deg, #aa6030 45deg, #643018 90deg, #bd7040 135deg, #6b2e18 180deg, #9e552a 225deg, #5c2815 270deg, #b26634 315deg, #6b2e18 360deg)',
-    outerMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
-    edgeInset: 8,
-    edgeBorder: '1px solid rgba(167,91,45,0.26)',
-    edgeShadow: 'inset 0 2px 4px rgba(255,190,138,0.1), inset 0 -4px 8px rgba(47,21,12,0.46), 0 0 0 1px rgba(0,0,0,0.44)',
-    sheenOpacity: 0.12,
-    pointerStyle: {
-      background: 'linear-gradient(to bottom, #e9725d, #b84c39)',
-      boxShadow: '0 0 5px rgba(255,107,74,0.18), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,196,181,0.36)'
-    }
-  },
-  {
     name: 'Original Walnut Grip Coral Pointer',
     background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
     shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
@@ -4689,40 +8305,6 @@ const MIDDLE_KNOB_STYLES = [
       background: 'linear-gradient(to bottom, #e9725d, #b84c39)',
       boxShadow: '0 0 5px rgba(255,107,74,0.18), 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,196,181,0.36)'
     }
-  },
-  {
-    name: 'Original Graphite Grip Yellow Pointer',
-    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
-    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
-    edgeInset: 8,
-    edgeBorder: '1px solid rgba(210,225,225,0.18)',
-    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.11), inset 0 -5px 10px rgba(0,0,0,0.58), 0 0 0 1px rgba(0,0,0,0.46)',
-    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.16) 0deg 0.75deg, rgba(0,0,0,0.26) 0.75deg 2.5deg)',
-    edgeMask: 'radial-gradient(circle, transparent 0 67%, #000 69% 100%)',
-    edgeOpacity: 0.42,
-    edgeBlendMode: 'screen',
-    innerInset: 17,
-    innerOpacity: 0.2,
-    sheenOpacity: 0.22,
-    pointerStyle: {
-      background: 'linear-gradient(to bottom, #f3dcae, #c79f59)',
-      boxShadow: '0 0 8px rgba(243,220,174,0.34), 0 2px 4px rgba(0,0,0,0.48), inset 0 1px 1px rgba(255,246,224,0.78)'
-    }
-  },
-  {
-    name: 'Original Graphite Grip Thick',
-    background: 'radial-gradient(circle at 31% 29%, rgba(255,255,255,0.13), transparent 28%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255,255,255,0.08) 62%, rgba(0,0,0,0.34) 82%, transparent 88%), radial-gradient(circle at 30% 30%, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #0a0a0a 0deg, #252525 45deg, #0a0a0a 90deg, #252525 135deg, #0a0a0a 180deg, #252525 225deg, #0a0a0a 270deg, #252525 315deg, #0a0a0a 360deg)',
-    shadow: '6px 12px 20px rgba(0,0,0,0.45), 3px 4px 6px rgba(0,0,0,0.35), inset 1px 1px 3px rgba(255,255,255,0.16), inset -3px -4px 8px rgba(0,0,0,0.86)',
-    edgeInset: 6,
-    edgeBorder: '1px solid rgba(210,225,225,0.18)',
-    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.11), inset 0 -5px 10px rgba(0,0,0,0.58), 0 0 0 1px rgba(0,0,0,0.46)',
-    edgeTexture: 'repeating-conic-gradient(from 0deg, rgba(220,230,230,0.16) 0deg 0.75deg, rgba(0,0,0,0.26) 0.75deg 2.5deg)',
-    edgeMask: 'radial-gradient(circle, transparent 0 62%, #000 64% 100%)',
-    edgeOpacity: 0.42,
-    edgeBlendMode: 'screen',
-    innerInset: 17,
-    innerOpacity: 0.2,
-    sheenOpacity: 0.22
   },
   {
     name: 'Original Copper Graphite Grip',
@@ -4742,156 +8324,135 @@ const MIDDLE_KNOB_STYLES = [
     sheenOpacity: 0
   },
   {
-    name: 'Soft Copper Dome',
-    background: 'radial-gradient(circle at 32% 30%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.12) 19%, transparent 35%), radial-gradient(circle at 50% 50%, transparent 0 66%, rgba(180,163,119,0.16) 74%, rgba(70,56,36,0.42) 89%, rgba(18,13,7,0.58) 100%), conic-gradient(from 180deg at 50% 50%, #91764a 0deg, #c5b07b 45deg, #91764a 90deg, #cbb783 135deg, #8d7247 180deg, #c2ac75 225deg, #8c7045 270deg, #c8b27e 315deg, #91764a 360deg)',
-    shadow: '13px 15px 28px rgba(0,0,0,0.46), inset 3px 3px 7px rgba(255,255,255,0.58), inset -5px -7px 13px rgba(0,0,0,0.48), 0 0 0 1px rgba(33,24,11,0.44)',
-    edgeInset: 5,
-    edgeBorder: '1px solid rgba(201,185,139,0.3)',
-    edgeShadow: 'inset 0 3px 4px rgba(255,255,255,0.22), inset 0 -5px 8px rgba(64,43,17,0.34), 0 1px 2px rgba(0,0,0,0.45)',
-    sheenOpacity: 0.42
-  },
-  {
-    name: 'Brushed Brass Bevel',
-    background: 'radial-gradient(circle at 33% 29%, rgba(255,255,255,0.52), transparent 31%), radial-gradient(circle at 50% 50%, transparent 0 62%, rgba(235,218,166,0.22) 72%, rgba(58,42,20,0.5) 94%), repeating-conic-gradient(from 180deg at 50% 50%, #a18345 0deg 8deg, #d8c07d 10deg 18deg, #96763a 20deg 29deg)',
-    shadow: '13px 15px 28px rgba(0,0,0,0.48), inset 3px 3px 8px rgba(255,255,255,0.58), inset -5px -7px 12px rgba(0,0,0,0.5), 0 0 0 1px rgba(31,23,12,0.48)',
-    edgeInset: 4,
-    edgeBorder: '1px solid rgba(236,214,156,0.34)',
-    edgeShadow: 'inset 0 2px 5px rgba(255,255,255,0.22), inset 0 -6px 9px rgba(50,35,16,0.38), 0 1px 2px rgba(0,0,0,0.5)',
-    sheenOpacity: 0.38
-  },
-  {
-    name: 'Classic Soft Lip',
-    background: 'radial-gradient(circle at 34% 32%, rgba(255,255,255,0.52), rgba(255,255,255,0.1) 20%, transparent 37%), radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(188,169,121,0.15) 70%, rgba(75,58,34,0.5) 93%), conic-gradient(from 180deg at 50% 50%, #8d7146, #c1ab77, #8b6f44, #cab684, #8d7146, #bfa772, #876b41, #c5af7c, #8d7146)',
-    shadow: '14px 16px 30px rgba(0,0,0,0.48), inset 2px 2px 6px rgba(255,255,255,0.62), inset -5px -6px 12px rgba(0,0,0,0.5)',
-    edgeInset: 7,
-    edgeBorder: '1px solid rgba(203,188,143,0.24)',
-    edgeShadow: 'inset 0 2px 3px rgba(255,255,255,0.2), inset 0 -4px 8px rgba(43,31,14,0.32)',
-    sheenOpacity: 0.34
-  },
-  {
-    name: 'Smoked Champagne',
-    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.48), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(224,210,174,0.16) 75%, rgba(35,31,25,0.42) 96%), conic-gradient(from 180deg at 50% 50%, #74684d, #c2b58a, #776b50, #d1c195, #74684d, #b9aa7d, #6e6249, #c8ba8e, #74684d)',
-    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.42), inset -5px -7px 12px rgba(0,0,0,0.45), 0 0 0 1px rgba(20,18,14,0.5)',
-    edgeInset: 5,
-    edgeBorder: '1px solid rgba(225,214,180,0.26)',
-    edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.16), inset 0 -5px 9px rgba(27,23,18,0.34)',
-    sheenOpacity: 0.3
-  },
-  {
-    name: 'Smoked Champagne Bold',
-    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.48), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(224,210,174,0.16) 75%, rgba(35,31,25,0.42) 96%), conic-gradient(from 180deg at 50% 50%, #74684d, #c2b58a, #776b50, #d1c195, #74684d, #b9aa7d, #6e6249, #c8ba8e, #74684d)',
-    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.42), inset -5px -7px 12px rgba(0,0,0,0.45), 0 0 0 1px rgba(20,18,14,0.5)',
-    edgeInset: 8,
-    edgeBorder: '1.2px solid rgba(225,214,180,0.34)',
-    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.18), inset 0 -6px 10px rgba(27,23,18,0.38)',
-    sheenOpacity: 0.3
-  },
-  {
     name: 'Smoked Champagne Bold Clean',
-    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.48), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(224,210,174,0.16) 75%, rgba(35,31,25,0.42) 96%), conic-gradient(from 180deg at 50% 50%, #74684d, #c2b58a, #776b50, #d1c195, #74684d, #b9aa7d, #6e6249, #c8ba8e, #74684d)',
-    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.42), inset -5px -7px 12px rgba(0,0,0,0.45)',
+    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.4), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(211,196,160,0.13) 75%, rgba(35,31,25,0.46) 96%), conic-gradient(from 180deg at 50% 50%, #6e634a, #b8ab82, #71664c, #c4b58b, #6e634a, #afa178, #695e47, #beb087, #6e634a)',
+    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.35), inset -5px -7px 12px rgba(0,0,0,0.47)',
     edgeInset: 8,
-    edgeBorder: '1.2px solid rgba(225,214,180,0.34)',
-    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.18), inset 0 -6px 10px rgba(27,23,18,0.38)',
-    sheenOpacity: 0.3
-  },
-  {
-    name: 'Modern Satin Brass',
-    background: 'linear-gradient(135deg, rgba(255,255,255,0.14), transparent 38%, rgba(0,0,0,0.2)), radial-gradient(circle at 50% 50%, transparent 0 65%, rgba(184,166,118,0.14) 76%, rgba(35,28,17,0.5) 98%), conic-gradient(from 198deg at 50% 50%, #876f49, #bca775, #92784f, #c5b17e, #876f49, #b5a06f, #8a7149, #c0aa78, #876f49)',
-    shadow: '12px 14px 26px rgba(0,0,0,0.48), inset 2px 2px 5px rgba(255,255,255,0.5), inset -6px -7px 12px rgba(0,0,0,0.48)',
-    edgeInset: 6,
-    edgeBorder: '1px solid rgba(197,180,134,0.24)',
-    edgeShadow: 'inset 0 1px 4px rgba(255,255,255,0.18), inset 0 -5px 8px rgba(48,35,16,0.33)',
-    sheenOpacity: 0.26
-  },
-  {
-    name: 'Dark Aged Brass',
-    background: 'radial-gradient(circle at 32% 31%, rgba(255,255,255,0.34), transparent 31%), radial-gradient(circle at 50% 50%, transparent 0 63%, rgba(128,110,76,0.18) 75%, rgba(18,13,8,0.6) 98%), conic-gradient(from 180deg at 50% 50%, #675235, #93805c, #59472c, #a08c67, #675235, #897650, #534126, #97845f, #675235)',
-    shadow: '14px 16px 30px rgba(0,0,0,0.54), inset 3px 3px 6px rgba(255,255,255,0.34), inset -5px -7px 13px rgba(0,0,0,0.58), 0 0 0 1px rgba(16,11,6,0.55)',
-    edgeInset: 5,
-    edgeBorder: '1px solid rgba(151,130,94,0.28)',
-    edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.12), inset 0 -6px 9px rgba(18,12,5,0.42)',
-    sheenOpacity: 0.28
-  },
-  {
-    name: 'Ivory Brass Cap',
-    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.58), transparent 33%), radial-gradient(circle at 50% 50%, transparent 0 61%, rgba(225,202,139,0.18) 74%, rgba(55,39,18,0.45) 98%), conic-gradient(from 180deg at 50% 50%, #a48a55, #d8c796, #a98f58, #e0cf9d, #a48a55, #d4c18f, #9f844e, #ddcb9a, #a48a55)',
-    shadow: '13px 15px 28px rgba(0,0,0,0.46), inset 3px 3px 8px rgba(255,255,255,0.52), inset -5px -6px 12px rgba(0,0,0,0.42)',
-    edgeInset: 4,
-    edgeBorder: '1px solid rgba(240,226,186,0.36)',
-    edgeShadow: 'inset 0 2px 5px rgba(255,255,255,0.2), inset 0 -5px 8px rgba(53,38,18,0.3)',
-    sheenOpacity: 0.32
-  },
-  {
-    name: 'Copper Pewter Blend',
-    background: 'radial-gradient(circle at 33% 30%, rgba(255,255,255,0.46), transparent 31%), radial-gradient(circle at 50% 50%, transparent 0 63%, rgba(201,174,126,0.18) 75%, rgba(45,36,29,0.48) 98%), conic-gradient(from 180deg at 50% 50%, #806d55, #c0aa7e, #887259, #cab486, #806d55, #b8a174, #76634d, #c4ae83, #806d55)',
-    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.38), inset -5px -7px 13px rgba(0,0,0,0.5)',
-    edgeInset: 6,
-    edgeBorder: '1px solid rgba(210,192,155,0.28)',
-    edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.14), inset 0 -5px 9px rgba(37,29,22,0.34)',
-    sheenOpacity: 0.28
-  },
-  {
-    name: 'Copper Pewter Bold',
-    background: 'radial-gradient(circle at 33% 30%, rgba(255,255,255,0.46), transparent 31%), radial-gradient(circle at 50% 50%, transparent 0 63%, rgba(201,174,126,0.18) 75%, rgba(45,36,29,0.48) 98%), conic-gradient(from 180deg at 50% 50%, #806d55, #c0aa7e, #887259, #cab486, #806d55, #b8a174, #76634d, #c4ae83, #806d55)',
-    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.38), inset -5px -7px 13px rgba(0,0,0,0.5)',
-    edgeInset: 7,
-    edgeBorder: '1.1px solid rgba(210,192,155,0.32)',
-    edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.14), inset 0 -5px 9px rgba(37,29,22,0.34)',
-    sheenOpacity: 0.28
-  },
-  {
-    name: 'Inset Soft Bezel',
-    background: 'radial-gradient(circle at 34% 31%, rgba(255,255,255,0.44), transparent 31%), radial-gradient(circle at 50% 50%, transparent 0 55%, rgba(50,40,23,0.16) 58%, transparent 63%, rgba(185,168,120,0.14) 74%, rgba(47,37,21,0.52) 98%), conic-gradient(from 180deg at 50% 50%, #8e7247, #bfa977, #907449, #c8b582, #8e7247, #baa371, #896d43, #c3ad7a, #8e7247)',
-    shadow: '14px 16px 30px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.48), inset -5px -7px 13px rgba(0,0,0,0.5)',
-    edgeInset: 4,
-    edgeBorder: '1px solid rgba(199,181,134,0.24)',
-    edgeShadow: 'inset 0 2px 5px rgba(255,255,255,0.16), inset 0 -5px 10px rgba(44,31,13,0.36)',
-    innerInset: 15,
-    innerOpacity: 0.26,
-    sheenOpacity: 0.3
-  },
-  {
-    name: 'Clean Studio Brass',
-    background: 'radial-gradient(circle at 35% 31%, rgba(255,255,255,0.38), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 66%, rgba(183,168,126,0.12) 76%, rgba(39,31,18,0.48) 98%), conic-gradient(from 180deg at 50% 50%, #8f744b, #baa575, #91764d, #c3af7e, #8f744b, #b39d6d, #8b7047, #bea978, #8f744b)',
-    shadow: '12px 14px 26px rgba(0,0,0,0.46), inset 2px 2px 5px rgba(255,255,255,0.44), inset -5px -6px 11px rgba(0,0,0,0.46), 0 0 0 1px rgba(27,20,10,0.42)',
-    edgeInset: 8,
-    edgeBorder: '1px solid rgba(194,178,136,0.18)',
-    edgeShadow: 'inset 0 2px 4px rgba(255,255,255,0.12), inset 0 -4px 7px rgba(44,32,15,0.26)',
+    edgeBorder: '1.2px solid rgba(218,207,175,0.28)',
+    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.13), inset 0 -6px 10px rgba(27,23,18,0.4)',
     sheenOpacity: 0.24
   },
   {
-    name: 'Vintage Nickel Brass',
-    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.5), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(214,202,169,0.16) 76%, rgba(34,32,27,0.46) 98%), conic-gradient(from 180deg at 50% 50%, #77715e, #bfb48e, #7b735f, #c9bd95, #77715e, #b5aa83, #706955, #c2b790, #77715e)',
-    shadow: '13px 15px 28px rgba(0,0,0,0.48), inset 3px 3px 7px rgba(255,255,255,0.4), inset -5px -7px 12px rgba(0,0,0,0.44)',
-    edgeInset: 5,
-    edgeBorder: '1px solid rgba(221,213,186,0.24)',
-    edgeShadow: 'inset 0 3px 5px rgba(255,255,255,0.14), inset 0 -5px 8px rgba(31,29,24,0.3)',
-    sheenOpacity: 0.26
+    name: 'Dark Aged Brass',
+    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.32), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(128,110,76,0.16) 75%, rgba(18,13,8,0.6) 96%), conic-gradient(from 180deg at 50% 50%, #675235, #93805c, #59472c, #a08c67, #675235, #897650, #534126, #97845f, #675235)',
+    shadow: '13px 15px 27px rgba(0,0,0,0.54), inset 3px 3px 7px rgba(255,255,255,0.28), inset -5px -7px 12px rgba(0,0,0,0.58)',
+    edgeInset: 8,
+    edgeBorder: '1.2px solid rgba(151,130,94,0.24)',
+    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.1), inset 0 -6px 10px rgba(18,12,5,0.42)',
+    sheenOpacity: 0.24
   },
   {
-    name: 'Vintage Nickel Brass Bold',
-    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.5), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(214,202,169,0.16) 75%, rgba(34,32,27,0.46) 98%), conic-gradient(from 180deg at 50% 50%, #77715e, #bfb48e, #7b735f, #c9bd95, #77715e, #b5aa83, #706955, #c2b790, #77715e)',
-    shadow: '13px 15px 28px rgba(0,0,0,0.48), inset 3px 3px 7px rgba(255,255,255,0.4), inset -5px -7px 12px rgba(0,0,0,0.44)',
-    edgeInset: 7,
-    edgeBorder: '1.1px solid rgba(221,213,186,0.32)',
-    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.16), inset 0 -6px 10px rgba(31,29,24,0.36)',
-    sheenOpacity: 0.26
+    name: 'Aged Champagne Brass',
+    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.39), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(182,162,122,0.15) 75%, rgba(24,18,12,0.54) 96%), conic-gradient(from 180deg at 50% 50%, #726148, #ae9f79, #6b5a42, #bead85, #726148, #a4936d, #64543d, #b3a27b, #726148)',
+    shadow: '13px 15px 27px rgba(0,0,0,0.5), inset 3px 3px 7px rgba(255,255,255,0.34), inset -5px -7px 12px rgba(0,0,0,0.54)',
+    edgeInset: 8,
+    edgeBorder: '1.2px solid rgba(194,177,138,0.26)',
+    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.12), inset 0 -6px 10px rgba(22,16,10,0.38)',
+    sheenInset: 9,
+    sheenOpacity: 0.24
   },
   {
     name: 'Vintage Nickel Brass Bold Heavy',
-    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.5), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(214,202,169,0.16) 75%, rgba(34,32,27,0.46) 98%), conic-gradient(from 180deg at 50% 50%, #77715e, #bfb48e, #7b735f, #c9bd95, #77715e, #b5aa83, #706955, #c2b790, #77715e)',
-    shadow: '13px 15px 28px rgba(0,0,0,0.48), inset 3px 3px 7px rgba(255,255,255,0.4), inset -5px -7px 12px rgba(0,0,0,0.44)',
+    background: 'radial-gradient(circle at 34% 30%, rgba(255,255,255,0.42), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, rgba(198,187,156,0.13) 75%, rgba(34,32,27,0.5) 98%), conic-gradient(from 180deg at 50% 50%, #706a59, #b4aa86, #746d5b, #bdb28d, #706a59, #aca17e, #6a6352, #b7ad88, #706a59)',
+    shadow: '13px 15px 28px rgba(0,0,0,0.48), inset 3px 3px 7px rgba(255,255,255,0.34), inset -5px -7px 12px rgba(0,0,0,0.47)',
     edgeInset: 8,
-    edgeBorder: '1.2px solid rgba(221,213,186,0.36)',
-    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.18), inset 0 -6px 10px rgba(31,29,24,0.38)',
-    sheenOpacity: 0.26
+    edgeBorder: '1.2px solid rgba(211,203,178,0.3)',
+    edgeShadow: 'inset 0 4px 6px rgba(255,255,255,0.13), inset 0 -6px 10px rgba(31,29,24,0.4)',
+    sheenOpacity: 0.21
+  },
+  {
+    name: 'Original Copper Heavy Ring',
+    useOriginalBackground: true,
+    shadow: '15px 15px 30px rgba(0,0,0,0.52), inset 2px 2px 5px rgba(255,255,255,0.88), inset -4px -4px 8px rgba(0,0,0,0.62)',
+    originalCenterOverlay: true,
+    originalCenterOverlayOpacity: 1,
+    edgeInset: 4,
+    edgeBorder: '1.4px solid rgba(122,90,34,0.34)',
+    edgeShadow: 'inset 0 3px 5px rgba(255,245,210,0.22), inset 0 -5px 8px rgba(53,35,12,0.38)',
+    sheenOpacity: 0.3
+  },
+  {
+    name: 'Original Copper Soft Glow',
+    useOriginalBackground: true,
+    shadow: '14px 15px 28px rgba(0,0,0,0.46), inset 2px 2px 6px rgba(255,255,255,0.96), inset -4px -4px 7px rgba(0,0,0,0.52)',
+    originalCenterOverlay: true,
+    originalCenterOverlayOpacity: 1,
+    edgeInset: 6,
+    edgeBorder: '1px solid rgba(149,118,54,0.22)',
+    edgeShadow: 'inset 0 2px 4px rgba(255,248,222,0.2), inset 0 -4px 7px rgba(68,44,18,0.24)',
+    innerInset: 16,
+    innerOpacity: 0.16,
+    sheenOpacity: 0.36
+  },
+  {
+    name: 'Original Copper Deep Shadow',
+    useOriginalBackground: true,
+    shadow: '16px 17px 31px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.76), inset -3px -3px 6px rgba(0,0,0,0.42)',
+    originalCenterOverlay: true,
+    originalCenterOverlayOpacity: 1,
+    originalCenterOverlayBoxShadow: 'inset 0.5px 0.5px 1.5px rgba(0,0,0,0.28), 0 1px 1px rgba(255,255,255,0.42)',
+    edgeInset: 5,
+    edgeBorder: '1.1px solid rgba(117,84,31,0.28)',
+    edgeShadow: 'inset 0 2px 4px rgba(248,236,198,0.14), inset 0 -6px 10px rgba(40,26,9,0.46)',
+    sheenOpacity: 0.2
+  },
+  {
+    name: 'Original Copper Satin Cut',
+    useOriginalBackground: true,
+    shadow: '14px 15px 28px rgba(0,0,0,0.48), inset 2px 2px 5px rgba(255,255,255,0.84), inset -4px -4px 8px rgba(0,0,0,0.58)',
+    originalCenterOverlay: true,
+    originalCenterOverlayOpacity: 1,
+    edgeInset: 7,
+    edgeBorder: '1.2px solid rgba(168,132,63,0.22)',
+    edgeShadow: 'inset 0 3px 5px rgba(255,248,226,0.18), inset 0 -5px 8px rgba(55,36,12,0.28)',
+    innerInset: 18,
+    innerOpacity: 0.14,
+    sheenOpacity: 0.18
+  },
+  {
+    name: 'Original Copper Muted Highlight',
+    useOriginalBackground: true,
+    shadow: '15px 15px 30px rgba(0,0,0,0.5), inset 1px 1px 3px rgba(255,255,255,0.66), inset -4px -4px 8px rgba(0,0,0,0.62)',
+    originalCenterOverlay: true,
+    originalCenterOverlayOpacity: 1,
+    edgeInset: 5,
+    edgeBorder: '1px solid rgba(132,98,39,0.26)',
+    edgeShadow: 'inset 0 2px 3px rgba(255,241,205,0.12), inset 0 -5px 8px rgba(46,31,11,0.34)',
+    sheenOpacity: 0.12
+  },
+  {
+    name: 'Original Copper Studio Clean',
+    useOriginalBackground: true,
+    shadow: '13px 14px 26px rgba(0,0,0,0.46), inset 2px 2px 4px rgba(255,255,255,0.86), inset -3px -3px 7px rgba(0,0,0,0.56)',
+    originalCenterOverlay: true,
+    originalCenterOverlayOpacity: 1,
+    edgeInset: 6,
+    edgeBorder: '1px solid rgba(177,141,71,0.18)',
+    edgeShadow: 'inset 0 2px 4px rgba(255,250,230,0.16), inset 0 -4px 7px rgba(60,40,15,0.22)',
+    innerInset: 17,
+    innerOpacity: 0.12,
+    sheenOpacity: 0.14
   }
 ];
+
+const LEGACY_MIDDLE_KNOB_STYLE_INDEX_MAP = {
+  0: 0,
+  1: 3,
+  4: 4,
+  5: 5,
+  7: 6,
+  10: 7,
+  16: 8,
+  18: 9,
+  26: 10
+};
 
 const normalizeMiddleKnobStyle = (value) => {
   const numericValue = Number(value);
   if (!Number.isFinite(numericValue)) return 0;
+  if (numericValue >= 0 && numericValue < MIDDLE_KNOB_STYLES.length) return numericValue;
+  const mappedValue = LEGACY_MIDDLE_KNOB_STYLE_INDEX_MAP[numericValue];
+  if (mappedValue !== undefined) return mappedValue;
   return Math.max(0, Math.min(MIDDLE_KNOB_STYLES.length - 1, numericValue));
 };
 
@@ -4941,30 +8502,32 @@ const OUTER_RING_SCALES = [
   { name: 'Engraved Vintage Scale', type: 'graduated', count: 25, color: '#1a110a', engraved: true },
   { name: 'Engraved Deep Divots', type: 'studs', count: 11, radius: 2.5, color: '#0f0a06', engraved: true },
   // New "Inner" Elegant Styles
-  { name: 'Inner Minimal Dots', type: 'dots', count: 11, radius: 1, color: '#d3ba8c', position: 'inside', glow: true },
-  { name: 'Inner Fine Needles', type: 'lines', count: 31, length: 3, width: 0.6, color: '#bca06f', position: 'inside' },
-  { name: 'Inner Brass Studs', type: 'studs', count: 11, radius: 1.5, color: '#d3ba8c', position: 'inside', glow: true },
-  { name: 'Inner Diamond Studs', type: 'diamonds', count: 11, radius: 1.5, color: '#d3ba8c', position: 'inside', glow: true },
-  { name: 'Inner Hairline Dashes', type: 'dashes', count: 31, length: 3, width: 0.5, color: '#d3ba8c', position: 'inside', glow: true },
-  { name: 'Inner Double Orbits', type: 'double-dots', count: 11, radius: 0.8, color: '#d3ba8c', position: 'inside', glow: true },
-  { name: 'Inner Golden Wedges', type: 'wedges', count: 11, radius: 2, color: '#d3ba8c', position: 'inside', glow: true },
-  { name: 'Inner Sub-Dial Arc', type: 'sub-dial-arc', count: 11, radius: 1, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Inner Minimal Dots', type: 'dots', count: 11, radius: 1, color: '#8b5a35', position: 'inside', opacity: 0.76 },
+  { name: 'Inner Fine Needles', type: 'lines', count: 31, length: 3, width: 0.6, color: '#8b5a35', position: 'inside', opacity: 0.72 },
+  { name: 'Inner Brass Studs', type: 'studs', count: 11, radius: 1.5, color: '#8b5a35', position: 'inside', opacity: 0.78 },
+  { name: 'Inner Diamond Studs', type: 'diamonds', count: 11, radius: 1.5, color: '#8b5a35', position: 'inside', opacity: 0.78 },
+  { name: 'Inner Hairline Dashes', type: 'dashes', count: 31, length: 3, width: 0.5, color: '#8b5a35', position: 'inside', opacity: 0.7 },
+  { name: 'Inner Double Orbits', type: 'double-dots', count: 11, radius: 0.8, color: '#8b5a35', position: 'inside', opacity: 0.74 },
+  { name: 'Inner Golden Wedges', type: 'wedges', count: 11, radius: 2, color: '#8b5a35', position: 'inside', opacity: 0.74 },
+  { name: 'Inner Sub-Dial Arc', type: 'sub-dial-arc', count: 11, radius: 1, color: '#8b5a35', position: 'inside', opacity: 0.72 },
   
   // New "Inner" Drifty / Creative Styles
-  { name: 'Drifter Flutter Arcs', type: 'flutter-arcs', count: 21, width: 1, color: '#d3ba8c', position: 'inside', glow: true },
-  { name: 'Wabi-Sabi Flow', type: 'wabi-sabi-flow', count: 15, radius: 1.5, color: '#d3ba8c', position: 'inside', glow: true },
-  { name: 'Unstable Clusters', type: 'unstable-clusters', count: 11, radius: 0.6, color: '#d3ba8c', position: 'inside', glow: true },
-  { name: 'Cinematic Embers', type: 'cinematic-embers', count: 21, radius: 1.2, color: '#d3ba8c', position: 'inside', glow: true },
-  { name: 'Magnetic Tape Bleed', type: 'magnetic-bleed', count: 11, width: 2, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Drifter Flutter Arcs', type: 'flutter-arcs', count: 21, width: 1, color: '#8b5a35', position: 'inside', opacity: 0.74 },
+  { name: 'Sparse Drifter Flutter Arcs', type: 'flutter-arcs', count: 13, width: 1, color: '#8b5a35', position: 'inside', opacity: 0.74 },
+  { name: 'Wabi-Sabi Flow', type: 'wabi-sabi-flow', count: 15, radius: 1.5, color: '#8b5a35', position: 'inside', opacity: 0.74 },
+  { name: 'Unstable Clusters', type: 'unstable-clusters', count: 11, radius: 0.6, color: '#8b5a35', position: 'inside', opacity: 0.7 },
+  { name: 'Cinematic Embers', type: 'cinematic-embers', count: 21, radius: 1.2, color: '#8b5a35', position: 'inside', opacity: 0.76 },
+  { name: 'Magnetic Tape Bleed', type: 'magnetic-bleed', count: 11, width: 2, color: '#8b5a35', position: 'inside', opacity: 0.72 },
 
   // Inner Scales (Permanent)
-  { name: 'Inner Graduated Scale', type: 'graduated', count: 25, color: '#d3ba8c', position: 'inside', glow: true },
+  { name: 'Inner Graduated Scale', type: 'graduated', count: 25, color: '#8b5a35', position: 'inside', opacity: 0.74 },
+  { name: 'Inner Sparse Tape Scale', type: 'sparse-tape-scale', count: 13, color: '#8b5a35', position: 'inside', opacity: 0.76 },
   
   // Faceplate Styles
   { name: 'Faceplate Vintage Gauge', type: 'graduated', count: 25, color: '#7a5d49', position: 'outside' }
 ];
 
-const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, shadowStyle, surfaceStyle, grooveStyle, markStyleIndex = 0, numberStyleIndex = 0, circlesEnabled = true, numbersEnabled = true, guideRings = CENTER_DIAL_GUIDE_RING_DEFAULTS, middleKnobStyle = 0, spreadPointerStyle = 0, animationStyle = 0, outerRingScaleStyle = 0, onDoubleClickDrift, onDoubleClickSpread, readoutStyleIndex = 0 }) => {
+const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, shadowStyle, surfaceStyle, grooveStyle, markStyleIndex = 0, numberStyleIndex = 0, circlesEnabled = true, numbersEnabled = true, guideRings = CENTER_DIAL_GUIDE_RING_DEFAULTS, middleKnobStyle = 0, spreadPointerStyle = 0, animationStyle = 0, outerRingScaleStyle = 0, knobFlutterFilledColors = DEFAULT_KNOB_FLUTTER_FILLED_COLORS, originalCopperTuning = DEFAULT_ORIGINAL_COPPER_TUNING, agedChampagneBrassTuning = DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING, smokedChampagneBoldCleanTuning = DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING, centerDepthModel, onDoubleClickDrift, onDoubleClickSpread, readoutStyleIndex = 0 }) => {
   const [isDraggingDrift, setIsDraggingDrift] = useState(false);
   const [isDraggingSpread, setIsDraggingSpread] = useState(false);
   const driftY = useRef(0), driftStart = useRef(0), spreadY = useRef(0), spreadStart = useRef(0);
@@ -4984,14 +8547,49 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
   const rimInnerInset = surface.outerRim ? (surface.rimWidth || 12) : 12;
   const guardedOuterShadow = surface.outerRim ? (surface.allowOuterShadow ? outerShadow : 'none') : outerShadow;
   const spreadIndicator = surface.indicator || { width: 8, height: 24, top: '8%', background: '#e66a53', boxShadow: '0 0 10px #e66a53' };
-  const indicatorPosition = spreadIndicator.bottom ? { bottom: spreadIndicator.bottom } : { top: spreadIndicator.top || '8%' };
+  const spreadPointerNudge = 7;
+  const spreadIndicatorHeight = Math.max(1, (spreadIndicator.height || 24) - 2);
+  const adjustedIndicatorPosition = spreadIndicator.bottom
+    ? { bottom: `calc(${spreadIndicator.bottom} + ${spreadPointerNudge}px)` }
+    : { top: `calc(${spreadIndicator.top || '8%'} + ${spreadPointerNudge}px)` };
   const guideRingSettings = {
     large: { ...CENTER_DIAL_GUIDE_RING_DEFAULTS.large, ...(guideRings?.large || {}) },
     small: { ...CENTER_DIAL_GUIDE_RING_DEFAULTS.small, ...(guideRings?.small || {}) }
   };
   const activeSpreadPointerStyle = normalizeSpreadPointerStyle(spreadPointerStyle);
-  const activeMiddleKnobStyle = MIDDLE_KNOB_STYLES[normalizeMiddleKnobStyle(middleKnobStyle)] || MIDDLE_KNOB_STYLES[0];
-  const insetPointerTop = surface.outerRim ? rimInnerInset + 4 : Math.round(outerSize * 0.085);
+  const selectedMiddleKnobStyle = MIDDLE_KNOB_STYLES[normalizeMiddleKnobStyle(middleKnobStyle)] || MIDDLE_KNOB_STYLES[0];
+  const activeMiddleKnobStyle = selectedMiddleKnobStyle.name === 'Aged Champagne Brass'
+    ? {
+        ...selectedMiddleKnobStyle,
+        background: `radial-gradient(circle at 34% 30%, rgba(255,255,255,${agedChampagneBrassTuning.faceHighlightOpacity}), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, ${hexToRgba(agedChampagneBrassTuning.midMetalColor, 0.15)} 75%, rgba(24,18,12,${agedChampagneBrassTuning.faceShadowOpacity}) 96%), conic-gradient(from 180deg at 50% 50%, ${agedChampagneBrassTuning.darkMetalColor}, ${agedChampagneBrassTuning.midMetalColor}, ${agedChampagneBrassTuning.darkMetalColor}, ${agedChampagneBrassTuning.lightMetalColor}, ${agedChampagneBrassTuning.darkMetalColor}, ${agedChampagneBrassTuning.midMetalColor}, ${agedChampagneBrassTuning.darkMetalColor}, ${agedChampagneBrassTuning.lightMetalColor}, ${agedChampagneBrassTuning.darkMetalColor})`,
+        shadow: `13px 15px 27px rgba(0,0,0,${agedChampagneBrassTuning.baseOuterShadowOpacity}), inset 3px 3px 7px rgba(255,255,255,${agedChampagneBrassTuning.baseInnerHighlightOpacity}), inset -5px -7px 12px rgba(0,0,0,${agedChampagneBrassTuning.baseInnerShadowOpacity})`,
+        edgeInset: agedChampagneBrassTuning.ringInset,
+        edgeBorder: `1.2px solid ${hexToRgba(agedChampagneBrassTuning.lightMetalColor, agedChampagneBrassTuning.ringBorderOpacity)}`,
+        edgeShadow: `inset 0 4px 6px rgba(255,255,255,${agedChampagneBrassTuning.ringHighlightOpacity}), inset 0 -6px 10px rgba(22,16,10,${agedChampagneBrassTuning.ringShadowOpacity})`,
+        centerTextureInset: agedChampagneBrassTuning.ringInset + 1,
+        centerTexture: `radial-gradient(circle at 50% 50%, transparent 0 54%, rgba(32,24,16,${Math.max(0, agedChampagneBrassTuning.faceShadowOpacity * 0.28)}) 74%, rgba(16,12,8,${agedChampagneBrassTuning.faceShadowOpacity}) 100%)`,
+        centerOpacity: 1,
+        centerBlendMode: 'multiply',
+        sheenInset: agedChampagneBrassTuning.ringInset + 1,
+        sheenOpacity: agedChampagneBrassTuning.sheenOpacity
+      }
+    : selectedMiddleKnobStyle.name === 'Smoked Champagne Bold Clean'
+    ? {
+        ...selectedMiddleKnobStyle,
+        background: `radial-gradient(circle at 34% 30%, rgba(255,255,255,${smokedChampagneBoldCleanTuning.faceHighlightOpacity}), transparent 32%), radial-gradient(circle at 50% 50%, transparent 0 64%, ${hexToRgba(smokedChampagneBoldCleanTuning.midMetalColor, 0.13)} 75%, rgba(35,31,25,${smokedChampagneBoldCleanTuning.faceShadowOpacity}) 96%), conic-gradient(from 180deg at 50% 50%, ${smokedChampagneBoldCleanTuning.darkMetalColor}, ${smokedChampagneBoldCleanTuning.midMetalColor}, ${smokedChampagneBoldCleanTuning.darkMetalColor}, ${smokedChampagneBoldCleanTuning.lightMetalColor}, ${smokedChampagneBoldCleanTuning.darkMetalColor}, ${smokedChampagneBoldCleanTuning.midMetalColor}, ${smokedChampagneBoldCleanTuning.darkMetalColor}, ${smokedChampagneBoldCleanTuning.lightMetalColor}, ${smokedChampagneBoldCleanTuning.darkMetalColor})`,
+        shadow: `13px 15px 27px rgba(0,0,0,${smokedChampagneBoldCleanTuning.baseOuterShadowOpacity}), inset 3px 3px 7px rgba(255,255,255,${smokedChampagneBoldCleanTuning.baseInnerHighlightOpacity}), inset -5px -7px 12px rgba(0,0,0,${smokedChampagneBoldCleanTuning.baseInnerShadowOpacity})`,
+        edgeInset: smokedChampagneBoldCleanTuning.ringInset,
+        edgeBorder: `1.2px solid ${hexToRgba(smokedChampagneBoldCleanTuning.lightMetalColor, smokedChampagneBoldCleanTuning.ringBorderOpacity)}`,
+        edgeShadow: `inset 0 4px 6px rgba(255,255,255,${smokedChampagneBoldCleanTuning.ringHighlightOpacity}), inset 0 -6px 10px rgba(27,23,18,${smokedChampagneBoldCleanTuning.ringShadowOpacity})`,
+        centerTextureInset: smokedChampagneBoldCleanTuning.ringInset + 1,
+        centerTexture: `radial-gradient(circle at 50% 50%, transparent 0 54%, rgba(46,39,28,${Math.max(0, smokedChampagneBoldCleanTuning.faceShadowOpacity * 0.26)}) 74%, rgba(22,18,12,${smokedChampagneBoldCleanTuning.faceShadowOpacity}) 100%)`,
+        centerOpacity: 1,
+        centerBlendMode: 'multiply',
+        sheenInset: smokedChampagneBoldCleanTuning.ringInset + 1,
+        sheenOpacity: smokedChampagneBoldCleanTuning.sheenOpacity
+      }
+    : selectedMiddleKnobStyle;
+  const insetPointerTop = (surface.outerRim ? rimInnerInset + 4 : Math.round(outerSize * 0.085)) + spreadPointerNudge;
   const pointerBaseStyle = {
     top: insetPointerTop,
     left: '50%',
@@ -5233,11 +8831,11 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
         <div
           className="absolute left-1/2 -translate-x-1/2 rounded-full"
           style={{
-            ...indicatorPosition,
+            ...adjustedIndicatorPosition,
             width: spreadIndicator.width,
-            height: spreadIndicator.height,
-            background: spreadIndicator.background,
-            boxShadow: spreadIndicator.boxShadow,
+            height: spreadIndicatorHeight,
+            background: 'linear-gradient(to bottom, #be5848, #8f3d32)',
+            boxShadow: '0 0 6px rgba(150,58,48,0.38), 0 1px 2px rgba(0,0,0,0.5), inset 0 1px 1px rgba(235,160,142,0.24)',
             opacity: spreadIndicator.opacity ?? 1,
             border: spreadIndicator.border
           }}
@@ -5253,10 +8851,10 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
             style={{
               ...pointerBaseStyle,
               width: 10,
-              height: 24,
-              background: 'linear-gradient(90deg, #bd4536 0%, #f06b55 48%, #8d2d25 100%)',
+              height: 22,
+              background: 'linear-gradient(90deg, #8f382f 0%, #be5848 48%, #6d281f 100%)',
               border: '1px solid rgba(255,170,150,0.24)',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.58), inset 0 1px 1px rgba(255,210,190,0.28), 0 0 7px rgba(230,106,83,0.42)'
+              boxShadow: '0 1px 2px rgba(0,0,0,0.58), inset 0 1px 1px rgba(235,160,142,0.2), 0 0 4px rgba(150,58,48,0.28)'
             }}
           />
         );
@@ -5393,6 +8991,32 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
       const fallbackSize = outerSize - fallbackInset * 2;
       const ringSize = Math.max(40, Math.min(outerSize, Number(ring.size) || fallbackSize));
       const ringInset = (outerSize - ringSize) / 2;
+      if (surface.partialGuideRings && ringKey === 'small') {
+        const strokeWidth = 1;
+        const radius = Math.max(1, ringSize / 2 - strokeWidth / 2);
+        const circumference = 2 * Math.PI * radius;
+        const arcLength = circumference * 0.885;
+        return (
+          <svg
+            className="absolute pointer-events-none"
+            style={{ inset: ringInset }}
+            viewBox={`0 0 ${ringSize} ${ringSize}`}
+            aria-hidden="true"
+          >
+            <circle
+              cx={ringSize / 2}
+              cy={ringSize / 2}
+              r={radius}
+              fill="none"
+              stroke={borderColor}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${arcLength} ${circumference}`}
+              transform={`rotate(112 ${ringSize / 2} ${ringSize / 2})`}
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        );
+      }
       return (
         <div
           className="absolute rounded-full border pointer-events-none"
@@ -5575,11 +9199,17 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
     }
   };
 
-  const originalMiddleKnobBackground = 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 20%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, #a88842 0deg, #edd39a 45deg, #a88842 90deg, #edd39a 135deg, #a88842 180deg, #edd39a 225deg, #a88842 270deg, #edd39a 315deg, #a88842 360deg)';
-  const originalMiddleKnobShadow = '15px 15px 30px rgba(0,0,0,0.5), inset 2px 2px 5px rgba(255,255,255,0.9), inset -4px -4px 8px rgba(0,0,0,0.6)';
+  const originalMiddleKnobBackground = `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 20%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.8) 100%), conic-gradient(from 180deg at 50% 50%, ${originalCopperTuning.darkMetalColor} 0deg, ${originalCopperTuning.lightMetalColor} 45deg, ${originalCopperTuning.darkMetalColor} 90deg, ${originalCopperTuning.lightMetalColor} 135deg, ${originalCopperTuning.darkMetalColor} 180deg, ${originalCopperTuning.lightMetalColor} 225deg, ${originalCopperTuning.darkMetalColor} 270deg, ${originalCopperTuning.lightMetalColor} 315deg, ${originalCopperTuning.darkMetalColor} 360deg)`;
+  const tunedOriginalMiddleKnobShadow = `15px 15px 30px rgba(0,0,0,${originalCopperTuning.baseOuterShadowOpacity}), inset 2px 2px 5px rgba(255,255,255,${originalCopperTuning.baseInnerHighlightOpacity}), inset -4px -4px 8px rgba(0,0,0,${originalCopperTuning.baseInnerShadowOpacity})`;
+  const tunedOriginalMiddleKnobOverlayBackground = `linear-gradient(135deg, rgba(0,0,0,${originalCopperTuning.overlayDarkOpacity}) 0%, rgba(255,255,255,${originalCopperTuning.overlayLightOpacity}) 100%)`;
+  const tunedOriginalMiddleKnobOverlayShadow = `inset 2px 2px 6px rgba(0,0,0,${originalCopperTuning.overlayInnerShadowOpacity}), 0 1px 1px rgba(255,255,255,${originalCopperTuning.overlayOuterHighlightOpacity})`;
+  const originalMiddleKnobShadow = tunedOriginalMiddleKnobShadow;
   const middleKnobBackground = activeMiddleKnobStyle.useOriginalBackground ? originalMiddleKnobBackground : activeMiddleKnobStyle.background || originalMiddleKnobBackground;
   const middleKnobShadow = activeMiddleKnobStyle.shadow || originalMiddleKnobShadow;
   const middleKnobIsOriginal = !activeMiddleKnobStyle.background;
+  const originalMiddleKnobOverlayInset = activeMiddleKnobStyle.name === 'Original Copper'
+    ? `${originalCopperTuning.ringInset}px`
+    : (activeMiddleKnobStyle.originalInset ?? '8px');
 
   const renderOuterRingScale = () => {
     const style = OUTER_RING_SCALES[outerRingScaleStyle] || OUTER_RING_SCALES[0];
@@ -5615,6 +9245,12 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
         const y1 = style.type === 'lines-outer' ? (outerSize / 2) - len : scaleRadius - len / 2;
         const y2 = style.type === 'lines-outer' ? (outerSize / 2) : scaleRadius + len / 2;
         
+        markElement = <line x1="0" y1={-y1} x2="0" y2={-y2} stroke={color} strokeWidth={w} strokeLinecap="round" />;
+      } else if (style.type === 'sparse-tape-scale') {
+        const len = i % 2 === 0 ? 6 : 3.5;
+        const w = i % 2 === 0 ? 1.2 : 0.85;
+        const y1 = scaleRadius - len / 2;
+        const y2 = scaleRadius + len / 2;
         markElement = <line x1="0" y1={-y1} x2="0" y2={-y2} stroke={color} strokeWidth={w} strokeLinecap="round" />;
       } else if (style.type === 'alternating-dots') {
         const r = isMajor ? (style.radiusL || 2) : (style.radiusS || 1);
@@ -5743,6 +9379,7 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
         </defs>
         <g 
           filter={style.glow ? `url(#${filterId})` : (style.engraved ? `url(#${filterIdEngraved})` : undefined)}
+          opacity={style.opacity ?? 1}
           style={style.glow ? { paintOrder: 'stroke', stroke: 'rgba(38,22,12,0.26)', strokeWidth: 0.65 } : undefined}
         >
           {marks}
@@ -5753,7 +9390,7 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
 
   return (
     <div className="relative flex justify-center items-center z-20" style={{ width: 380, height: 380 }}>
-      <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center group z-10 overflow-hidden" style={{ width: outerSize, height: outerSize, backgroundColor: surface.outerRim ? (surface.rimBackgroundColor || rimFillColor) : surface.backgroundColor || '#1f1e1d', backgroundImage: surface.outerRim ? (surface.outerRimTexture ? surface.rimBackgroundImage : `radial-gradient(circle, transparent 0 calc(50% - ${rimInnerInset}px), ${rimFillColor} calc(50% - ${rimInnerInset}px) 100%)`) : surface.backgroundImage || CENTER_DIAL_SURFACES[0].backgroundImage, backgroundSize: surface.outerRimTexture ? surface.rimBackgroundSize : undefined, backgroundPosition: surface.outerRimTexture ? 'center' : undefined, backgroundBlendMode: surface.outerRimTexture ? 'normal, normal' : surface.backgroundBlendMode, boxShadow: guardedOuterShadow }}
+      <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center group z-10 overflow-visible" style={{ width: outerSize, height: outerSize, backgroundColor: surface.outerRim ? (surface.rimBackgroundColor || rimFillColor) : surface.backgroundColor || '#1f1e1d', backgroundImage: surface.outerRim ? (surface.outerRimTexture ? surface.rimBackgroundImage : `radial-gradient(circle, transparent 0 calc(50% - ${rimInnerInset}px), ${rimFillColor} calc(50% - ${rimInnerInset}px) 100%)`) : surface.backgroundImage || CENTER_DIAL_SURFACES[0].backgroundImage, backgroundSize: surface.outerRimTexture ? surface.rimBackgroundSize : undefined, backgroundPosition: surface.outerRimTexture ? 'center' : undefined, backgroundBlendMode: surface.outerRimTexture ? 'normal, normal' : surface.backgroundBlendMode, boxShadow: guardedOuterShadow }}
         onPointerDown={handleSpreadDown} onPointerMove={handleSpreadMove} onPointerUp={handleSpreadUp} onPointerCancel={handleSpreadUp} onDoubleClick={onDoubleClickSpread}>
         {surface.outerRim && (
           <div
@@ -5786,20 +9423,45 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
         <div className={`absolute inset-0 pointer-events-none ${isDraggingSpread ? 'transition-transform duration-[45ms] ease-out' : 'transition-transform duration-300'}`} style={{ transform: `rotate(${spreadRot}deg)` }}>
           {renderSpreadPointer()}
         </div>
-        <WobblyAura drift={drift} spread={spread} active={auraActive} rate={rate} mode={mode} animationStyle={animationStyle} />
-        <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center hover:brightness-110 transition-all z-20" style={{ width: 140, height: 140, background: middleKnobBackground, boxShadow: middleKnobShadow }}
+        <WobblyAura drift={drift} spread={spread} active={auraActive} rate={DRIFT_VISUAL_FIXED_RATE} mode={mode} animationStyle={animationStyle} knobFlutterFilledColors={knobFlutterFilledColors} />
+        <CenterDepthShadowLayer
+          settings={centerDepthModel}
+          canvasSize={outerSize}
+          centerX={outerSize / 2}
+          centerY={outerSize / 2}
+          className="absolute inset-0 z-[18] h-full w-full pointer-events-none overflow-visible"
+        />
+          <div className="absolute rounded-full cursor-ns-resize flex justify-center items-center hover:brightness-105 transition-all z-20" style={{ width: 140, height: 140, background: middleKnobBackground, boxShadow: middleKnobShadow }}
           onPointerDown={handleDriftDown} onPointerMove={handleDriftMove} onPointerUp={handleDriftUp} onPointerCancel={handleDriftUp} onDoubleClick={onDoubleClickDrift}>
           {middleKnobIsOriginal && (
-            <div className="absolute inset-2 rounded-full pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(255,255,255,0.2) 100%)', boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.8), 0 1px 1px rgba(255,255,255,0.5)' }} />
+            <div
+              className="absolute rounded-full pointer-events-none"
+              style={{
+                inset: originalMiddleKnobOverlayInset,
+                background: tunedOriginalMiddleKnobOverlayBackground,
+                boxShadow: tunedOriginalMiddleKnobOverlayShadow
+              }}
+            />
           )}
           {!middleKnobIsOriginal && (
             <>
+              {activeMiddleKnobStyle.centerDiscInset && (
+                <div
+                  className="absolute rounded-full pointer-events-none"
+                  style={{
+                    inset: activeMiddleKnobStyle.centerDiscInset,
+                    background: activeMiddleKnobStyle.centerDiscBackground || middleKnobBackground,
+                    boxShadow: activeMiddleKnobStyle.centerDiscShadow || 'inset 1px 1px 2px rgba(255,255,255,0.18), inset -2px -2px 4px rgba(0,0,0,0.42)'
+                  }}
+                />
+              )}
               {activeMiddleKnobStyle.originalCenterOverlay && (
                 <div
-                  className="absolute inset-2 rounded-full pointer-events-none"
+                  className="absolute rounded-full pointer-events-none"
                   style={{
+                    inset: activeMiddleKnobStyle.originalCenterOverlayInset ?? 2,
                     background: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(255,255,255,0.2) 100%)',
-                    boxShadow: 'inset 2px 2px 6px rgba(0,0,0,0.8), 0 1px 1px rgba(255,255,255,0.5)',
+                    boxShadow: activeMiddleKnobStyle.originalCenterOverlayBoxShadow || 'inset 2px 2px 6px rgba(0,0,0,0.8), 0 1px 1px rgba(255,255,255,0.5)',
                     opacity: activeMiddleKnobStyle.originalCenterOverlayOpacity ?? 1
                   }}
                 />
@@ -5836,8 +9498,9 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
               )}
               {activeMiddleKnobStyle.centerTexture && (
                 <div
-                  className="absolute inset-0 rounded-full pointer-events-none"
+                  className="absolute rounded-full pointer-events-none"
                   style={{
+                    inset: activeMiddleKnobStyle.centerTextureInset ?? 0,
                     background: activeMiddleKnobStyle.centerTexture,
                     opacity: activeMiddleKnobStyle.centerOpacity ?? 0.4,
                     WebkitMask: activeMiddleKnobStyle.centerMask,
@@ -5857,14 +9520,21 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
                 />
               )}
               <div
-                className="absolute inset-[13px] rounded-full pointer-events-none"
+                className="absolute rounded-full pointer-events-none"
                 style={{
+                  inset: activeMiddleKnobStyle.sheenInset ?? 13,
                   background: 'linear-gradient(135deg, rgba(255,255,255,0.12), rgba(0,0,0,0.13))',
                   opacity: activeMiddleKnobStyle.sheenOpacity ?? 0.34
                 }}
               />
             </>
           )}
+          <KnobFlutterSpillLight
+            drift={drift}
+            rate={DRIFT_VISUAL_FIXED_RATE}
+            animationStyle={animationStyle}
+            filledColors={knobFlutterFilledColors}
+          />
           <div className={`absolute inset-0 pointer-events-none ${isDraggingDrift ? 'transition-transform duration-[45ms] ease-out' : 'transition-transform duration-300'}`} style={{ transform: `rotate(${driftRot}deg)` }}>
             <div
               className="absolute top-[12%] left-1/2 -translate-x-1/2 w-1.5 h-7 rounded-full opacity-95"
@@ -5879,48 +9549,299 @@ const BotanicalCenterDial = ({ drift, setDrift, spread, setSpread, rate, mode, s
       {renderOuterRingScale()}
       
       {/* Spread Readout */}
-      <div className={`absolute -bottom-6 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-300 z-50 ${isDraggingSpread ? 'opacity-100' : 'opacity-0'}`}>
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#7a7465]">Spread</span>
-          {renderReadout((KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0]).type, formatKnobValue('SPREAD', spread))}
-        </div>
+      <div className={`absolute bottom-[8px] left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-300 z-50 ${isDraggingSpread ? 'opacity-100' : 'opacity-0'}`}>
+        {renderReadout((KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0]).type, formatKnobValue('SPREAD', spread))}
       </div>
 
       {/* Drift Readout */}
-      <div className={`absolute top-[65%] left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-300 z-50 ${isDraggingDrift ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`absolute top-[65%] left-1/2 -translate-x-1/2 translate-y-[31px] pointer-events-none transition-opacity duration-300 z-50 ${isDraggingDrift ? 'opacity-100' : 'opacity-0'}`}>
         {renderReadout((KNOB_READOUT_STYLES[readoutStyleIndex] || KNOB_READOUT_STYLES[0]).type, formatKnobValue('DRIFT', drift))}
       </div>
     </div>
   );
 };
 
-// --- Preset Browser ---
-const PresetBrowser = ({ presets, currentPreset, onPrev, onNext, onLoad, onSave }) => {
+// --- Premium Top Preset Bar ---
+const TopPresetBar = ({
+  factoryPresets,
+  userPresets,
+  activePresetName,
+  topBarStyle,
+  topBarCustomStyles,
+  hqMode,
+  cableToneEnabled,
+  onPrev,
+  onNext,
+  onLoadFactory,
+  onLoadUser,
+  onSave,
+  onToggleHq,
+  onToggleCable
+}) => {
+  const [openMenu, setOpenMenu] = useState(false);
   const [showSave, setShowSave] = useState(false);
   const [saveName, setSaveName] = useState('');
+  const menuButtonRef = useRef(null);
+  const menuRef = useRef(null);
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const style = TOP_BAR_STYLES[topBarStyle] || TOP_BAR_STYLES[0];
+  const customStyle = topBarCustomStyles?.[topBarStyle] || DEFAULT_TOP_BAR_CUSTOM_STYLES[topBarStyle] || DEFAULT_TOP_BAR_CUSTOM_STYLES[0];
+  const defaultCustomStyle = DEFAULT_TOP_BAR_CUSTOM_STYLES[topBarStyle] || DEFAULT_TOP_BAR_CUSTOM_STYLES[0];
+  const outlineWidth = Math.max(0, Math.min(4, Number(customStyle.outlineWidth) || 0));
+  const outlineChanged = outlineWidth !== defaultCustomStyle.outlineWidth;
+  const barColorChanged = customStyle.barColor !== defaultCustomStyle.barColor;
+  const outlineColorChanged = customStyle.outlineColor !== defaultCustomStyle.outlineColor;
+  const buttonColorChanged = customStyle.buttonColor !== defaultCustomStyle.buttonColor;
+  const activeColorChanged = customStyle.activeColor !== defaultCustomStyle.activeColor;
+  const copperActiveColor = customStyle.copperActiveColor || customStyle.activeColor;
+  const copperActiveColorChanged = copperActiveColor !== defaultCustomStyle.copperActiveColor;
+  const mutedTextChanged = customStyle.mutedTextColor !== defaultCustomStyle.mutedTextColor;
+  const dropdownColorChanged = customStyle.dropdownColor !== defaultCustomStyle.dropdownColor;
+  const engravedSurfaceShadow = topBarStyle === 1
+    ? 'inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -1px 0 rgba(78,52,28,0.18)'
+    : 'inset 0 1px 0 rgba(225,246,240,0.045), inset 0 -1px 0 rgba(0,0,0,0.42)';
+  const engravedControlShadow = topBarStyle === 1
+    ? 'inset 0 1px 1px rgba(255,255,255,0.18), inset 0 -1px 1px rgba(76,50,26,0.22)'
+    : 'inset 0 1px 1px rgba(230,255,250,0.045), inset 0 -1px 1px rgba(0,0,0,0.48)';
+  const shellStyle = {
+    ...(style.surfaceStyle || {}),
+    boxShadow: engravedSurfaceShadow,
+    ...(barColorChanged ? { background: customStyle.barColor } : {}),
+    ...(outlineColorChanged ? { borderColor: customStyle.outlineColor } : {}),
+    ...(outlineChanged ? { borderWidth: `${outlineWidth}px` } : {})
+  };
+  const menuInlineStyle = {
+    ...(style.menuStyle || {}),
+    boxShadow: engravedControlShadow,
+    ...(dropdownColorChanged ? { background: customStyle.dropdownColor } : {}),
+    ...(outlineColorChanged ? { borderColor: customStyle.outlineColor } : {}),
+    ...(outlineChanged ? { borderWidth: `${outlineWidth}px` } : {}),
+    '--preset-option-hover-bg': customStyle.hoverRowColor,
+    '--preset-option-hover-text': customStyle.hoverTextColor,
+    '--preset-option-selected-text': customStyle.selectedTextColor
+  };
+  const buttonInlineStyle = {
+    boxShadow: engravedControlShadow,
+    ...(buttonColorChanged ? { backgroundColor: customStyle.buttonColor } : {}),
+    ...(outlineColorChanged ? { borderColor: customStyle.outlineColor } : {}),
+    ...(outlineChanged ? { borderWidth: `${outlineWidth}px` } : {}),
+    ...(mutedTextChanged ? { color: customStyle.mutedTextColor } : {})
+  };
+  const activeButtonInlineStyle = {
+    ...(activeColorChanged ? {
+      backgroundColor: `${customStyle.activeColor}30`,
+      borderColor: customStyle.activeColor
+    } : {}),
+    boxShadow: engravedControlShadow,
+    ...(outlineChanged ? { borderWidth: `${outlineWidth}px` } : {}),
+    color: customStyle.textColor,
+  };
+  const copperActiveButtonInlineStyle = {
+    ...activeButtonInlineStyle,
+    ...(copperActiveColorChanged ? {
+      backgroundColor: `${copperActiveColor}34`,
+      borderColor: copperActiveColor
+    } : {})
+  };
   const handleSave = () => { if (saveName.trim()) { onSave(saveName.trim()); setShowSave(false); setSaveName(''); } };
+
+  useEffect(() => {
+    if (!openMenu) return;
+    const updateAnchor = () => {
+      const rect = menuButtonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuAnchor({ left: rect.left + rect.width / 2, top: rect.bottom + 7, width: rect.width });
+    };
+    updateAnchor();
+    window.addEventListener('resize', updateAnchor);
+    window.addEventListener('scroll', updateAnchor, true);
+    return () => {
+      window.removeEventListener('resize', updateAnchor);
+      window.removeEventListener('scroll', updateAnchor, true);
+    };
+  }, [openMenu]);
+
+  useEffect(() => {
+    if (!openMenu) return;
+    const handlePointerDown = (event) => {
+      if (menuRef.current?.contains(event.target) || menuButtonRef.current?.contains(event.target)) return;
+      setOpenMenu(false);
+    };
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => window.removeEventListener('pointerdown', handlePointerDown);
+  }, [openMenu]);
+
+  const OptionButton = ({ children, active, onClick }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`top-preset-option w-full px-3 py-2 text-left text-[9px] font-black uppercase tracking-[0.16em] transition-colors ${active ? 'top-preset-option-active' : ''}`}
+      style={{
+        color: active ? customStyle.selectedTextColor : customStyle.mutedTextColor,
+        backgroundColor: 'transparent'
+      }}
+    >
+      {children}
+    </button>
+  );
+
+  const renderMenu = () => {
+    if (!openMenu || !menuAnchor) return null;
+    return createPortal(
+      <div
+        ref={menuRef}
+        className={`fixed z-[9999] max-h-[300px] w-[236px] -translate-x-1/2 overflow-hidden rounded-[18px] border shadow-[0_18px_34px_rgba(0,0,0,0.45)] backdrop-blur-2xl ${style.menu}`}
+        style={{ left: menuAnchor.left, top: menuAnchor.top, ...menuInlineStyle }}
+      >
+        <div className="max-h-[310px] overflow-y-auto py-2 lfo-scrollbar">
+          <div className={`px-3 pb-1 pt-1 text-[7px] font-black uppercase tracking-[0.28em] ${style.muted}`} style={{ color: customStyle.mutedTextColor }}>Factory Presets</div>
+          <OptionButton active={activePresetName === '— Init —'} onClick={() => { onLoadFactory(-1); setOpenMenu(false); }}>— Init —</OptionButton>
+          {factoryPresets.map((preset, index) => (
+            <OptionButton key={preset} active={activePresetName === preset} onClick={() => { onLoadFactory(index); setOpenMenu(false); }}>
+              {preset}
+            </OptionButton>
+          ))}
+          <div className="my-2 h-px bg-white/10" />
+          <div className={`px-3 pb-1 pt-1 text-[7px] font-black uppercase tracking-[0.28em] ${style.muted}`} style={{ color: customStyle.mutedTextColor }}>User Presets</div>
+          {userPresets.length === 0 ? (
+            <div className={`px-3 py-2 text-[9px] font-bold tracking-[0.08em] ${style.muted}`} style={{ color: customStyle.mutedTextColor }}>No user presets yet</div>
+          ) : userPresets.map((preset) => (
+            <OptionButton key={preset.id} active={activePresetName === preset.name} onClick={() => { onLoadUser(preset.id); setOpenMenu(false); }}>
+              {preset.name}
+            </OptionButton>
+          ))}
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
   return (
-    <div className="absolute -top-[52px] left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
-      <button onClick={onPrev} className="w-7 h-7 rounded-full bg-[#2d2c2b] text-[#edd39a] text-sm font-bold flex items-center justify-center hover:bg-[#3d3c3b] transition-colors shadow-lg border border-white/5">‹</button>
-      <div className="relative">
-        <select value={currentPreset} onChange={e => onLoad(Number(e.target.value))} className="bg-[#2d2c2b]/90 backdrop-blur-md text-[#edd39a] text-[10px] font-bold tracking-wider rounded-lg px-4 py-2 border border-white/10 outline-none cursor-pointer shadow-lg min-w-[180px] text-center appearance-none">
-          <option value={-1} className="bg-[#2d2c2b]">— Init —</option>
-          {presets.map((name, i) => <option key={i} value={i} className="bg-[#2d2c2b]">{name}</option>)}
-        </select>
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[#edd39a] text-[9px] pointer-events-none">▼</div>
+    <div
+      className={`absolute -top-[53px] left-1/2 z-30 flex h-[42px] w-[872px] -translate-x-1/2 items-center gap-2 border px-4 ${style.shell}`}
+      style={shellStyle}
+    >
+      {renderMenu()}
+      <div className="pointer-events-none absolute inset-0" style={{ background: style.shine }} />
+      <div className="absolute left-4 top-1/2 flex min-w-[120px] -translate-y-1/2 items-center gap-1">
+        <span className={`text-[11px] font-black uppercase tracking-[0.22em] ${style.brand}`} style={{ color: customStyle.brandColor }}>Satura</span>
+        <span className={`text-[11px] font-black uppercase tracking-[0.18em] ${style.muted}`} style={{ color: customStyle.mutedTextColor }}>Audio</span>
       </div>
-      <button onClick={onNext} className="w-7 h-7 rounded-full bg-[#2d2c2b] text-[#edd39a] text-sm font-bold flex items-center justify-center hover:bg-[#3d3c3b] transition-colors shadow-lg border border-white/5">›</button>
-      <button onClick={() => { setSaveName('My Preset'); setShowSave(true); }} className="ml-1 px-3 py-1.5 rounded-lg bg-[#e66a53] text-white text-[9px] font-bold tracking-wider uppercase hover:brightness-110 transition-all shadow-lg">Save</button>
+      <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-[7px]">
+        <button type="button" onClick={onPrev} className={`flex h-7 w-7 items-center justify-center rounded-full border text-[15px] font-black transition-all ${style.button}`} style={buttonInlineStyle}>
+          <span className="relative -top-px leading-none">‹</span>
+        </button>
+        <button
+          ref={menuButtonRef}
+          type="button"
+          onClick={() => setOpenMenu(open => !open)}
+          className={`flex h-8 min-w-[218px] items-center justify-between rounded-[14px] border px-3 transition-all ${style.button}`}
+          style={buttonInlineStyle}
+        >
+          <span className={`truncate text-[10px] font-black uppercase tracking-[0.18em] ${style.text}`} style={{ color: customStyle.textColor }}>{activePresetName}</span>
+          <span className={`ml-2 text-[9px] ${style.muted}`} style={{ color: customStyle.mutedTextColor }}>▼</span>
+        </button>
+        <button type="button" onClick={onNext} className={`flex h-7 w-7 items-center justify-center rounded-full border text-[15px] font-black transition-all ${style.button}`} style={buttonInlineStyle}>
+          <span className="relative -top-px leading-none">›</span>
+        </button>
+        <button type="button" onClick={() => { setSaveName(activePresetName === '— Init —' ? 'My Preset' : activePresetName); setShowSave(true); }} className={`h-8 rounded-[13px] border px-3 text-[8px] font-black uppercase tracking-[0.18em] transition-all ${style.button}`} style={buttonInlineStyle}>Save</button>
+      </div>
+      <div className="absolute right-4 top-1/2 flex min-w-[208px] -translate-y-1/2 justify-end gap-[7px]">
+        <button type="button" onClick={onToggleCable} className={`h-8 rounded-[13px] border px-3 text-[8px] font-black uppercase tracking-[0.18em] transition-all ${cableToneEnabled ? style.active : style.button}`} style={cableToneEnabled ? copperActiveButtonInlineStyle : buttonInlineStyle}>Copper</button>
+        <button type="button" onClick={onToggleHq} className={`h-8 rounded-[13px] border px-3 text-[8px] font-black uppercase tracking-[0.18em] transition-all ${hqMode ? style.active : style.button}`} style={hqMode ? activeButtonInlineStyle : buttonInlineStyle}>HQ</button>
+        <div
+          className={`flex h-8 overflow-hidden rounded-full border transition-all ${style.button}`}
+          style={buttonInlineStyle}
+        >
+          <button
+            type="button"
+            aria-label="Settings"
+            className="flex h-full w-9 items-center justify-center transition-colors hover:bg-white/5"
+          >
+            <Settings size={15} strokeWidth={2.4} style={{ color: customStyle.mutedTextColor }} />
+          </button>
+          <div className="h-full w-px bg-white/10" />
+          <button
+            type="button"
+            aria-label="Help"
+            className="flex h-full w-9 items-center justify-center transition-colors hover:bg-white/5"
+          >
+            <HelpCircle size={16} strokeWidth={2.2} style={{ color: customStyle.mutedTextColor }} />
+          </button>
+        </div>
+      </div>
       {showSave && (
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-[#2d2c2b]/95 backdrop-blur-xl rounded-xl p-4 shadow-2xl border border-white/10 z-50 min-w-[220px]">
-          <div className="text-[10px] text-[#edd39a] font-bold tracking-wider mb-2 uppercase">Save Preset</div>
-          <input value={saveName} onChange={e => setSaveName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSave()} className="w-full bg-black/30 text-[#edd39a] text-[11px] rounded-lg px-3 py-2 border border-white/10 outline-none mb-2" placeholder="Preset name..." autoFocus />
+        <div
+          className={`absolute left-1/2 top-[48px] z-50 min-w-[240px] -translate-x-1/2 rounded-[18px] border p-4 shadow-2xl backdrop-blur-2xl ${style.menu}`}
+          style={menuInlineStyle}
+        >
+          <div className={`mb-2 text-[9px] font-black uppercase tracking-[0.2em] ${style.text}`} style={{ color: customStyle.textColor }}>Save User Preset</div>
+          <input value={saveName} onChange={e => setSaveName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSave()} className={`mb-3 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-[11px] font-bold outline-none ${style.text}`} style={{ color: customStyle.textColor }} placeholder="Preset name..." autoFocus />
           <div className="flex gap-2">
-            <button onClick={handleSave} className="flex-1 py-1.5 rounded-lg bg-[#e66a53] text-white text-[9px] font-bold tracking-wider uppercase">Save</button>
-            <button onClick={() => setShowSave(false)} className="flex-1 py-1.5 rounded-lg bg-white/10 text-[#7a7465] text-[9px] font-bold tracking-wider uppercase">Cancel</button>
+            <button onClick={handleSave} className="flex-1 rounded-lg py-1.5 text-[9px] font-bold uppercase tracking-wider text-white" style={{ backgroundColor: customStyle.activeColor }}>Save</button>
+            <button onClick={() => setShowSave(false)} className={`flex-1 rounded-lg border py-1.5 text-[9px] font-bold uppercase tracking-wider ${style.button}`} style={buttonInlineStyle}>Cancel</button>
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const TopBarThemeEditor = ({ title, value, defaults, onChange, onReset }) => {
+  const theme = { ...defaults, ...value };
+  const fields = [
+    ['barColor', 'Bar'],
+    ['dropdownColor', 'Menu'],
+    ['outlineColor', 'Outline'],
+    ['textColor', 'Text'],
+    ['selectedTextColor', 'Selected Text'],
+    ['hoverTextColor', 'Hover Text'],
+    ['hoverRowColor', 'Hover Row'],
+    ['mutedTextColor', 'Muted'],
+    ['brandColor', 'Logo'],
+    ['buttonColor', 'Buttons'],
+    ['activeColor', 'Active'],
+    ['copperActiveColor', 'Copper Active']
+  ];
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/15 p-3">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="text-[9px] font-black uppercase tracking-[0.18em] text-white/55">{title}</span>
+        <button type="button" onClick={onReset} className="rounded-full border border-white/10 px-2 py-1 text-[7px] font-black uppercase tracking-widest text-white/35 transition-colors hover:text-white/70">Reset</button>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {fields.map(([key, label]) => (
+          <label key={key} className="flex flex-col gap-1.5">
+            <span className="text-[8px] font-black uppercase tracking-[0.16em] text-white/38">{label}</span>
+            <div className="relative h-9 overflow-hidden rounded-lg border border-white/10 bg-white/5" style={{ backgroundColor: theme[key] }}>
+              <input
+                type="color"
+                value={theme[key]}
+                onChange={e => onChange({ [key]: e.target.value })}
+                className="absolute -inset-2 h-[calc(100%+16px)] w-[calc(100%+16px)] cursor-pointer border-none bg-transparent"
+                aria-label={`${title} ${label} color`}
+              />
+            </div>
+            <span className="font-mono text-[8px] uppercase tracking-wide text-white/30">{theme[key]}</span>
+          </label>
+        ))}
+      </div>
+      <label className="mt-3 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[8px] font-black uppercase tracking-[0.16em] text-white/38">Outline Thickness</span>
+          <span className="font-mono text-[9px] text-[#edd39a]">{theme.outlineWidth}px</span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="4"
+          step="1"
+          value={theme.outlineWidth}
+          onChange={e => onChange({ outlineWidth: Number(e.target.value) })}
+          className="w-full accent-[#edd39a]"
+        />
+      </label>
     </div>
   );
 };
@@ -5975,7 +9896,7 @@ const DesignGridOverlay = ({ mode }) => {
 //   depth        (0-100, maps to lfoDepth 0-1)
 //   stereoPhase  (0-100, maps to lfoStereoPhase 0-180°)
 //   mode         ('calm'=0, 'vintage'=1, 'unstable'=2, 'dream'=3)
-//   autoGain     (true/false, maps to autogain 0/1)
+//   mix          (0-100, maps to dry/wet mix 0-1)
 //   lfoEnabled   (true/false)
 //   lfoSync      (true/false)
 //   lfoShape     (0=Sine, 1=Triangle, 2=Drift)
@@ -5992,6 +9913,94 @@ const SHAPE_BUTTON_SYMBOL_STYLES = [
 ];
 const SYNC_DIVS = ['4/1', '2/1', '1/1', '1/2', '1/4', '1/8', '1/16', '1/32', '1/4T', '1/8T', '1/16T', '1/4D', '1/8D', '1/16D'];
 const DEMO_PRESETS = ['Subtle Warmth', 'Vinyl Drift', 'Tape Machine', 'Broken Cassette', 'Chorus Width', 'Slow Swirl', 'Synced Wobble', 'Sweet Dream', 'Subtle Detune', 'Broken Radio', 'Drum Saturator', 'Lush & Full'];
+const TOP_BAR_STYLE_NAMES = [
+  'Charcoal OLED Rail',
+  'Brushed Champagne'
+];
+
+const TOP_BAR_STYLES = [
+  {
+    name: TOP_BAR_STYLE_NAMES[0],
+    shell: 'border-[#202222] bg-[#0b0e0e]/90 shadow-[0_18px_38px_rgba(0,0,0,0.56),inset_0_1px_0_rgba(220,248,244,0.06),inset_0_-1px_0_rgba(0,0,0,0.82)] backdrop-blur-2xl',
+    shine: 'radial-gradient(ellipse at 50% 0%, rgba(210,238,232,0.08), transparent 48%)',
+    surfaceStyle: {
+      background: 'linear-gradient(180deg, rgba(12,15,15,0.985), rgba(6,8,8,0.978))',
+      borderColor: 'rgba(32,42,40,0.96)',
+      boxShadow: '0 18px 38px rgba(0,0,0,0.56), inset 0 1px 0 rgba(220,248,244,0.06), inset 0 -1px 0 rgba(0,0,0,0.82)'
+    },
+    menuStyle: {
+      background: 'rgba(7,10,10,0.985)',
+      borderColor: 'rgba(32,42,40,0.96)'
+    },
+    brand: 'text-[#d8f1eb]',
+    text: 'text-[#f3fffb]',
+    muted: 'text-[#8ca39d]',
+    button: 'border-[#26302f]/90 bg-[#111817]/92 text-[#b7cfca] shadow-[inset_0_1px_0_rgba(230,255,250,0.045),0_5px_11px_rgba(0,0,0,0.42)] hover:text-[#f5fffb]',
+    active: 'border-[#b8d4cc]/48 bg-[#b8d4cc]/16 text-[#f4fffb] shadow-[0_0_12px_rgba(184,212,204,0.14)]',
+    menu: 'border-[#202a28] bg-[#0a0e0d]/98'
+  },
+  {
+    name: TOP_BAR_STYLE_NAMES[1],
+    shell: 'border-[#d0b990]/55 bg-[#d8c29a]/34 shadow-[0_14px_30px_rgba(64,42,20,0.2),inset_0_1px_0_rgba(255,248,225,0.35),inset_0_-1px_0_rgba(72,50,25,0.16)] backdrop-blur-xl',
+    shine: 'linear-gradient(110deg, rgba(255,250,227,0.3), transparent 40%, rgba(117,76,42,0.08))',
+    brand: 'text-[#6f4a2f]',
+    text: 'text-[#30271e]',
+    muted: 'text-[#79664b]',
+    button: 'border-[#f3dfb7]/52 bg-[#fff0c9]/24 text-[#5f4b32] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_4px_10px_rgba(64,42,20,0.14)] hover:text-[#2c2218]',
+    active: 'border-[#8b5a35]/28 bg-[#8b5a35]/13 text-[#5f3a22]',
+    menu: 'border-[#d0b990] bg-[#ead7b2]/96'
+  }
+];
+
+const DEFAULT_TOP_BAR_CUSTOM_STYLES = [
+  {
+    barColor: '#070a0a',
+    outlineColor: '#202a28',
+    outlineWidth: 1,
+    dropdownColor: '#070a0a',
+    selectedRowColor: '#202624',
+    hoverRowColor: '#df6f5a',
+    textColor: '#f3fffb',
+    selectedTextColor: '#edcf88',
+    hoverTextColor: '#111111',
+    mutedTextColor: '#8ca39d',
+    brandColor: '#d8f1eb',
+    buttonColor: '#111817',
+    activeColor: '#b8d4cc',
+    copperActiveColor: '#b87333'
+  },
+  {
+    barColor: '#d8c29a',
+    outlineColor: '#d0b990',
+    outlineWidth: 1,
+    dropdownColor: '#ead7b2',
+    selectedRowColor: '#8b5a35',
+    hoverRowColor: '#c87948',
+    textColor: '#30271e',
+    selectedTextColor: '#edcf88',
+    hoverTextColor: '#fff8ea',
+    mutedTextColor: '#79664b',
+    brandColor: '#6f4a2f',
+    buttonColor: '#fff0c9',
+    activeColor: '#8b5a35',
+    copperActiveColor: '#b87333'
+  }
+];
+
+const normalizeTopBarStyle = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return 0;
+  return Math.max(0, Math.min(TOP_BAR_STYLES.length - 1, numericValue));
+};
+
+const normalizeTopBarCustomStyles = (value) => {
+  const source = Array.isArray(value) ? value : [];
+  return DEFAULT_TOP_BAR_CUSTOM_STYLES.map((defaults, index) => ({
+    ...defaults,
+    ...(source[index] || {}),
+    outlineWidth: Math.max(0, Math.min(4, Number(source[index]?.outlineWidth ?? defaults.outlineWidth) || defaults.outlineWidth))
+  }));
+};
 
 const MODE_STYLE_NAMES = [
   'Glassmorphism (Original)',
@@ -6032,14 +10041,17 @@ const BACKGROUNDS = [
   { name: 'Aged Cork', color: '#b5a895' },
   { name: 'Muted Clay', color: '#a39785' },
   { name: 'Smoked Taupe', color: '#918676' },
+  { name: 'Custom Taupe', color: '#918676', custom: true },
   { name: 'Warm Charcoal', color: '#2a2826' },
   { name: 'Deep Espresso', color: '#2d2621' },
   { name: 'Dark Slate', color: '#212326' },
   { name: 'Midnight Ash', color: '#1c1c1a' }
 ];
+const CUSTOM_BACKGROUND_INDEX = BACKGROUNDS.findIndex(background => background.custom);
+const DEFAULT_CUSTOM_BACKGROUND_COLOR = BACKGROUNDS[CUSTOM_BACKGROUND_INDEX]?.color || '#918676';
 
 const SaturationSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
-  const modes = ['Tape', 'Tube'];
+  const modes = ['Tape', 'Desk'];
   
   const Label = ({ m, active, colorActive, colorInactive, shadow = 'none' }) => (
     <span className="text-[9px] font-black tracking-[0.18em] uppercase transition-colors" style={{ color: active ? colorActive : colorInactive, textShadow: shadow }}>
@@ -6085,7 +10097,7 @@ const SaturationSelectorEngine = ({ mode, setMode, styleIndex, power }) => {
           <div className="relative w-[100px] h-[22px] bg-[#0a0a0a] rounded-sm shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)] flex items-center px-1 border border-white/5 cursor-pointer" onClick={() => setMode(mode === 0 ? 1 : 0)}>
              <div className="absolute inset-0 flex justify-between items-center px-3 pointer-events-none">
                 <span className={`text-[7px] font-black tracking-widest ${mode === 0 && power ? 'text-[#e66a53] shadow-[0_0_8px_#e66a53]' : 'text-[#333]'}`}>TAPE</span>
-                <span className={`text-[7px] font-black tracking-widest ${mode === 1 && power ? 'text-[#e66a53] shadow-[0_0_8px_#e66a53]' : 'text-[#333]'}`}>TUBE</span>
+                <span className={`text-[7px] font-black tracking-widest ${mode === 1 && power ? 'text-[#e66a53] shadow-[0_0_8px_#e66a53]' : 'text-[#333]'}`}>DESK</span>
              </div>
              <div className={`w-[44px] h-[16px] rounded-sm bg-gradient-to-b from-[#555] to-[#222] shadow-[0_2px_4px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.4),inset_0_-1px_1px_rgba(0,0,0,0.8)] border border-black transition-transform duration-200 flex items-center justify-center ${mode === 1 ? 'translate-x-[46px]' : 'translate-x-0'}`}>
                 <div className="w-[30px] h-[2px] bg-black/50 rounded-full shadow-[0_1px_0_rgba(255,255,255,0.2)]" />
@@ -6268,10 +10280,10 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
   const modeLedFlicker = (m) => `${unstableLedFlicker(m)} ${vintageLedFlicker(m)}`;
   const FlavorLabel = () => (
     <div
-      className="absolute left-[calc(50%+3px)] top-[-28px] -translate-x-1/2 text-[11px] font-black uppercase tracking-[0.14em]"
+      className="absolute left-[calc(50%+4px)] top-[-28px] -translate-x-1/2 text-[11px] font-black uppercase tracking-[0.14em]"
       style={{
-        color: 'rgba(58, 53, 45, 0.58)',
-        textShadow: '0 1px 0 rgba(255,255,255,0.24), 0 -1px 0 rgba(0,0,0,0.12)'
+        color: 'rgba(52, 48, 41, 0.58)',
+        textShadow: PANEL_TEXT_DEPTH_SHADOW
       }}
     >
       FLAVOR
@@ -6355,7 +10367,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
                 `}>
                   <div 
                     className={`w-3 h-[3px] rounded-full ${modeLedFlicker(m)} ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
-                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
+                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 9px ${ledColor}` } : {}}
                   />
                 </button>
                 <span className="text-[9px] font-bold tracking-[0.25em] uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" style={{ color: '#d3ba8c' }}>{m}</span>
@@ -6509,7 +10521,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
                 `}>
                   <div 
                     className={`w-3 h-[3px] rounded-full ${modeLedFlicker(m)} ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
-                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
+                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 9px ${ledColor}` } : {}}
                   />
                 </button>
                 <span className="text-[9px] font-bold tracking-[0.25em] uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" style={{ color: '#d3ba8c' }}>{m}</span>
@@ -6520,7 +10532,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
       );
     case 13: // Walnut Separated Round
       return (
-        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 px-[13px] py-4 rounded-[2.4rem] z-10" style={{ 
+        <div className="absolute top-[48%] left-[8%] translate-x-[10px] -translate-y-1/2 flex flex-col gap-5 px-[14px] py-[15px] rounded-[2.4rem] z-10" style={{ 
           backgroundImage: 'linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.12)), url("/textures/walnut.png")', 
           backgroundSize: 'cover',
           boxShadow: '0 0 0 1px #2b170b, 0 0 0 2px #78502a, inset 0 1px 2px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.08)',
@@ -6536,10 +10548,10 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
                 `}>
                   <div 
                     className={`w-3 h-[3px] rounded-full ${modeLedFlicker(m)} ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
-                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
+                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 9px ${ledColor}` } : {}}
                   />
                 </button>
-                <span className="text-[9px] font-bold tracking-[0.25em] uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" style={{ color: '#d3ba8c' }}>{m}</span>
+                <span className={`text-[10px] font-bold ${m === 'unstable' ? 'tracking-[0.12em]' : 'tracking-[0.15em]'} uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]`} style={{ color: '#d3ba8c' }}>{m}</span>
               </div>
             );
           })}
@@ -6563,7 +10575,7 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
                 `}>
                   <div 
                     className={`w-3 h-[3px] rounded-full ${modeLedFlicker(m)} ${!power || mode !== m ? 'bg-[#111] shadow-[inset_1px_1px_1px_rgba(0,0,0,0.5)]' : ''}`}
-                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 8px ${ledColor}` } : {}}
+                    style={power && mode === m ? { backgroundColor: ledColor, boxShadow: `0 0 9px ${ledColor}` } : {}}
                   />
                 </button>
                 <span className="text-[9px] font-bold tracking-[0.25em] uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)]" style={{ color: '#d3ba8c' }}>{m}</span>
@@ -6577,149 +10589,60 @@ const ModeSelectorEngine = ({ mode, setMode, styleIndex, power, isMovable = fals
 };
 
 const FRAMES = [
-  { name: 'Naked', style: {} },
-
-  { name: 'Oiled Walnut (Premium)', inset: '-inset-5', radius: '3rem',
-    style: { 
-      backgroundImage: 'url("/textures/walnut.png")', 
-      backgroundSize: '200px', 
-      boxShadow: 'inset 2px 2px 6px rgba(255,255,255,0.1), inset -2px -2px 8px rgba(0,0,0,0.8), 10px 15px 35px rgba(0,0,0,0.6)',
-      border: '1px solid #111'
-    } },
-
-  { name: 'Oiled Walnut - Soft Gasket', inset: '-inset-5', radius: '3rem',
+  { name: 'Oiled Walnut - Double Join Heavy Warm Highlight', inset: '-inset-5', panelInset: 'inset-1', radius: '4.5rem', panelRadius: '3.9rem',
     style: {
       backgroundImage: 'url("/textures/walnut.png")',
       backgroundSize: '200px',
-      boxShadow: 'inset 0 6px 12px rgba(255,255,255,0.18), inset 0 -8px 20px rgba(0,0,0,0.38), 10px 15px 35px rgba(0,0,0,0.6)',
-      border: '1px solid #111'
-    },
-    panelStyle: {
-      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1.5px #6b4524'
-    }
-  },
-
-  { name: 'Oiled Walnut - Thin Brown Seat', inset: '-inset-5', radius: '3rem',
-    style: {
-      backgroundImage: 'url("/textures/walnut.png")',
-      backgroundSize: '200px',
-      boxShadow: 'inset 0 5px 10px rgba(255,255,255,0.14), inset 0 -7px 18px rgba(0,0,0,0.42), 10px 15px 35px rgba(0,0,0,0.6)',
-      border: '1px solid #111'
-    },
-    panelStyle: {
-      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1px #4a2d17'
-    }
-  },
-
-  { name: 'Oiled Walnut - Dark Console Seat', inset: '-inset-5', radius: '3rem',
-    style: {
-      backgroundImage: 'url("/textures/walnut.png")',
-      backgroundSize: '200px',
-      boxShadow: 'inset 0 5px 11px rgba(255,255,255,0.12), inset 0 -9px 22px rgba(0,0,0,0.48), 10px 15px 35px rgba(0,0,0,0.6)',
-      border: '1px solid #0b0704'
-    },
-    panelStyle: {
-      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1.5px #241309'
-    }
-  },
-
-  { name: 'Oiled Walnut - Amber Join Line', inset: '-inset-5', radius: '3rem',
-    style: {
-      backgroundImage: 'url("/textures/walnut.png")',
-      backgroundSize: '200px',
-      boxShadow: 'inset 0 6px 12px rgba(255,255,255,0.2), inset 0 -8px 20px rgba(0,0,0,0.36), 10px 15px 35px rgba(0,0,0,0.6)',
-      border: '1px solid #111'
-    },
-    panelStyle: {
-      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1.5px #8a5a2b'
-    }
-  },
-
-  { name: 'Oiled Walnut - Fine Black Seat', inset: '-inset-5', radius: '3rem',
-    style: {
-      backgroundImage: 'url("/textures/walnut.png")',
-      backgroundSize: '200px',
-      boxShadow: 'inset 0 4px 9px rgba(255,255,255,0.1), inset 0 -8px 20px rgba(0,0,0,0.5), 10px 15px 35px rgba(0,0,0,0.6)',
-      border: '1px solid #090604'
-    },
-    panelStyle: {
-      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1px #130b06'
-    }
-  },
-
-  { name: 'Oiled Walnut - Double Join Seat', inset: '-inset-5', radius: '3rem',
-    style: {
-      backgroundImage: 'url("/textures/walnut.png")',
-      backgroundSize: '200px',
-      boxShadow: 'inset 0 4px 9px rgba(255,255,255,0.1), inset 0 -8px 20px rgba(0,0,0,0.5), 10px 15px 35px rgba(0,0,0,0.6)',
+      boxShadow: 'inset 0 4px 9px rgba(244,205,151,0.082), inset 0 -8px 20px rgba(0,0,0,0.5), 10px 15px 35px rgba(0,0,0,0.6)',
       border: '1px solid #111'
     },
     panelStyle: {
       boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1px #2b170b, 0 0 0 2px #78502a'
     }
   },
-
-  { name: 'Oiled Walnut - Double Join Rounded', inset: '-inset-5', radius: '4.5rem',
+  { name: 'Oiled Walnut - Double Join Heavy Varnish Roll', inset: '-inset-5', panelInset: 'inset-1', radius: '4.5rem', panelRadius: '3.9rem',
     style: {
-      backgroundImage: 'url("/textures/walnut.png")',
-      backgroundSize: '200px',
-      boxShadow: 'inset 0 4px 9px rgba(255,255,255,0.1), inset 0 -8px 20px rgba(0,0,0,0.5), 10px 15px 35px rgba(0,0,0,0.6)',
+      backgroundImage: `
+        linear-gradient(180deg, rgba(255,219,166,0.12) 0%, rgba(146,82,37,0.045) 7%, rgba(33,17,8,0.09) 18%, transparent 38%),
+        url("/textures/walnut.png")
+      `,
+      backgroundSize: '100% 100%, 200px',
+      backgroundBlendMode: 'soft-light, normal',
+      boxShadow: 'inset 0 1px 0 rgba(255,236,198,0.16), inset 0 7px 15px rgba(160,95,47,0.09), inset 0 -10px 22px rgba(0,0,0,0.52), 10px 15px 35px rgba(0,0,0,0.6)',
       border: '1px solid #111'
     },
     panelStyle: {
       boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1px #2b170b, 0 0 0 2px #78502a'
     }
   },
-
-  { name: 'Industrial Hammered Copper', inset: '-inset-6', radius: '4rem',
+  { name: 'Oiled Walnut - Double Join Heavy Studio Sweep', inset: '-inset-5', panelInset: 'inset-1', radius: '4.5rem', panelRadius: '3.9rem',
     style: {
-      backgroundImage: 'url("/textures/polished_copper_hammer_frame_1777670608231.png")',
-      backgroundSize: 'cover',
-      boxShadow: 'inset 2px 2px 10px rgba(255,255,255,0.2), inset -4px -4px 15px rgba(0,0,0,0.8), 0 30px 60px rgba(0,0,0,0.5)',
-      border: '2px solid #3d2a20'
+      backgroundImage: `
+        radial-gradient(ellipse at 18% 0%, rgba(255,224,177,0.18) 0%, rgba(183,112,55,0.07) 18%, transparent 42%),
+        linear-gradient(100deg, rgba(255,217,160,0.07) 0%, rgba(120,67,30,0.02) 28%, rgba(0,0,0,0.13) 100%),
+        url("/textures/walnut.png")
+      `,
+      backgroundSize: '100% 62%, 100% 100%, 200px',
+      backgroundRepeat: 'no-repeat, no-repeat, repeat',
+      backgroundBlendMode: 'screen, soft-light, normal',
+      boxShadow: 'inset 0 2px 3px rgba(255,226,185,0.11), inset -9px 0 18px rgba(0,0,0,0.18), inset 0 -9px 21px rgba(0,0,0,0.5), 10px 15px 35px rgba(0,0,0,0.6)',
+      border: '1px solid #111'
     },
-    innerStyle: {
-      inset: 'inset-2',
-      radius: '3.8rem',
-      backgroundColor: 'rgba(0,0,0,0.2)',
-      boxShadow: 'inset 0 0 20px rgba(0,0,0,0.5)'
+    panelStyle: {
+      boxShadow: '0 40px 80px rgba(0,0,0,0.4), 0 20px 30px rgba(0,0,0,0.2), 0 0 0 1px #2b170b, 0 0 0 2px #78502a'
     }
   },
-
-  { name: 'Studio Tolex (Charcoal)', inset: '-inset-5', radius: '2.5rem',
+  { name: 'Oiled Walnut - Double Join Heavy Oil Depth Balanced', inset: '-inset-5', panelInset: 'inset-1', radius: '4.5rem', panelRadius: '3.9rem',
     style: {
-      backgroundImage: 'url("/textures/studio_tolex_amplifier_frame_1777670497625.png")',
-      backgroundSize: '400px',
-      boxShadow: 'inset 1px 1px 4px rgba(255,255,255,0.1), inset -2px -2px 6px rgba(0,0,0,0.9), 10px 20px 40px rgba(0,0,0,0.7)',
-      border: '3px solid #1a1a1a'
-    }
-  },
-
-  { name: 'Rosewood Console', inset: '-inset-7', radius: '3.5rem',
-    style: {
-      backgroundImage: 'url("/textures/rosewood_console_frame_1777670401797.png")',
-      backgroundSize: 'cover',
-      boxShadow: 'inset 3px 3px 8px rgba(255,255,255,0.15), inset -5px -5px 12px rgba(0,0,0,0.9), 15px 25px 50px rgba(0,0,0,0.6)',
-      border: '1px solid #2a1a1a'
-    },
-    overlayStyle: {
-      background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.2) 100%)'
-    }
-  },
-
-  { name: 'Oiled Walnut Burl', inset: '-inset-6', radius: '4.5rem',
-    style: {
-      backgroundImage: 'url("/textures/oiled_walnut_burl_frame_1777670349016.png")',
-      backgroundSize: 'cover',
-      boxShadow: 'inset 2px 2px 6px rgba(255,255,255,0.1), inset -3px -3px 10px rgba(0,0,0,0.85), 12px 20px 45px rgba(0,0,0,0.55)',
-      border: '1.5px solid #2a1d15'
-    }
-  },
-  { name: 'Oiled Walnut - Double Join Heavy', inset: '-inset-5', panelInset: 'inset-1', radius: '4.5rem', panelRadius: '3.9rem',
-    style: {
-      backgroundImage: 'url("/textures/walnut.png")',
-      backgroundSize: '200px',
-      boxShadow: 'inset 0 4px 9px rgba(255,255,255,0.1), inset 0 -8px 20px rgba(0,0,0,0.5), 10px 15px 35px rgba(0,0,0,0.6)',
+      backgroundImage: `
+        radial-gradient(ellipse at 50% -8%, rgba(255,232,190,0.085) 0%, rgba(190,121,61,0.036) 20%, rgba(0,0,0,0.052) 58%, transparent 82%),
+        url("/textures/walnut.png")
+      `,
+      backgroundSize: '100% 78%, 200px',
+      backgroundRepeat: 'no-repeat, repeat',
+      backgroundBlendMode: 'soft-light, normal',
+      filter: 'saturate(1.018) contrast(1.025)',
+      boxShadow: 'inset 0 2px 2px rgba(255,225,180,0.06), inset 0 8px 18px rgba(95,54,25,0.095), inset 0 -8px 20px rgba(0,0,0,0.45), 10px 15px 35px rgba(0,0,0,0.6)',
       border: '1px solid #111'
     },
     panelStyle: {
@@ -6727,6 +10650,223 @@ const FRAMES = [
     }
   }
 ];
+
+const BALANCED_WALNUT_FRAME_STYLE_INDEX = 3;
+const normalizeFrameStyle = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return BALANCED_WALNUT_FRAME_STYLE_INDEX;
+  if (numeric === 20) return BALANCED_WALNUT_FRAME_STYLE_INDEX;
+  if (numeric === 5) return BALANCED_WALNUT_FRAME_STYLE_INDEX;
+  const normalized = Math.trunc(numeric);
+  if (normalized < 0 || normalized >= FRAMES.length) return BALANCED_WALNUT_FRAME_STYLE_INDEX;
+  return normalized;
+};
+
+const PANEL_DEPTH_STYLES = [
+  {
+    name: 'None',
+    style: null
+  },
+  {
+    name: 'Soft Recess',
+    style: {
+      opacity: 0.74,
+      background: 'radial-gradient(ellipse at 44% 42%, transparent 0%, transparent 58%, rgba(52,31,17,0.028) 82%, rgba(52,31,17,0.06) 100%)',
+      boxShadow: 'inset 5px 6px 14px rgba(42,24,13,0.045), inset -4px -4px 16px rgba(255,248,232,0.018)',
+      mixBlendMode: 'multiply'
+    }
+  },
+  {
+    name: 'Top Left Rim',
+    style: {
+      opacity: 0.68,
+      background: 'linear-gradient(135deg, rgba(42,24,13,0.05) 0%, rgba(42,24,13,0.018) 10%, transparent 26%)',
+      boxShadow: 'inset 4px 5px 12px rgba(42,24,13,0.052), inset -2px -2px 12px rgba(255,248,232,0.014)',
+      mixBlendMode: 'multiply'
+    }
+  },
+  {
+    name: 'Deep Face Feather',
+    style: {
+      opacity: 0.62,
+      background: 'radial-gradient(ellipse at 50% 48%, transparent 0%, transparent 48%, rgba(46,27,15,0.024) 75%, rgba(46,27,15,0.07) 100%)',
+      boxShadow: 'inset 0 0 30px rgba(42,24,13,0.045), inset 7px 8px 20px rgba(42,24,13,0.034)',
+      mixBlendMode: 'multiply'
+    }
+  },
+  {
+    name: 'Studio Corner Falloff',
+    style: {
+      opacity: 0.7,
+      background: 'radial-gradient(circle at 22% 18%, rgba(255,248,232,0.018) 0%, transparent 24%), radial-gradient(ellipse at 82% 86%, rgba(42,24,13,0.055) 0%, rgba(42,24,13,0.02) 36%, transparent 68%)',
+      boxShadow: 'inset 4px 5px 13px rgba(42,24,13,0.04), inset -5px -5px 18px rgba(42,24,13,0.022)',
+      mixBlendMode: 'multiply'
+    }
+  }
+];
+
+const OBJECT_CONTACT_SHADOW_STYLES = [
+  { name: 'None', opacity: 0 },
+  { name: 'Soft Contact', opacity: 0.78, contact: 1, cast: 0.55, distance: 1, blur: 1 },
+  { name: 'Studio Cast', opacity: 0.86, contact: 0.95, cast: 0.9, distance: 1.35, blur: 1.1 },
+  { name: 'Raised Hardware', opacity: 0.92, contact: 1.18, cast: 1.05, distance: 1.65, blur: 1.22 },
+  { name: 'Deep Mounted', opacity: 0.96, contact: 1.28, cast: 1.28, distance: 1.95, blur: 1.35 }
+];
+
+const PANEL_LIGHTING_STYLES = [
+  { name: 'None', style: null },
+  {
+    name: 'Gentle Studio',
+    style: {
+      opacity: 0.72,
+      background: 'radial-gradient(circle at 18% 15%, rgba(255,248,232,0.045) 0%, rgba(255,248,232,0.018) 26%, transparent 54%), radial-gradient(ellipse at 86% 88%, rgba(56,31,18,0.04) 0%, rgba(56,31,18,0.018) 38%, transparent 70%)',
+      mixBlendMode: 'soft-light'
+    }
+  },
+  {
+    name: 'Warm Top Left',
+    style: {
+      opacity: 0.76,
+      background: 'linear-gradient(135deg, rgba(255,235,196,0.055) 0%, rgba(255,235,196,0.018) 30%, transparent 52%), radial-gradient(ellipse at 88% 86%, rgba(48,27,16,0.048) 0%, transparent 70%)',
+      mixBlendMode: 'soft-light'
+    }
+  },
+  {
+    name: 'Dim Console',
+    style: {
+      opacity: 0.82,
+      background: 'radial-gradient(circle at 22% 14%, rgba(255,246,226,0.03) 0%, transparent 34%), linear-gradient(135deg, transparent 0%, transparent 46%, rgba(38,22,14,0.055) 100%)',
+      mixBlendMode: 'multiply'
+    }
+  },
+  {
+    name: 'Soft Diagonal',
+    style: {
+      opacity: 0.7,
+      background: 'linear-gradient(135deg, rgba(255,248,232,0.038) 0%, transparent 38%, rgba(44,25,15,0.034) 100%)',
+      mixBlendMode: 'soft-light'
+    }
+  }
+];
+
+const PANEL_SURFACE_TEXTURE_STYLES = [
+  { name: 'None', style: null },
+  {
+    name: 'Fine Matte',
+    style: {
+      opacity: 0.34,
+      backgroundImage: textureDataUrl('<svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="1.15" numOctaves="2" seed="73" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="table" tableValues="0 0.12"/></feComponentTransfer></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>'),
+      backgroundSize: '170px 170px',
+      mixBlendMode: 'multiply'
+    }
+  },
+  {
+    name: 'Paper Grain',
+    style: {
+      opacity: 0.42,
+      backgroundImage: `${textureDataUrl('<svg viewBox="0 0 260 260" xmlns="http://www.w3.org/2000/svg"><filter id="p"><feTurbulence type="fractalNoise" baseFrequency="0.82 0.24" numOctaves="4" seed="19" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#p)" opacity="0.42"/></svg>')}, repeating-linear-gradient(18deg, rgba(82,58,38,0.018) 0px, rgba(82,58,38,0.018) 1px, transparent 1px, transparent 11px)`,
+      backgroundSize: '230px 230px, 100% 100%',
+      mixBlendMode: 'multiply'
+    }
+  },
+  {
+    name: 'Subtle Speckle',
+    style: {
+      opacity: 0.26,
+      backgroundImage: textureDataUrl('<svg viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg"><filter id="s"><feTurbulence type="fractalNoise" baseFrequency="1.9" numOctaves="2" seed="41" stitchTiles="stitch"/><feComponentTransfer><feFuncA type="discrete" tableValues="0 0 0.18 0"/></feComponentTransfer></filter><rect width="100%" height="100%" filter="url(#s)"/></svg>'),
+      backgroundSize: '120px 120px',
+      mixBlendMode: 'multiply'
+    }
+  },
+  {
+    name: 'Warm Mottle',
+    style: {
+      opacity: 0.36,
+      backgroundImage: textureDataUrl('<svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg"><filter id="m"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="5" seed="11"/><feGaussianBlur stdDeviation="1.1"/><feColorMatrix type="matrix" values="0 0 0 0 0.36 0 0 0 0 0.24 0 0 0 0 0.14 0 0 0 0.28 0"/></filter><rect width="100%" height="100%" filter="url(#m)"/></svg>'),
+      backgroundSize: '420px 420px',
+      mixBlendMode: 'multiply'
+    }
+  }
+];
+
+const DEFAULT_DEPTH_MODEL = {
+  enabled: true,
+  preset: 1,
+  shadowAngle: 45,
+  lightHeight: 62,
+  heightScale: 100,
+  contactStrength: 38,
+  castStrength: 34,
+  softness: 58,
+  opacity: 100,
+  heights: {
+    smallKnobs: 8,
+    bigDial: 7,
+    modules: 5,
+    slabs: 3,
+    buttons: 5
+  }
+};
+
+const DEFAULT_CENTER_DEPTH_MODEL = {
+  enabled: false,
+  shadowAngle: 45,
+  height: 4,
+  distance: 34,
+  contactStrength: 18,
+  castStrength: 16,
+  softness: 70,
+  opacity: 100,
+  size: 78,
+  x: 0,
+  y: 1
+};
+
+const DEPTH_MODEL_PRESETS = [
+  { name: 'None', patch: { enabled: false } },
+  { name: 'Natural Low', patch: { enabled: true, shadowAngle: 45, lightHeight: 70, heightScale: 72, contactStrength: 28, castStrength: 22, softness: 68 } },
+  { name: 'Studio Realism', patch: { enabled: true, shadowAngle: 45, lightHeight: 58, heightScale: 96, contactStrength: 38, castStrength: 34, softness: 58 } },
+  { name: 'Raised Hardware', patch: { enabled: true, shadowAngle: 47, lightHeight: 48, heightScale: 118, contactStrength: 46, castStrength: 42, softness: 52 } },
+  { name: 'Long Soft Cast', patch: { enabled: true, shadowAngle: 43, lightHeight: 38, heightScale: 112, contactStrength: 30, castStrength: 52, softness: 78 } }
+];
+
+const normalizeDepthModel = (settings = {}) => ({
+  ...DEFAULT_DEPTH_MODEL,
+  ...(settings || {}),
+  heights: {
+    ...DEFAULT_DEPTH_MODEL.heights,
+    ...(settings?.heights || {})
+  }
+});
+CODE_DEFAULT_DESIGN.depthModel = DEFAULT_DEPTH_MODEL;
+
+const normalizeCenterDepthModel = (settings = {}) => ({
+  ...DEFAULT_CENTER_DEPTH_MODEL,
+  ...(settings || {})
+});
+CODE_DEFAULT_DESIGN.centerDepthModel = DEFAULT_CENTER_DEPTH_MODEL;
+
+const DEPTH_MODEL_OBJECT_OFFSETS = {
+  input: { x: -78, y: -15 },
+  output: { x: 78, y: -15 },
+  noise: { x: -13, y: 0 },
+  sweeten: { x: -13, y: 0 },
+  sat: { x: -13, y: 0 },
+  filter: { x: -13, y: 0 },
+  rate: { x: 0, y: -18 },
+  mix: { x: 0, y: -14 },
+  center: { x: 0, y: 1 },
+  flavor: { x: 0, y: 0 },
+  display: { x: 0, y: 0 },
+  lfo: { x: 0, y: 0 }
+};
+
+const RIGHT_KNOB_POSITIONS = {
+  noise: { x: 647, y: 342 },
+  sweeten: { x: 740, y: 342 },
+  sat: { x: 647, y: 452 },
+  filter: { x: 740, y: 452 }
+};
 
 const IO_SCALE_NAMES = [
   "None", 
@@ -6900,9 +11040,9 @@ const KnobScaleRing = ({ styleIndex, size = 55 }) => {
   }
 };
 
-export default function App() {
+export default function App({ websiteMode = false }) {
   const pluginStageRef = useRef(null);
-  const savedDesignDefaults = useRef(loadSavedDesignDefaults()).current;
+  const savedDesignDefaults = useRef(websiteMode ? {} : loadSavedDesignDefaults()).current;
   const initial = (key, fallback) => savedDesignDefaults[key] ?? fallback;
   const [power, setPower] = useState(() => initial('power', CODE_DEFAULT_DESIGN.power));
   const [input, setInput] = useState(() => initial('input', CODE_DEFAULT_DESIGN.input));
@@ -6914,7 +11054,17 @@ export default function App() {
   const [outerRingScaleStyle, setOuterRingScaleStyle] = useState(() => initial('outerRingScaleStyle', CODE_DEFAULT_DESIGN.outerRingScaleStyle));
   const [showWabiSabi, setShowWabiSabi] = useState(() => initial('showWabiSabi', CODE_DEFAULT_DESIGN.showWabiSabi));
   const [readoutStyleIndex, setReadoutStyleIndex] = useState(() => initial('readoutStyleIndex', CODE_DEFAULT_DESIGN.readoutStyleIndex));
-  const [activeDisplayParam, setActiveDisplayParam] = useState('sat');
+  const [topBarStyle, setTopBarStyle] = useState(() => normalizeTopBarStyle(initial('topBarStyle', CODE_DEFAULT_DESIGN.topBarStyle ?? 0)));
+  const [topBarCustomStyles, setTopBarCustomStyles] = useState(() => normalizeTopBarCustomStyles(initial('topBarCustomStyles', CODE_DEFAULT_DESIGN.topBarCustomStyles)));
+  const [globalMastering, setGlobalMastering] = useState(() => normalizeGlobalMastering(initial('globalMastering', CODE_DEFAULT_DESIGN.globalMastering || DEFAULT_GLOBAL_MASTERING)));
+  const [depthModel, setDepthModel] = useState(() => normalizeDepthModel(initial('depthModel', CODE_DEFAULT_DESIGN.depthModel || DEFAULT_DEPTH_MODEL)));
+  const [centerDepthModel, setCenterDepthModel] = useState(() => normalizeCenterDepthModel(initial('centerDepthModel', CODE_DEFAULT_DESIGN.centerDepthModel || DEFAULT_CENTER_DEPTH_MODEL)));
+  const [hqMode, setHqMode] = useState(() => initial('hqMode', CODE_DEFAULT_DESIGN.hqMode ?? false));
+  const [cableToneEnabled, setCableToneEnabled] = useState(() => initial('cableToneEnabled', CODE_DEFAULT_DESIGN.cableToneEnabled ?? true));
+  const [userPresets, setUserPresets] = useState(() => websiteMode ? [] : loadUserPresets());
+  const [currentUserPresetId, setCurrentUserPresetId] = useState(null);
+  const [activeDisplayParam, setActiveDisplayParam] = useState('drift');
+  const [displayAnimationTime, setDisplayAnimationTime] = useState(0);
   const isIoDragging = isInputDragging || isOutputDragging;
   const inputValueRef = useRef(input);
   const outputValueRef = useRef(output);
@@ -6927,20 +11077,33 @@ export default function App() {
   const [rate, setRate] = useState(() => initial('rate', CODE_DEFAULT_DESIGN.rate));
   const [depth, setDepth] = useState(() => initial('depth', CODE_DEFAULT_DESIGN.depth));
   const [stereoPhase, setStereoPhase] = useState(() => initial('stereoPhase', CODE_DEFAULT_DESIGN.stereoPhase));
+  const [depthDisplayStyle, setDepthDisplayStyle] = useState(() => normalizeDepthDisplayAnimationStyle(initial('depthDisplayStyle', CODE_DEFAULT_DESIGN.depthDisplayStyle ?? 0)));
+  const [phaseDisplayStyle, setPhaseDisplayStyle] = useState(() => normalizePhaseDisplayAnimationStyle(initial('phaseDisplayStyle', CODE_DEFAULT_DESIGN.phaseDisplayStyle ?? 0)));
+  const [spreadDisplayStyle, setSpreadDisplayStyle] = useState(() => normalizeSpreadDisplayAnimationStyle(initial('spreadDisplayStyle', CODE_DEFAULT_DESIGN.spreadDisplayStyle ?? 0)));
+  const [noiseDisplayStyle, setNoiseDisplayStyle] = useState(() => normalizeNoiseDisplayAnimationStyle(initial('noiseDisplayStyle', CODE_DEFAULT_DESIGN.noiseDisplayStyle ?? 0)));
   const [mode, setMode] = useState(() => initial('mode', CODE_DEFAULT_DESIGN.mode));
-  const [autoGain, setAutoGain] = useState(() => initial('autoGain', CODE_DEFAULT_DESIGN.autoGain));
+  const [mix, setMix] = useState(() => initial('mix', CODE_DEFAULT_DESIGN.mix ?? 50));
   const [lfoEnabled, setLfoEnabled] = useState(() => initial('lfoEnabled', CODE_DEFAULT_DESIGN.lfoEnabled));
   const [lfoSync, setLfoSync] = useState(() => initial('lfoSync', CODE_DEFAULT_DESIGN.lfoSync));
   const [lfoShape, setLfoShape] = useState(() => initial('lfoShape', CODE_DEFAULT_DESIGN.lfoShape));
   const [lfoSyncDiv, setLfoSyncDiv] = useState(() => initial('lfoSyncDiv', CODE_DEFAULT_DESIGN.lfoSyncDiv));
   const [saturationMode, setSaturationMode] = useState(() => initial('saturationMode', CODE_DEFAULT_DESIGN.saturationMode));
+  const [filterPole, setFilterPole] = useState(() => normalizeFilterPole(initial('filterPole', CODE_DEFAULT_DESIGN.filterPole ?? 12)));
   const [saturationStyle, setSaturationStyle] = useState(() => normalizeSaturationStyle(initial('saturationStyle', CODE_DEFAULT_DESIGN.saturationStyle)));
   const [currentPreset, setCurrentPreset] = useState(() => initial('currentPreset', CODE_DEFAULT_DESIGN.currentPreset));
-  const [frameStyle, setFrameStyle] = useState(() => initial('frameStyle', CODE_DEFAULT_DESIGN.frameStyle));
+  const [frameStyle, setFrameStyle] = useState(() => normalizeFrameStyle(initial('frameStyle', CODE_DEFAULT_DESIGN.frameStyle)));
+  const [panelDepthStyle, setPanelDepthStyle] = useState(() => initial('panelDepthStyle', CODE_DEFAULT_DESIGN.panelDepthStyle ?? 1));
+  const [objectContactShadowStyle, setObjectContactShadowStyle] = useState(() => initial('objectContactShadowStyle', CODE_DEFAULT_DESIGN.objectContactShadowStyle ?? 1));
+  const [panelLightingStyle, setPanelLightingStyle] = useState(() => initial('panelLightingStyle', CODE_DEFAULT_DESIGN.panelLightingStyle ?? 1));
+  const [panelSurfaceTextureStyle, setPanelSurfaceTextureStyle] = useState(() => initial('panelSurfaceTextureStyle', CODE_DEFAULT_DESIGN.panelSurfaceTextureStyle ?? 1));
   const [modeStyle, setModeStyle] = useState(() => initial('modeStyle', CODE_DEFAULT_DESIGN.modeStyle));
   const [knobStyle, setKnobStyle] = useState(() => initial('knobStyle', CODE_DEFAULT_DESIGN.knobStyle));
+  const [mixKnobStyle, setMixKnobStyle] = useState(() => initial('mixKnobStyle', CODE_DEFAULT_DESIGN.mixKnobStyle ?? 0));
+  const [smallKnobRingEnabled, setSmallKnobRingEnabled] = useState(() => initial('smallKnobRingEnabled', CODE_DEFAULT_DESIGN.smallKnobRingEnabled ?? true));
   const activeKnobStyleIndex = Math.max(0, Math.min(KNOB_STYLES.length - 1, Number(knobStyle) || 0));
   const activeKnobStyle = KNOB_STYLES[activeKnobStyleIndex];
+  const activeMixKnobStyleIndex = Math.max(0, Math.min(MIX_KNOB_STYLES.length - 1, Number(mixKnobStyle) || 0));
+  const activeMixKnobStyle = MIX_KNOB_STYLES[activeMixKnobStyleIndex];
   const [centerDialStyle, setCenterDialStyle] = useState(() => initial('centerDialStyle', CODE_DEFAULT_DESIGN.centerDialStyle));
   const [middleKnobStyle, setMiddleKnobStyle] = useState(() => normalizeMiddleKnobStyle(initial('middleKnobStyle', CODE_DEFAULT_DESIGN.middleKnobStyle)));
   const [centerDialSurfaceStyle, setCenterDialSurfaceStyle] = useState(() => initial('centerDialSurfaceStyle', CODE_DEFAULT_DESIGN.centerDialSurfaceStyle));
@@ -6953,6 +11116,7 @@ export default function App() {
   const [spreadPointerStyle, setSpreadPointerStyle] = useState(() => normalizeSpreadPointerStyle(initial('spreadPointerStyle', CODE_DEFAULT_DESIGN.spreadPointerStyle)));
   const [driftAnimation, setDriftAnimation] = useState(() => normalizeDriftAnimationStyle(initial('driftAnimation', CODE_DEFAULT_DESIGN.driftAnimation)));
   const [bgIndex, setBgIndex] = useState(() => initial('bgIndex', CODE_DEFAULT_DESIGN.bgIndex));
+  const [customBackgroundColor, setCustomBackgroundColor] = useState(() => initial('customBackgroundColor', CODE_DEFAULT_DESIGN.customBackgroundColor || DEFAULT_CUSTOM_BACKGROUND_COLOR));
   const [showOutputs, setShowOutputs] = useState(() => initial('showOutputs', CODE_DEFAULT_DESIGN.showOutputs));
   const [parallelCables, setParallelCables] = useState(() => initial('parallelCables', CODE_DEFAULT_DESIGN.parallelCables));
   const [showStems, setShowStems] = useState(() => initial('showStems', CODE_DEFAULT_DESIGN.showStems));
@@ -6960,9 +11124,21 @@ export default function App() {
   const [faceTextureEnabled, setFaceTextureEnabled] = useState(() => initial('faceTextureEnabled', CODE_DEFAULT_DESIGN.faceTextureEnabled));
   const [faceTextureStyle, setFaceTextureStyle] = useState(() => initial('faceTextureStyle', CODE_DEFAULT_DESIGN.faceTextureStyle));
   const [faceTextureOpacity, setFaceTextureOpacity] = useState(() => initial('faceTextureOpacity', CODE_DEFAULT_DESIGN.faceTextureOpacity));
+  const [faceTextureBlendMode, setFaceTextureBlendMode] = useState(() => normalizeFaceTextureBlendMode(initial('faceTextureBlendMode', CODE_DEFAULT_DESIGN.faceTextureBlendMode || FACE_TEXTURE_BLEND_MODES[0])));
+  const [faceTextureScale, setFaceTextureScale] = useState(() => initial('faceTextureScale', CODE_DEFAULT_DESIGN.faceTextureScale ?? DEFAULT_FACE_TEXTURE_SCALE));
   const [panelFaceColor, setPanelFaceColor] = useState(() => initial('panelFaceColor', CODE_DEFAULT_DESIGN.panelFaceColor));
   const [useDefaultPanelFaceColor, setUseDefaultPanelFaceColor] = useState(() => initial('useDefaultPanelFaceColor', CODE_DEFAULT_DESIGN.useDefaultPanelFaceColor));
   const [brandTextStyle, setBrandTextStyle] = useState(() => normalizeBrandTextStyle(initial('brandTextStyle', CODE_DEFAULT_DESIGN.brandTextStyle)));
+  const [vintageLogoColor, setVintageLogoColor] = useState(() => initial('vintageLogoColor', CODE_DEFAULT_DESIGN.vintageLogoColor || DEFAULT_VINTAGE_LOGO_COLOR));
+  const [polarisLogoColor, setPolarisLogoColor] = useState(() => initial('polarisLogoColor', CODE_DEFAULT_DESIGN.polarisLogoColor || DEFAULT_POLARIS_LOGO_COLOR));
+  const [knobFlutterFilledColors, setKnobFlutterFilledColors] = useState(() => ({
+    ...DEFAULT_KNOB_FLUTTER_FILLED_COLORS,
+    ...(initial('knobFlutterFilledColors', CODE_DEFAULT_DESIGN.knobFlutterFilledColors || DEFAULT_KNOB_FLUTTER_FILLED_COLORS) || {})
+  }));
+  const [originalCopperTuning, setOriginalCopperTuning] = useState(() => normalizeOriginalCopperTuning(initial('originalCopperTuning', CODE_DEFAULT_DESIGN.originalCopperTuning || DEFAULT_ORIGINAL_COPPER_TUNING)));
+  const [agedChampagneBrassTuning, setAgedChampagneBrassTuning] = useState(() => normalizeAgedChampagneBrassTuning(initial('agedChampagneBrassTuning', CODE_DEFAULT_DESIGN.agedChampagneBrassTuning || DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING)));
+  const [smokedChampagneBoldCleanTuning, setSmokedChampagneBoldCleanTuning] = useState(() => normalizeSmokedChampagneBoldCleanTuning(initial('smokedChampagneBoldCleanTuning', CODE_DEFAULT_DESIGN.smokedChampagneBoldCleanTuning || DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING)));
+  const [powerSwitchTuning, setPowerSwitchTuning] = useState(() => normalizePowerSwitchTuning(initial('powerSwitchTuning', CODE_DEFAULT_DESIGN.powerSwitchTuning || DEFAULT_POWER_SWITCH_TUNING)));
   const [screwsEnabled, setScrewsEnabled] = useState(() => initial('screwsEnabled', CODE_DEFAULT_DESIGN.screwsEnabled));
   const [screwStyle, setScrewStyle] = useState(() => initial('screwStyle', CODE_DEFAULT_DESIGN.screwStyle));
   const [lfoImageState, setLfoImageState] = useState(() => initial('lfoImageState', CODE_DEFAULT_DESIGN.lfoImageState));
@@ -6986,10 +11162,37 @@ export default function App() {
     Object.entries(DECORATIVE_CIRCLE_PRESETS).map(([id, preset]) => [id, { ...preset, ...decorativeCircles[id] }])
   );
   const selectedFaceTexture = FACE_TEXTURES[faceTextureStyle] || FACE_TEXTURES[0];
+  const scaledFaceTextureBackgroundSize = (() => {
+    const size = selectedFaceTexture.backgroundSize;
+    const scale = (Number(faceTextureScale) || DEFAULT_FACE_TEXTURE_SCALE) / 100;
+    if (!size || scale === 1) return size;
+    return String(size)
+      .split(',')
+      .map(part => part.trim().replace(/(-?\d*\.?\d+)px/g, (_, value) => `${Number(value) * scale}px`))
+      .join(', ');
+  })();
   const activePanelFaceColor = useDefaultPanelFaceColor ? DEFAULT_PANEL_FACE_COLOR : panelFaceColor;
+  const activePanelDepthStyle = PANEL_DEPTH_STYLES[panelDepthStyle] || PANEL_DEPTH_STYLES[0];
+  const activePanelLightingStyle = PANEL_LIGHTING_STYLES[panelLightingStyle] || PANEL_LIGHTING_STYLES[0];
+  const activePanelSurfaceTextureStyle = PANEL_SURFACE_TEXTURE_STYLES[panelSurfaceTextureStyle] || PANEL_SURFACE_TEXTURE_STYLES[0];
   const activeBrandTextStyle = BRAND_TEXT_STYLES[normalizeBrandTextStyle(brandTextStyle)] || BRAND_TEXT_STYLES[0];
   const lfoImageSettings = { ...LFO_IMAGE_PRESET, ...lfoImageState };
-  const displaySignal = { input, output, mode, rate, waveShape: lfoShape, driftAnimation };
+  useEffect(() => {
+    const animatedDepthDisplay = activeDisplayParam === 'depth' && normalizeDepthDisplayAnimationStyle(depthDisplayStyle) >= 9;
+    if (!animatedDepthDisplay) return undefined;
+    let frameId;
+    let lastFrame = 0;
+    const tick = (now) => {
+      if (now - lastFrame > 40) {
+        setDisplayAnimationTime(now / 1000);
+        lastFrame = now;
+      }
+      frameId = requestAnimationFrame(tick);
+    };
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [activeDisplayParam, depthDisplayStyle]);
+  const displaySignal = { input, output, mode, rate, waveShape: lfoShape, driftAnimation, filterPole, lfoSync, lfoSyncDiv, displayTime: displayAnimationTime, depthDisplayStyle, phaseDisplayStyle, spreadDisplayStyle, noiseDisplayStyle };
   const displayParameters = {
     input: createDisplayParameter('input', input, displaySignal),
     output: createDisplayParameter('output', output, displaySignal),
@@ -7002,10 +11205,100 @@ export default function App() {
     rate: createDisplayParameter('rate', rate, displaySignal),
     depth: createDisplayParameter('depth', depth, displaySignal),
     phase: createDisplayParameter('phase', stereoPhase, displaySignal),
-    autoGain: createDisplayParameter('autoGain', autoGain, displaySignal)
+    mix: createDisplayParameter('mix', mix, displaySignal)
   };
   const activeDisplayData = displayParameters[activeDisplayParam] || displayParameters.sat;
   const markDisplayParam = (id) => setActiveDisplayParam(id);
+  const updateOriginalCopperTuning = (patch) => {
+    setOriginalCopperTuning(current => normalizeOriginalCopperTuning({ ...current, ...patch }));
+  };
+  const resetOriginalCopperTuning = () => {
+    setOriginalCopperTuning(normalizeOriginalCopperTuning(DEFAULT_ORIGINAL_COPPER_TUNING));
+  };
+  const resetOriginalCopperTuningColors = () => {
+    setOriginalCopperTuning(current => normalizeOriginalCopperTuning({
+      ...current,
+      darkMetalColor: DEFAULT_ORIGINAL_COPPER_TUNING.darkMetalColor,
+      lightMetalColor: DEFAULT_ORIGINAL_COPPER_TUNING.lightMetalColor
+    }));
+  };
+  const updateAgedChampagneBrassTuning = (patch) => {
+    setAgedChampagneBrassTuning(current => normalizeAgedChampagneBrassTuning({ ...current, ...patch }));
+  };
+  const resetAgedChampagneBrassTuning = () => {
+    setAgedChampagneBrassTuning(normalizeAgedChampagneBrassTuning(DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING));
+  };
+  const resetAgedChampagneBrassTuningColors = () => {
+    setAgedChampagneBrassTuning(current => normalizeAgedChampagneBrassTuning({
+      ...current,
+      darkMetalColor: DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.darkMetalColor,
+      midMetalColor: DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.midMetalColor,
+      lightMetalColor: DEFAULT_AGED_CHAMPAGNE_BRASS_TUNING.lightMetalColor
+    }));
+  };
+  const updateSmokedChampagneBoldCleanTuning = (patch) => {
+    setSmokedChampagneBoldCleanTuning(current => normalizeSmokedChampagneBoldCleanTuning({ ...current, ...patch }));
+  };
+  const resetSmokedChampagneBoldCleanTuning = () => {
+    setSmokedChampagneBoldCleanTuning(normalizeSmokedChampagneBoldCleanTuning(DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING));
+  };
+  const resetSmokedChampagneBoldCleanTuningColors = () => {
+    setSmokedChampagneBoldCleanTuning(current => normalizeSmokedChampagneBoldCleanTuning({
+      ...current,
+      darkMetalColor: DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.darkMetalColor,
+      midMetalColor: DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.midMetalColor,
+      lightMetalColor: DEFAULT_SMOKED_CHAMPAGNE_BOLD_CLEAN_TUNING.lightMetalColor
+    }));
+  };
+  const updatePowerSwitchTuning = (patch) => {
+    setPowerSwitchTuning(current => normalizePowerSwitchTuning({ ...current, ...patch }));
+  };
+  const resetPowerSwitchTuning = () => {
+    setPowerSwitchTuning(normalizePowerSwitchTuning(DEFAULT_POWER_SWITCH_TUNING));
+  };
+  const resetPowerSwitchTuningColors = () => {
+    setPowerSwitchTuning(current => normalizePowerSwitchTuning({
+      ...current,
+      insertTopColor: DEFAULT_POWER_SWITCH_TUNING.insertTopColor,
+      insertBottomColor: DEFAULT_POWER_SWITCH_TUNING.insertBottomColor
+    }));
+  };
+
+  const updateGlobalMasteringRoot = (patch) => {
+    setGlobalMastering(current => normalizeGlobalMastering({ ...current, ...patch }));
+  };
+  const updateGlobalMasteringSection = (section, patch) => {
+    setGlobalMastering(current => {
+      const normalized = normalizeGlobalMastering(current);
+      return normalizeGlobalMastering({
+        ...normalized,
+        [section]: {
+          ...normalized[section],
+          ...patch
+        }
+      });
+    });
+  };
+  const applyGlobalMasteringPreset = (presetId) => {
+    setGlobalMastering(normalizeGlobalMastering(GLOBAL_MASTERING_PRESETS[presetId] || DEFAULT_GLOBAL_MASTERING));
+  };
+  const resetGlobalMastering = () => {
+    setGlobalMastering(normalizeGlobalMastering(DEFAULT_GLOBAL_MASTERING));
+  };
+  const updateDepthModel = (patch) => {
+    setDepthModel(current => normalizeDepthModel({ ...current, ...patch }));
+  };
+  const updateCenterDepthModel = (patch) => {
+    setCenterDepthModel(current => normalizeCenterDepthModel({ ...current, ...patch }));
+  };
+  const applyDepthModelPreset = (presetIndex) => {
+    const preset = DEPTH_MODEL_PRESETS[presetIndex] || DEPTH_MODEL_PRESETS[0];
+    setDepthModel(current => normalizeDepthModel({
+      ...current,
+      ...preset.patch,
+      preset: presetIndex
+    }));
+  };
 
   const updateSakuraImage = (id, patch) => {
     setSakuraImageState(current => ({
@@ -7098,13 +11391,32 @@ export default function App() {
   const handleDepthChange = (nextValue) => { markDisplayParam('depth'); setDepth(nextValue); };
   const handlePhaseChange = (nextValue) => { markDisplayParam('phase'); setStereoPhase(nextValue); };
   const handleLfoShapeChange = (nextValue) => { markDisplayParam('rate'); setLfoShape(nextValue); };
-  const handleAutoGainToggle = () => {
-    markDisplayParam('autoGain');
-    setAutoGain(current => !current);
-  };
+  const handleLfoSyncChange = (nextValue) => { markDisplayParam('rate'); setLfoSync(nextValue); };
+  const handleLfoSyncDivChange = (nextValue) => { markDisplayParam('rate'); setLfoSyncDiv(nextValue); };
+  const handleMixChange = (nextValue) => { markDisplayParam('mix'); setMix(nextValue); };
   const handleIOLinkStyleChange = (nextStyle) => {
     setIoLinkStyle(nextStyle);
     if (nextStyle === 'none') setIoLinked(false);
+  };
+  const updateTopBarCustomStyle = (index, patch) => {
+    setTopBarCustomStyles(styles => {
+      const next = normalizeTopBarCustomStyles(styles);
+      next[index] = {
+        ...next[index],
+        ...patch,
+        outlineWidth: 'outlineWidth' in patch
+          ? Math.max(0, Math.min(4, Number(patch.outlineWidth) || 0))
+          : next[index].outlineWidth
+      };
+      return next;
+    });
+  };
+  const resetTopBarCustomStyle = (index) => {
+    setTopBarCustomStyles(styles => {
+      const next = normalizeTopBarCustomStyles(styles);
+      next[index] = { ...DEFAULT_TOP_BAR_CUSTOM_STYLES[index] };
+      return next;
+    });
   };
 
   const addAuraShape = () => {
@@ -7122,7 +11434,12 @@ export default function App() {
       color2: ['#edd39a', '#e66a53', '#d4af37', '#b04a4a', '#7aa678'][Math.floor(Math.random() * 5)],
       gradientAngle: Math.floor(Math.random() * 360),
       isAnimated: true,
-      blobRadius: generateRandomBlob()
+      blobRadius: generateRandomBlob(),
+      outlineEnabled: false,
+      outlineColor: '#e66a53',
+      outlineWidth: 0,
+      outlineOpacity: 1,
+      outlineBlur: 0
     };
     setAuraShapes(prev => [...prev, newShape]);
     setSelectedAuraShape(newShape.id);
@@ -7141,37 +11458,82 @@ export default function App() {
     setAuraShapes(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
   };
 
+  const moveAuraShape = (id, direction) => {
+    setAuraShapes(prev => {
+      const index = prev.findIndex(shape => shape.id === id);
+      if (index < 0) return prev;
+      const next = [...prev];
+      const [shape] = next.splice(index, 1);
+      let targetIndex = index;
+      if (direction === 'back') targetIndex = 0;
+      if (direction === 'down') targetIndex = Math.max(0, index - 1);
+      if (direction === 'up') targetIndex = Math.min(next.length, index + 1);
+      if (direction === 'front') targetIndex = next.length;
+      next.splice(targetIndex, 0, shape);
+      return next;
+    });
+    setSelectedAuraShape(id);
+  };
+
+  const duplicateAuraShape = (id) => {
+    const shape = auraShapes.find(s => s.id === id);
+    if (!shape) return;
+    const duplicate = {
+      ...shape,
+      id: `aura-${Date.now()}`,
+      locked: false
+    };
+    setAuraShapes(prev => {
+      const index = prev.findIndex(s => s.id === id);
+      const next = [...prev];
+      next.splice(index + 1, 0, duplicate);
+      return next;
+    });
+    setSelectedAuraShape(duplicate.id);
+  };
+
   const removeAuraShape = (id) => {
     setAuraShapes(prev => prev.filter(s => s.id !== id));
     if (selectedAuraShape === id) setSelectedAuraShape(null);
   };
 
-  const handleSaveCurrentAsDefault = () => {
-    const saved = saveDesignDefaults({
+  const buildCurrentSettings = () => ({
       power,
       input,
       output,
       ioLinkStyle,
       ioLinked,
+      outerRingScaleStyle,
+      showWabiSabi,
       drift,
       spread,
       character,
       sweeten,
       biasHF,
       noise,
+      mix,
       rate,
       depth,
       stereoPhase,
+      depthDisplayStyle,
+      phaseDisplayStyle,
+      spreadDisplayStyle,
+      noiseDisplayStyle,
       mode,
-      autoGain,
       lfoEnabled,
       lfoSync,
       lfoShape,
       lfoSyncDiv,
       currentPreset,
       frameStyle,
+      panelDepthStyle,
+      objectContactShadowStyle,
+      panelLightingStyle,
+      panelSurfaceTextureStyle,
       modeStyle,
       knobStyle,
+      mixKnobStyle,
+      smallKnobRingEnabled,
       centerDialStyle,
       middleKnobStyle,
       centerDialSurfaceStyle,
@@ -7184,6 +11546,7 @@ export default function App() {
       spreadPointerStyle,
       driftAnimation,
       bgIndex,
+      customBackgroundColor,
       showOutputs,
       parallelCables,
       showStems,
@@ -7191,9 +11554,18 @@ export default function App() {
       faceTextureEnabled,
       faceTextureStyle,
       faceTextureOpacity,
+      faceTextureBlendMode,
+      faceTextureScale,
       panelFaceColor,
       useDefaultPanelFaceColor,
       brandTextStyle,
+      vintageLogoColor,
+      polarisLogoColor,
+      knobFlutterFilledColors,
+      originalCopperTuning,
+      agedChampagneBrassTuning,
+      smokedChampagneBoldCleanTuning,
+      powerSwitchTuning,
       screwsEnabled,
       screwStyle,
       lfoImageState,
@@ -7204,16 +11576,174 @@ export default function App() {
       ioScaleStyle,
       bottomSectionStyle,
       readoutStyleIndex,
+      topBarStyle,
+      topBarCustomStyles,
+      globalMastering,
+      depthModel,
+      centerDepthModel,
+      hqMode,
+      cableToneEnabled,
+      filterPole,
       saturationMode,
       saturationStyle
-    });
+  });
+
+  const applyPresetSettings = (settings = {}) => {
+    if ('power' in settings) setPower(settings.power);
+    if ('input' in settings) { setInput(settings.input); inputValueRef.current = settings.input; }
+    if ('output' in settings) { setOutput(settings.output); outputValueRef.current = settings.output; }
+    if ('ioLinkStyle' in settings) setIoLinkStyle(settings.ioLinkStyle);
+    if ('ioLinked' in settings) setIoLinked(settings.ioLinked);
+    if ('outerRingScaleStyle' in settings) setOuterRingScaleStyle(settings.outerRingScaleStyle);
+    if ('showWabiSabi' in settings) setShowWabiSabi(settings.showWabiSabi);
+    if ('drift' in settings) setDrift(settings.drift);
+    if ('spread' in settings) setSpread(settings.spread);
+    if ('character' in settings) setCharacter(settings.character);
+    if ('sweeten' in settings) setSweeten(settings.sweeten);
+    if ('biasHF' in settings) setBiasHF(settings.biasHF);
+    if ('noise' in settings) setNoise(settings.noise);
+    if ('mix' in settings) setMix(settings.mix);
+    if ('rate' in settings) setRate(settings.rate);
+    if ('depth' in settings) setDepth(settings.depth);
+    if ('stereoPhase' in settings) setStereoPhase(settings.stereoPhase);
+    if ('depthDisplayStyle' in settings) setDepthDisplayStyle(normalizeDepthDisplayAnimationStyle(settings.depthDisplayStyle));
+    if ('phaseDisplayStyle' in settings) setPhaseDisplayStyle(normalizePhaseDisplayAnimationStyle(settings.phaseDisplayStyle));
+    if ('spreadDisplayStyle' in settings) setSpreadDisplayStyle(normalizeSpreadDisplayAnimationStyle(settings.spreadDisplayStyle));
+    if ('noiseDisplayStyle' in settings) setNoiseDisplayStyle(normalizeNoiseDisplayAnimationStyle(settings.noiseDisplayStyle));
+    if ('mode' in settings) setMode(settings.mode);
+    if ('lfoEnabled' in settings) setLfoEnabled(settings.lfoEnabled);
+    if ('lfoSync' in settings) setLfoSync(settings.lfoSync);
+    if ('lfoShape' in settings) setLfoShape(settings.lfoShape);
+    if ('lfoSyncDiv' in settings) setLfoSyncDiv(settings.lfoSyncDiv);
+    if ('currentPreset' in settings) setCurrentPreset(settings.currentPreset);
+    if ('frameStyle' in settings) setFrameStyle(normalizeFrameStyle(settings.frameStyle));
+    if ('panelDepthStyle' in settings) setPanelDepthStyle(settings.panelDepthStyle);
+    if ('objectContactShadowStyle' in settings) setObjectContactShadowStyle(settings.objectContactShadowStyle);
+    if ('panelLightingStyle' in settings) setPanelLightingStyle(settings.panelLightingStyle);
+    if ('panelSurfaceTextureStyle' in settings) setPanelSurfaceTextureStyle(settings.panelSurfaceTextureStyle);
+    if ('modeStyle' in settings) setModeStyle(settings.modeStyle);
+    if ('knobStyle' in settings) setKnobStyle(settings.knobStyle);
+    if ('mixKnobStyle' in settings) setMixKnobStyle(settings.mixKnobStyle);
+    if ('smallKnobRingEnabled' in settings) setSmallKnobRingEnabled(settings.smallKnobRingEnabled);
+    if ('centerDialStyle' in settings) setCenterDialStyle(settings.centerDialStyle);
+    if ('middleKnobStyle' in settings) setMiddleKnobStyle(normalizeMiddleKnobStyle(settings.middleKnobStyle));
+    if ('centerDialSurfaceStyle' in settings) setCenterDialSurfaceStyle(settings.centerDialSurfaceStyle);
+    if ('centerDialGrooveStyle' in settings) setCenterDialGrooveStyle(settings.centerDialGrooveStyle);
+    if ('centerDialMarkStyle' in settings) setCenterDialMarkStyle(settings.centerDialMarkStyle);
+    if ('centerDialNumberStyle' in settings) setCenterDialNumberStyle(settings.centerDialNumberStyle);
+    if ('centerDialCirclesEnabled' in settings) setCenterDialCirclesEnabled(settings.centerDialCirclesEnabled);
+    if ('centerDialNumbersEnabled' in settings) setCenterDialNumbersEnabled(settings.centerDialNumbersEnabled);
+    if ('centerDialGuideRings' in settings) setCenterDialGuideRings(settings.centerDialGuideRings);
+    if ('spreadPointerStyle' in settings) setSpreadPointerStyle(normalizeSpreadPointerStyle(settings.spreadPointerStyle));
+    if ('driftAnimation' in settings) setDriftAnimation(normalizeDriftAnimationStyle(settings.driftAnimation));
+    if ('bgIndex' in settings) setBgIndex(settings.bgIndex);
+    if ('customBackgroundColor' in settings) setCustomBackgroundColor(settings.customBackgroundColor);
+    if ('showOutputs' in settings) setShowOutputs(settings.showOutputs);
+    if ('parallelCables' in settings) setParallelCables(settings.parallelCables);
+    if ('showStems' in settings) setShowStems(settings.showStems);
+    if ('showFerns' in settings) setShowFerns(settings.showFerns);
+    if ('faceTextureEnabled' in settings) setFaceTextureEnabled(settings.faceTextureEnabled);
+    if ('faceTextureStyle' in settings) setFaceTextureStyle(settings.faceTextureStyle);
+    if ('faceTextureOpacity' in settings) setFaceTextureOpacity(settings.faceTextureOpacity);
+    if ('faceTextureBlendMode' in settings) setFaceTextureBlendMode(normalizeFaceTextureBlendMode(settings.faceTextureBlendMode));
+    if ('faceTextureScale' in settings) setFaceTextureScale(settings.faceTextureScale);
+    if ('panelFaceColor' in settings) setPanelFaceColor(settings.panelFaceColor);
+    if ('useDefaultPanelFaceColor' in settings) setUseDefaultPanelFaceColor(settings.useDefaultPanelFaceColor);
+    if ('brandTextStyle' in settings) setBrandTextStyle(normalizeBrandTextStyle(settings.brandTextStyle));
+    if ('vintageLogoColor' in settings) setVintageLogoColor(settings.vintageLogoColor);
+    if ('polarisLogoColor' in settings) setPolarisLogoColor(settings.polarisLogoColor);
+    if ('knobFlutterFilledColors' in settings) setKnobFlutterFilledColors(settings.knobFlutterFilledColors);
+    if ('originalCopperTuning' in settings) setOriginalCopperTuning(normalizeOriginalCopperTuning(settings.originalCopperTuning));
+    if ('agedChampagneBrassTuning' in settings) setAgedChampagneBrassTuning(normalizeAgedChampagneBrassTuning(settings.agedChampagneBrassTuning));
+    if ('smokedChampagneBoldCleanTuning' in settings) setSmokedChampagneBoldCleanTuning(normalizeSmokedChampagneBoldCleanTuning(settings.smokedChampagneBoldCleanTuning));
+    if ('powerSwitchTuning' in settings) setPowerSwitchTuning(normalizePowerSwitchTuning(settings.powerSwitchTuning));
+    if ('screwsEnabled' in settings) setScrewsEnabled(settings.screwsEnabled);
+    if ('screwStyle' in settings) setScrewStyle(settings.screwStyle);
+    if ('lfoImageState' in settings) setLfoImageState(settings.lfoImageState);
+    if ('sakuraImageState' in settings) setSakuraImageState(settings.sakuraImageState);
+    if ('decorativeCircles' in settings) setDecorativeCircles(settings.decorativeCircles);
+    if ('hardwarePositions' in settings) setHardwarePositions(settings.hardwarePositions);
+    if ('auraShapes' in settings) setAuraShapes(settings.auraShapes);
+    if ('ioScaleStyle' in settings) setIoScaleStyle(settings.ioScaleStyle);
+    if ('bottomSectionStyle' in settings) setBottomSectionStyle(settings.bottomSectionStyle);
+    if ('readoutStyleIndex' in settings) setReadoutStyleIndex(settings.readoutStyleIndex);
+    if ('topBarStyle' in settings) setTopBarStyle(normalizeTopBarStyle(settings.topBarStyle));
+    if ('topBarCustomStyles' in settings) setTopBarCustomStyles(normalizeTopBarCustomStyles(settings.topBarCustomStyles));
+    if ('globalMastering' in settings) setGlobalMastering(normalizeGlobalMastering(settings.globalMastering));
+    if ('depthModel' in settings) setDepthModel(normalizeDepthModel(settings.depthModel));
+    if ('centerDepthModel' in settings) setCenterDepthModel(normalizeCenterDepthModel(settings.centerDepthModel));
+    if ('hqMode' in settings) setHqMode(settings.hqMode);
+    if ('cableToneEnabled' in settings) setCableToneEnabled(settings.cableToneEnabled);
+    if ('filterPole' in settings) setFilterPole(normalizeFilterPole(settings.filterPole));
+    if ('saturationMode' in settings) setSaturationMode(settings.saturationMode);
+    if ('saturationStyle' in settings) setSaturationStyle(normalizeSaturationStyle(settings.saturationStyle));
+  };
+
+  const handleSaveCurrentAsDefault = () => {
+    const saved = saveDesignDefaults(buildCurrentSettings());
     setDefaultSaveMessage(saved ? 'Saved as default' : 'Could not save');
     window.setTimeout(() => setDefaultSaveMessage(''), 2200);
+  };
+
+  const handleSaveUserPreset = (name) => {
+    const preset = {
+      id: `user-${Date.now()}`,
+      name,
+      settings: pickUserPresetSettings(buildCurrentSettings())
+    };
+    setUserPresets(current => {
+      const next = [...current, preset];
+      saveUserPresets(next);
+      return next;
+    });
+    setCurrentUserPresetId(preset.id);
+    setCurrentPreset(-1);
+  };
+
+  const handleLoadUserPreset = (id) => {
+    const preset = userPresets.find(item => item.id === id);
+    if (!preset) return;
+    applyPresetSettings(pickUserPresetSettings(preset.settings));
+    setCurrentUserPresetId(id);
+  };
+
+  const handleLoadFactoryPreset = (index) => {
+    setCurrentPreset(index);
+    setCurrentUserPresetId(null);
+  };
+
+  const presetNavItems = [
+    { type: 'factory', id: -1, name: '— Init —' },
+    ...DEMO_PRESETS.map((name, index) => ({ type: 'factory', id: index, name })),
+    ...userPresets.map(preset => ({ type: 'user', id: preset.id, name: preset.name }))
+  ];
+  const activePresetName = currentUserPresetId
+    ? (userPresets.find(item => item.id === currentUserPresetId)?.name || 'User Preset')
+    : (currentPreset >= 0 ? DEMO_PRESETS[currentPreset] : '— Init —');
+  const activePresetIndex = Math.max(0, presetNavItems.findIndex(item => (
+    currentUserPresetId ? item.type === 'user' && item.id === currentUserPresetId : item.type === 'factory' && item.id === currentPreset
+  )));
+  const loadPresetNavItem = (item) => {
+    if (item.type === 'user') handleLoadUserPreset(item.id);
+    else handleLoadFactoryPreset(item.id);
+  };
+  const handlePrevPreset = () => {
+    const next = presetNavItems[(activePresetIndex - 1 + presetNavItems.length) % presetNavItems.length];
+    loadPresetNavItem(next);
+  };
+  const handleNextPreset = () => {
+    const next = presetNavItems[(activePresetIndex + 1) % presetNavItems.length];
+    loadPresetNavItem(next);
   };
 
 
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
+  const activeBackgroundColor = bgIndex === CUSTOM_BACKGROUND_INDEX ? customBackgroundColor : (BACKGROUNDS[bgIndex]?.color || BACKGROUNDS[0].color);
+  const normalizedGlobalMastering = normalizeGlobalMastering(globalMastering);
+  const curvesFilterStyle = normalizedGlobalMastering.enabled && normalizedGlobalMastering.curves.enabled
+    ? { filter: `url(#${CURVES_FILTER_ID})` }
+    : undefined;
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
       if (entries[0]) setScale(entries[0].contentRect.width / 850);
@@ -7223,16 +11753,25 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 font-sans overflow-hidden gap-16 xl:gap-24 flex-col lg:flex-row" style={{ backgroundColor: BACKGROUNDS[bgIndex].color, transition: 'background-color 0.5s ease' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 font-sans overflow-hidden gap-16 lg:gap-32 xl:gap-40 flex-col lg:flex-row" style={{ backgroundColor: activeBackgroundColor, transition: 'background-color 0.5s ease' }}>
       
       {/* Plugin Area */}
       <div ref={containerRef} className="relative w-full max-w-[680px] aspect-square flex items-center justify-center flex-shrink-0">
+        <GlobalCurvesFilterDefs settings={globalMastering} />
+        <div className="absolute inset-0" style={curvesFilterStyle}>
         <div ref={pluginStageRef} className="absolute" style={{ width: 850, height: 850, transform: `scale(${scale})`, transformOrigin: 'center center' }}>
           
           {/* Frame Wrapper */}
           <div 
             className={`absolute ${FRAMES[frameStyle]?.inset || '-inset-6'} transition-all duration-500 pointer-events-none`} 
-            style={{ borderRadius: FRAMES[frameStyle]?.radius || '4.5rem', zIndex: -1, transform: `scale(${OUTER_PLUGIN_SCALE})`, transformOrigin: 'center center', ...FRAMES[frameStyle]?.style }}
+            style={{
+              borderRadius: FRAMES[frameStyle]?.radius || '4.5rem',
+              zIndex: -1,
+              transform: `scale(${OUTER_PLUGIN_SCALE})`,
+              transformOrigin: 'center center',
+              ...FRAMES[frameStyle]?.style,
+              filter: power ? FRAMES[frameStyle]?.style?.filter : 'grayscale(1) saturate(0.18) brightness(0.72)'
+            }}
           >
             {FRAMES[frameStyle]?.innerStyle && (
               <div 
@@ -7253,27 +11792,24 @@ export default function App() {
             {showOutputs && <AnalogCables position="right" parallel={parallelCables} />}
           </div>
 
-          <PresetBrowser presets={DEMO_PRESETS} currentPreset={currentPreset}
-            onPrev={() => setCurrentPreset(p => (p - 1 + DEMO_PRESETS.length) % DEMO_PRESETS.length)}
-            onNext={() => setCurrentPreset(p => (p + 1) % DEMO_PRESETS.length)}
-            onLoad={setCurrentPreset} onSave={(name) => console.log('Save preset:', name)} />
-
-          <div className="absolute -top-[52px] right-[40px] z-30 flex items-center gap-2 group flex-row-reverse">
-            <div className="relative h-9 rounded-lg bg-[#2d2c2b]/85 border border-white/10 shadow-xl backdrop-blur-md flex items-center min-w-[130px]">
-              <select
-                value={driftAnimation}
-                onChange={e => setDriftAnimation(normalizeDriftAnimationStyle(e.target.value))}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              >
-                {DRIFT_ANIMATION_STYLES.map((name, i) => <option key={i} value={i} className="bg-[#2d2c2b] text-[#edd39a]">{name}</option>)}
-              </select>
-              <div className="w-full flex items-center justify-between px-3 pointer-events-none">
-                <span className="text-[#edd39a] text-[8px] font-black tracking-[0.14em] uppercase truncate max-w-[90px]">{DRIFT_ANIMATION_STYLES[driftAnimation]}</span>
-                <span className="text-[#e66a53] text-[9px] ml-1">▼</span>
-              </div>
-            </div>
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-[#edd39a]/30 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Drift Visual</span>
-          </div>
+          {!websiteMode && (
+            <TopPresetBar
+              factoryPresets={DEMO_PRESETS}
+              userPresets={userPresets}
+              activePresetName={activePresetName}
+              topBarStyle={normalizeTopBarStyle(topBarStyle)}
+              topBarCustomStyles={topBarCustomStyles}
+              hqMode={hqMode}
+              cableToneEnabled={cableToneEnabled}
+              onPrev={handlePrevPreset}
+              onNext={handleNextPreset}
+              onLoadFactory={handleLoadFactoryPreset}
+              onLoadUser={handleLoadUserPreset}
+              onSave={handleSaveUserPreset}
+              onToggleHq={() => setHqMode(current => !current)}
+              onToggleCable={() => setCableToneEnabled(current => !current)}
+            />
+          )}
 
           <div
             className={`absolute ${FRAMES[frameStyle]?.panelInset || 'inset-0'} shadow-[0_40px_80px_rgba(0,0,0,0.4),0_20px_30px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500`}
@@ -7291,9 +11827,13 @@ export default function App() {
               style={{
                 opacity: faceTextureEnabled ? faceTextureOpacity / 100 : 0,
                 backgroundImage: selectedFaceTexture.backgroundImage,
-                backgroundSize: selectedFaceTexture.backgroundSize,
-                backgroundRepeat: 'repeat',
-                mixBlendMode: selectedFaceTexture.mixBlendMode
+                backgroundSize: scaledFaceTextureBackgroundSize,
+                backgroundRepeat: selectedFaceTexture.backgroundRepeat || 'repeat',
+                backgroundPosition: selectedFaceTexture.backgroundPosition || '0 0',
+                backgroundBlendMode: selectedFaceTexture.backgroundBlendMode || 'normal',
+                mixBlendMode: faceTextureBlendMode || selectedFaceTexture.mixBlendMode,
+                maskImage: CENTER_DIAL_GRAIN_EXCLUSION_MASK,
+                WebkitMaskImage: CENTER_DIAL_GRAIN_EXCLUSION_MASK
               }}
             />
 
@@ -7304,6 +11844,27 @@ export default function App() {
                   ...FRAMES[frameStyle].panelEdgeStyle,
                   mixBlendMode: 'multiply'
                 }}
+              />
+            )}
+
+            {activePanelDepthStyle.style && (
+              <div
+                className="absolute inset-0 rounded-[4rem] pointer-events-none z-[7] transition-all duration-500"
+                style={activePanelDepthStyle.style}
+              />
+            )}
+
+            {activePanelLightingStyle.style && (
+              <div
+                className="absolute inset-0 rounded-[4rem] pointer-events-none z-[8] transition-all duration-500"
+                style={activePanelLightingStyle.style}
+              />
+            )}
+
+            {activePanelSurfaceTextureStyle.style && (
+              <div
+                className="absolute inset-0 rounded-[4rem] pointer-events-none z-[9] transition-all duration-500"
+                style={activePanelSurfaceTextureStyle.style}
               />
             )}
 
@@ -7343,20 +11904,62 @@ export default function App() {
               alt="LFO image layer"
             />
 
-            <div className={`absolute inset-0 bg-[#3a352d]/50 backdrop-grayscale transition-all duration-700 z-40 pointer-events-none ${power ? 'opacity-0' : 'opacity-100'}`} />
+            {!depthModel.enabled && <ObjectContactShadowLayer styleIndex={objectContactShadowStyle} hardwarePositions={hardwarePositions} shadowAngle={depthModel.shadowAngle} />}
+            <DepthModelShadowLayer settings={depthModel} hardwarePositions={hardwarePositions} />
 
-            <div className="absolute top-[6%] left-[10.2%] z-10 flex flex-col items-start">
-              <h1 className="text-[34px] leading-none font-black tracking-tighter text-[#e66a53] drop-shadow-sm flex gap-3"><span>VINTAGE</span> <span>DRIFTER</span></h1>
-              <p className="text-[11px] tracking-[0.2em] font-bold text-[#8b7b65] mt-1">MOTION / TONE / INSTABILITY</p>
+            <div className="absolute top-[6%] left-[calc(10.2%-2px)] z-10 flex flex-col items-start">
+              <h1
+                className="text-[35px] leading-none font-normal tracking-[0.021em] flex gap-3 origin-left scale-x-[0.985]"
+                style={{
+                  color: vintageLogoColor,
+                  fontFamily: "'DrifterLogo', 'Figtree', sans-serif"
+                }}
+              >
+                <span>VINTAGE</span>
+                <span>
+                  DRIF<span className="ml-[-2.5px]">TER</span>
+                </span>
+              </h1>
+              <p
+                className="text-[11px] tracking-[0.2em] font-black mt-1 translate-y-[-1px]"
+                style={{
+                  color: 'rgba(52, 48, 41, 0.58)'
+                }}
+              >
+                MOTION / TONE / INSTABILITY
+              </p>
             </div>
 
             <div className="absolute top-[calc(6%-2px)] right-[10%] z-10 flex flex-col items-center">
-              <div className="text-[12px] font-black tracking-[0.2em] mb-4 drop-shadow-sm" style={{ color: activeBrandTextStyle.polarisColor }}>POLARIS DSP</div>
-              <div className="relative top-[5px] flex flex-col items-center">
-                <button onClick={() => setPower(!power)} className="relative w-8 h-14 bg-[#111] rounded-md border border-white/10 shadow-[inset_0_2px_5px_rgba(0,0,0,0.8),10px_10px_20px_rgba(0,0,0,0.4)] flex justify-center items-center">
-                  <div className="w-3 h-8 rounded-full bg-gradient-to-b from-[hsl(41,68%,76%)] to-[hsl(42,41%,46%)] shadow-[0_5px_10px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(255,255,255,0.9)] transition-transform duration-200" style={{ transform: power ? 'translateY(-8px)' : 'translateY(8px)' }} />
+              <div
+                className="mb-4 text-[13px] font-black tracking-[0.16em]"
+                style={{
+                  color: polarisLogoColor || activeBrandTextStyle.polarisColor,
+                  fontFamily: "'Figtree', sans-serif",
+                  fontWeight: 900,
+                  WebkitTextStroke: '0.2px currentColor'
+                }}
+              >
+                SATURA AUDIO
+              </div>
+              <div className="relative top-[5px] z-[100] flex flex-col items-center">
+                <button
+                  onClick={() => setPower(!power)}
+                  className="relative z-10 w-8 h-14 bg-[#111] border border-white/10 flex justify-center items-center transition-shadow duration-200"
+                  style={{
+                    borderRadius: `${powerSwitchTuning.bodyRadius}px`,
+                    boxShadow: `${power ? '5px 5px 5px -4px rgba(20,14,10,0.38), 19px 7px 14px -8px rgba(24,18,14,0.2)' : '5px 8px 5px -4px rgba(20,14,10,0.38), 19px 11px 15px -8px rgba(24,18,14,0.2)'}, 2px 4px 7.7px rgba(25,19,15,0.252), 0 1px 2px rgba(25,19,15,0.2), inset 0 2px 5px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08)`
+                  }}
+                >
+                  <div
+                    className="w-3 h-8 rounded-full shadow-[0_2px_4px_rgba(0,0,0,0.46),inset_0_1px_2px_rgba(255,255,255,0.9)] transition-transform duration-200"
+                    style={{
+                      background: `linear-gradient(to bottom, ${powerSwitchTuning.insertTopColor}, ${powerSwitchTuning.insertBottomColor})`,
+                      transform: power ? 'translateY(-8px)' : 'translateY(8px)'
+                    }}
+                  />
                 </button>
-                <div className="mt-[10px] text-[10px] font-black tracking-[0.24em]" style={{ color: activeBrandTextStyle.powerColor, textShadow: activeBrandTextStyle.powerShadow }}>POWER</div>
+                <div className="mt-[10px] text-[11px] font-black tracking-[0.2em]" style={{ color: activeBrandTextStyle.powerColor }}>POWER</div>
               </div>
             </div>
 
@@ -7373,7 +11976,7 @@ export default function App() {
               <div className="flex items-start gap-[18px]">
                 <div className="relative">
                   <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
-                  <MatteKnob label="Input" value={input} onChange={handleInputChange} onDoubleClick={handleInputReset} size={55} shadingStyle={activeKnobStyle} onDraggingChange={(dragging) => { setIsInputDragging(dragging); if (dragging) markDisplayParam('input'); }} onDisplayFocus={() => markDisplayParam('input')} forceSnappy={isIoDragging} readoutStyleIndex={readoutStyleIndex} />
+                  <MatteKnob label="Input" value={input} onChange={handleInputChange} onDoubleClick={handleInputReset} size={55} shadingStyle={activeKnobStyle} outerRingEnabled={smallKnobRingEnabled} onDraggingChange={(dragging) => { setIsInputDragging(dragging); if (dragging) markDisplayParam('input'); }} onDisplayFocus={() => markDisplayParam('input')} forceSnappy={isIoDragging} readoutOffsetY={-2} labelTextShadow="none" labelSizeClass="text-[11px]" labelTrackingClass="tracking-[0.16em]" readoutStyleIndex={readoutStyleIndex} />
                 </div>
                 <div className="mt-[13px] flex flex-col items-center">
                   <IOLinkButton
@@ -7387,7 +11990,7 @@ export default function App() {
                 </div>
                 <div className="relative">
                   <KnobScaleRing styleIndex={ioScaleStyle} size={55} />
-                  <MatteKnob label="Output" value={output} onChange={handleOutputChange} onDoubleClick={handleOutputReset} size={55} shadingStyle={activeKnobStyle} onDraggingChange={(dragging) => { setIsOutputDragging(dragging); if (dragging) markDisplayParam('output'); }} onDisplayFocus={() => markDisplayParam('output')} forceSnappy={isIoDragging} readoutStyleIndex={readoutStyleIndex} />
+                  <MatteKnob label="Output" value={output} onChange={handleOutputChange} onDoubleClick={handleOutputReset} size={55} shadingStyle={activeKnobStyle} outerRingEnabled={smallKnobRingEnabled} onDraggingChange={(dragging) => { setIsOutputDragging(dragging); if (dragging) markDisplayParam('output'); }} onDisplayFocus={() => markDisplayParam('output')} forceSnappy={isIoDragging} readoutOffsetY={-2} labelTextShadow="none" labelSizeClass="text-[11px]" labelTrackingClass="tracking-[0.16em]" readoutStyleIndex={readoutStyleIndex} />
                 </div>
               </div>
             </EditableHardwareWrapper>
@@ -7412,6 +12015,11 @@ export default function App() {
                 onDoubleClickSpread={() => handleSpreadChange(0)}
                 readoutStyleIndex={readoutStyleIndex}
                 animationStyle={driftAnimation}
+                knobFlutterFilledColors={knobFlutterFilledColors}
+                originalCopperTuning={originalCopperTuning}
+                agedChampagneBrassTuning={agedChampagneBrassTuning}
+                smokedChampagneBoldCleanTuning={smokedChampagneBoldCleanTuning}
+                centerDepthModel={centerDepthModel}
                 mode={mode}
               />
             </div>
@@ -7454,22 +12062,39 @@ export default function App() {
               <ModeSelectorEngine mode={mode} setMode={setMode} styleIndex={modeStyle} power={power} isMovable={true} />
             </EditableHardwareWrapper>
 
-            <div className="absolute top-[38%] right-[10%] z-30 grid grid-cols-2 gap-x-6 gap-y-10 justify-items-center translate-y-[-10px]">
-              <MatteKnob label="Noise" value={noise} onChange={handleNoiseChange} onDoubleClick={() => handleNoiseChange(0)} size={50} shadingStyle={activeKnobStyle} onDisplayFocus={() => markDisplayParam('noise')} readoutStyleIndex={readoutStyleIndex} />
-              <MatteKnob label="Sweeten" value={sweeten} onChange={handleSweetenChange} onDoubleClick={() => handleSweetenChange(0)} size={50} shadingStyle={activeKnobStyle} onDisplayFocus={() => markDisplayParam('sweeten')} readoutStyleIndex={readoutStyleIndex} />
-              <div className="relative">
-                <MatteKnob label="Sat" value={biasHF} onChange={handleSatChange} onDoubleClick={() => handleSatChange(0)} size={50} shadingStyle={activeKnobStyle} labelColorOverride="text-white/90 drop-shadow-md" onDisplayFocus={() => markDisplayParam('sat')} readoutStyleIndex={readoutStyleIndex} />
+            <div className="absolute top-[38%] right-[10%] z-30 grid grid-cols-2 gap-x-[21px] gap-y-9 justify-items-center translate-x-[6px] translate-y-[-10px]">
+              <div className="relative -translate-x-[4px]">
+                <MatteKnob label="Noise" value={noise} onChange={handleNoiseChange} onDoubleClick={() => handleNoiseChange(0)} size={50} shadingStyle={activeKnobStyle} outerRingEnabled={smallKnobRingEnabled} labelOffsetY={-5} readoutOffsetY={-1} labelTextShadow="none" labelSizeClass="text-[11px]" labelTrackingClass="tracking-[0.16em]" onDisplayFocus={() => markDisplayParam('noise')} readoutStyleIndex={readoutStyleIndex} />
               </div>
-              <div className="relative">
-                <MatteKnob label="Filter" value={character} onChange={handleFilterChange} onDoubleClick={() => handleFilterChange(0)} size={50} shadingStyle={activeKnobStyle} labelColorOverride="text-white/90 drop-shadow-md" onDisplayFocus={() => markDisplayParam('filter')} readoutStyleIndex={readoutStyleIndex} />
+              <div className="relative -translate-x-[2px]">
+                <MatteKnob label="Sweeten" displayLabel="Color" value={sweeten} onChange={handleSweetenChange} onDoubleClick={() => handleSweetenChange(0)} size={50} shadingStyle={activeKnobStyle} outerRingEnabled={smallKnobRingEnabled} labelOffsetY={-5} readoutOffsetY={-1} labelTextShadow="none" labelSizeClass="text-[11px]" labelTrackingClass="tracking-[0.16em]" onDisplayFocus={() => markDisplayParam('sweeten')} readoutStyleIndex={readoutStyleIndex} />
+              </div>
+              <div className="relative -translate-x-[4px] translate-y-[2px]">
+                <MatteKnob label="Sat" value={biasHF} onChange={handleSatChange} onDoubleClick={() => handleSatChange(0)} size={50} shadingStyle={activeKnobStyle} outerRingEnabled={smallKnobRingEnabled} labelOffsetY={-5} readoutOffsetY={-1} labelTextShadow="none" labelSizeClass="text-[11px]" labelColorOverride="text-white/90" onDisplayFocus={() => markDisplayParam('sat')} readoutStyleIndex={readoutStyleIndex} />
+              </div>
+              <div className="relative -translate-x-[2px] translate-y-[2px]">
+                <MatteKnob label="Filter" value={character} onChange={handleFilterChange} onDoubleClick={() => handleFilterChange(100)} size={50} shadingStyle={activeKnobStyle} outerRingEnabled={smallKnobRingEnabled} labelOffsetY={-5} readoutOffsetY={-1} labelTextShadow="none" labelSizeClass="text-[11px]" labelColorOverride="text-white/90" onDisplayFocus={() => markDisplayParam('filter')} readoutStyleIndex={readoutStyleIndex} />
               </div>
             </div>
 
             <div className="absolute right-[8.2%] top-[calc(64%+2px)] z-30 pointer-events-none">
-              <ParameterDataDisplay parameter={activeDisplayData} power={power} />
+              <ParameterDataDisplay
+                parameter={activeDisplayData}
+                power={power}
+                saturationMode={saturationMode}
+                onSaturationModeChange={(nextMode) => {
+                  markDisplayParam('sat');
+                  setSaturationMode(nextMode);
+                }}
+                filterPole={filterPole}
+                onFilterPoleChange={(nextPole) => {
+                  markDisplayParam('filter');
+                  setFilterPole(normalizeFilterPole(nextPole));
+                }}
+              />
             </div>
 
-            {saturationStyle !== 0 && (
+            {!websiteMode && saturationStyle !== 0 && (
               <EditableHardwareWrapper 
                 id="driftVisual" 
                 x={hardwarePositions.driftVisual.x} 
@@ -7503,7 +12128,7 @@ export default function App() {
               stageRef={pluginStageRef}
             >
               <div className="flex flex-col items-center gap-3">
-                <MatteKnob label="Rate" value={rate} onChange={handleRateChange} size={70} shadingStyle={activeKnobStyle} labelOffsetY={5} indicatorActive={lfoEnabled && !lfoSync} onDisplayFocus={() => markDisplayParam('rate')} readoutStyleIndex={readoutStyleIndex} />
+                <MatteKnob label="Rate" value={rate} onChange={handleRateChange} size={68} shadingStyle={activeKnobStyle} outerRingEnabled={smallKnobRingEnabled} labelOffsetY={6} readoutOffsetY={-5} labelTextShadow="none" labelSizeClass="text-[11px]" labelTrackingClass="tracking-[0.16em]" steadyReadout indicatorActive={lfoEnabled && !lfoSync} onDisplayFocus={() => markDisplayParam('rate')} readoutStyleIndex={readoutStyleIndex} />
               </div>
             </EditableHardwareWrapper>
 
@@ -7521,11 +12146,11 @@ export default function App() {
                 active={lfoEnabled}
                 setActive={setLfoEnabled}
                 sync={lfoSync}
-                setSync={setLfoSync}
+                setSync={handleLfoSyncChange}
                 waveIndex={lfoShape}
                 setWaveIndex={handleLfoShapeChange}
                 rateIndex={lfoSyncDiv}
-                setRateIndex={setLfoSyncDiv}
+                setRateIndex={handleLfoSyncDivChange}
               />
             </EditableHardwareWrapper>
 
@@ -7550,44 +12175,84 @@ export default function App() {
               onUpdate={updateHardwarePosition}
               stageRef={pluginStageRef}
             >
-              <div className="flex flex-col items-center">
-                <button onClick={handleAutoGainToggle} className="w-16 h-16 rounded-full flex justify-center items-center active:scale-95 transition-transform border-2 border-white/20" style={{ backgroundColor: '#e66a53', boxShadow: '12px 12px 20px rgba(180,60,40,0.5), inset 2px 2px 5px rgba(255,255,255,0.5), inset -2px -2px 5px rgba(0,0,0,0.3)' }}>
-                  <div className={`w-6 h-6 rounded-full ${autoGain && power ? 'bg-white shadow-[0_0_15px_white]' : 'bg-[#a34433] shadow-inner'} transition-all`} />
-                </button>
-                <div className="text-center text-[10px] tracking-[0.2em] font-bold text-[#fff] drop-shadow-md mt-3 uppercase">Auto Gain</div>
-              </div>
+              <MatteKnob
+                label="Mix"
+                value={mix}
+                onChange={handleMixChange}
+                onDoubleClick={() => handleMixChange(50)}
+                size={68}
+                shadingStyle={activeMixKnobStyle}
+                outerRingEnabled={smallKnobRingEnabled}
+                labelOffsetY={-4}
+                labelTextShadow="none"
+                labelSizeClass="text-[11px]"
+                labelColorOverride="text-white/90"
+                onDisplayFocus={() => markDisplayParam('mix')}
+                readoutStyleIndex={readoutStyleIndex}
+               
+              />
             </EditableHardwareWrapper>
 
             <DesignGridOverlay mode={designGridMode} />
 
             <div
-              className="absolute z-30 text-center text-[10px] font-black uppercase tracking-[0.24em]"
+              className="absolute z-30 text-center text-[10px] font-black uppercase tracking-[0.22em]"
               style={{
-                bottom: 'calc(3.4% + 1px)',
-                left: 'calc(22% + 1px)',
+                bottom: '3.4%',
+                left: 'calc(22% - 18px)',
                 transform: 'translateX(-50%)',
-                color: 'rgba(58, 53, 45, 0.58)',
-                textShadow: '0 1px 0 rgba(255,255,255,0.24), 0 -1px 0 rgba(0,0,0,0.12)'
+                color: 'rgba(52, 48, 41, 0.58)',
+                textShadow: PANEL_TEXT_DEPTH_SHADOW
               }}
             >
               IMPERFECT BY DESIGN
             </div>
 
+            <div
+              className={`absolute inset-0 z-[90] pointer-events-none rounded-[4rem] bg-[#302d27]/50 transition-opacity duration-700 ${power ? 'opacity-0' : 'opacity-100'}`}
+              style={{
+                backdropFilter: 'grayscale(1) saturate(0.18) brightness(0.72)',
+                WebkitBackdropFilter: 'grayscale(1) saturate(0.18) brightness(0.72)'
+              }}
+            />
+
           </div>
         </div>
+        <GlobalMasteringOverlay settings={globalMastering} scene />
+      </div>
       </div>
       </div>
 
       {/* Sidebar Panel - Redesigned Sidebar */}
+      {!websiteMode && (
       <div className="hidden lg:flex flex-col items-stretch gap-0 w-[300px] max-h-[calc(100vh-4rem)] overflow-y-auto rounded-[3rem] bg-black/30 backdrop-blur-3xl border border-white/10 shrink-0 shadow-2xl custom-scrollbar pb-12">
+        <CollapsibleSection title="Depth Model" defaultOpen={true}>
+          <DepthModelControls
+            settings={depthModel}
+            centerSettings={centerDepthModel}
+            onChange={updateDepthModel}
+            onCenterChange={updateCenterDepthModel}
+            onPreset={applyDepthModelPreset}
+          />
+        </CollapsibleSection>
         
+        <CollapsibleSection title="Global Mastering" defaultOpen={true}>
+          <GlobalMasteringControls
+            settings={globalMastering}
+            onRootChange={updateGlobalMasteringRoot}
+            onSectionChange={updateGlobalMasteringSection}
+            onPreset={applyGlobalMasteringPreset}
+            onReset={resetGlobalMastering}
+          />
+        </CollapsibleSection>
+
         {/* SECTION 1: GLOBAL STYLE */}
         <CollapsibleSection title="Master Design" defaultOpen={true}>
           <div className="grid grid-cols-1 gap-6">
             <div className="flex flex-col gap-2">
               <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Frame Surface</span>
               <div className="relative w-full h-11">
-                <select value={frameStyle} onChange={e => setFrameStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[12px] font-bold outline-none cursor-pointer appearance-none">
+                <select value={frameStyle} onChange={e => setFrameStyle(normalizeFrameStyle(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[12px] font-bold outline-none cursor-pointer appearance-none">
                   {FRAMES.map((f, i) => <option key={i} value={i}>{f.name}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
@@ -7599,6 +12264,60 @@ export default function App() {
               <div className="relative w-full h-11">
                 <select value={bgIndex} onChange={e => setBgIndex(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[12px] font-bold outline-none cursor-pointer appearance-none">
                   {BACKGROUNDS.map((bg, i) => <option key={i} value={i}>{bg.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+              {bgIndex === CUSTOM_BACKGROUND_INDEX && (
+                <>
+                  <div className="relative h-11 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                    <input
+                      type="color"
+                      value={customBackgroundColor}
+                      onChange={e => setCustomBackgroundColor(e.target.value)}
+                      className="absolute -inset-2 h-[calc(100%+16px)] w-[calc(100%+16px)] cursor-pointer border-none bg-transparent"
+                      aria-label="Custom environment color"
+                    />
+                  </div>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/35">{customBackgroundColor}</span>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Panel Depth</span>
+              <div className="relative w-full h-11">
+                <select value={panelDepthStyle} onChange={e => setPanelDepthStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {PANEL_DEPTH_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Object Contact Shadows</span>
+              <div className="relative w-full h-11">
+                <select value={objectContactShadowStyle} onChange={e => setObjectContactShadowStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {OBJECT_CONTACT_SHADOW_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Panel Lighting</span>
+              <div className="relative w-full h-11">
+                <select value={panelLightingStyle} onChange={e => setPanelLightingStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {PANEL_LIGHTING_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Panel Surface Texture</span>
+              <div className="relative w-full h-11">
+                <select value={panelSurfaceTextureStyle} onChange={e => setPanelSurfaceTextureStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {PANEL_SURFACE_TEXTURE_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
               </div>
@@ -7614,6 +12333,112 @@ export default function App() {
               </div>
             </div>
 
+            <div className="flex flex-col gap-4 border-t border-white/10 pt-5">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Display Animation Audition</span>
+              <div className="flex flex-col gap-2">
+                <span className="text-white/35 text-[8px] font-black uppercase tracking-[0.18em]">Depth Display</span>
+                <div className="relative w-full h-11">
+                  <select
+                    value={depthDisplayStyle}
+                    onChange={e => {
+                      setDepthDisplayStyle(normalizeDepthDisplayAnimationStyle(e.target.value));
+                      markDisplayParam('depth');
+                    }}
+                    className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none"
+                  >
+                    {DEPTH_DISPLAY_ANIMATION_STYLES.map((name, i) => <option key={name} value={i}>{name}</option>)}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-white/35 text-[8px] font-black uppercase tracking-[0.18em]">Phase Display</span>
+                <div className="relative w-full h-11">
+                  <select
+                    value={phaseDisplayStyle}
+                    onChange={e => {
+                      setPhaseDisplayStyle(normalizePhaseDisplayAnimationStyle(e.target.value));
+                      markDisplayParam('phase');
+                    }}
+                    className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none"
+                  >
+                    {PHASE_DISPLAY_ANIMATION_STYLES.map((name, i) => <option key={name} value={i}>{name}</option>)}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-white/35 text-[8px] font-black uppercase tracking-[0.18em]">Spread Display</span>
+                <div className="relative w-full h-11">
+                  <select
+                    value={spreadDisplayStyle}
+                    onChange={e => {
+                      setSpreadDisplayStyle(normalizeSpreadDisplayAnimationStyle(e.target.value));
+                      markDisplayParam('spread');
+                    }}
+                    className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none"
+                  >
+                    {SPREAD_DISPLAY_ANIMATION_STYLES.map((name, i) => <option key={name} value={i}>{name}</option>)}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-white/35 text-[8px] font-black uppercase tracking-[0.18em]">Noise Display</span>
+                <div className="relative w-full h-11">
+                  <select
+                    value={noiseDisplayStyle}
+                    onChange={e => {
+                      setNoiseDisplayStyle(normalizeNoiseDisplayAnimationStyle(e.target.value));
+                      markDisplayParam('noise');
+                    }}
+                    className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none"
+                  >
+                    {NOISE_DISPLAY_ANIMATION_STYLES.map((name, i) => <option key={name} value={i}>{name}</option>)}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Top Preset Bar</span>
+              <div className="relative w-full h-11">
+                <select value={normalizeTopBarStyle(topBarStyle)} onChange={e => setTopBarStyle(normalizeTopBarStyle(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {TOP_BAR_STYLE_NAMES.map((name, i) => <option key={i} value={i}>{name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Top Bar Colors</span>
+              <TopBarThemeEditor
+                title="Dark Rail"
+                value={topBarCustomStyles[0]}
+                defaults={DEFAULT_TOP_BAR_CUSTOM_STYLES[0]}
+                onChange={patch => updateTopBarCustomStyle(0, patch)}
+                onReset={() => resetTopBarCustomStyle(0)}
+              />
+              <TopBarThemeEditor
+                title="Light Rail"
+                value={topBarCustomStyles[1]}
+                defaults={DEFAULT_TOP_BAR_CUSTOM_STYLES[1]}
+                onChange={patch => updateTopBarCustomStyle(1, patch)}
+                onReset={() => resetTopBarCustomStyle(1)}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Drift Visual</span>
+              <div className="relative w-full h-11">
+                <select value={driftAnimation} onChange={e => setDriftAnimation(normalizeDriftAnimationStyle(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {DRIFT_ANIMATION_STYLES.map((name, i) => <option key={i} value={i}>{name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
             <div className="flex flex-col gap-2">
               <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Brand Text Color</span>
               <div className="relative w-full h-11">
@@ -7621,6 +12446,35 @@ export default function App() {
                   {BRAND_TEXT_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
+                <span className="text-white/50 text-[9px] font-bold tracking-[0.18em] uppercase">Vintage Color</span>
+                <div className="relative h-11 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                  <input
+                    type="color"
+                    value={vintageLogoColor}
+                    onChange={e => setVintageLogoColor(e.target.value)}
+                    className="absolute -inset-2 h-[calc(100%+16px)] w-[calc(100%+16px)] cursor-pointer border-none bg-transparent"
+                    aria-label="Vintage Drifter text color"
+                  />
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-white/35">{vintageLogoColor}</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <span className="text-white/50 text-[9px] font-bold tracking-[0.18em] uppercase">Polaris Color</span>
+                <div className="relative h-11 overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                  <input
+                    type="color"
+                    value={polarisLogoColor}
+                    onChange={e => setPolarisLogoColor(e.target.value)}
+                    className="absolute -inset-2 h-[calc(100%+16px)] w-[calc(100%+16px)] cursor-pointer border-none bg-transparent"
+                    aria-label="Polaris DSP text color"
+                  />
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-white/35">{polarisLogoColor}</span>
               </div>
             </div>
 
@@ -7709,9 +12563,11 @@ export default function App() {
                     style={{
                       opacity: faceTextureOpacity / 100,
                       backgroundImage: selectedFaceTexture.backgroundImage,
-                      backgroundSize: selectedFaceTexture.backgroundSize,
-                      backgroundRepeat: 'repeat',
-                      mixBlendMode: selectedFaceTexture.mixBlendMode
+                      backgroundSize: scaledFaceTextureBackgroundSize,
+                      backgroundRepeat: selectedFaceTexture.backgroundRepeat || 'repeat',
+                      backgroundPosition: selectedFaceTexture.backgroundPosition || '0 0',
+                      backgroundBlendMode: selectedFaceTexture.backgroundBlendMode || 'normal',
+                      mixBlendMode: faceTextureBlendMode || selectedFaceTexture.mixBlendMode
                     }}
                   />
                 </div>
@@ -7721,9 +12577,16 @@ export default function App() {
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
                 </div>
+              <div className="relative w-full h-11">
+                <select value={faceTextureBlendMode} onChange={e => setFaceTextureBlendMode(normalizeFaceTextureBlendMode(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {FACE_TEXTURE_BLEND_MODES.map(mode => <option key={mode} value={mode}>{mode}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
               </div>
 
               <SakuraRange label="opac" value={faceTextureOpacity} min={0} max={70} onChange={setFaceTextureOpacity} />
+              <SakuraRange label="size" value={faceTextureScale} min={50} max={220} onChange={setFaceTextureScale} />
             </div>
 
             <div className="flex flex-col gap-4 border-t border-white/10 pt-5">
@@ -7823,7 +12686,7 @@ export default function App() {
                      id === 'driftVisual' ? 'Drift Visual' : 
                      id === 'rate' ? 'Rate Knob' : 
                      id === 'lfo' ? 'LFO Controls' : 
-                     'Auto Gain'}
+                     'Mix Knob'}
                   </span>
                   <button 
                     onClick={() => updateHardwarePosition(id, { locked: !pos.locked })}
@@ -7903,6 +12766,31 @@ export default function App() {
               </div>
             </div>
 
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Small Knob Ring</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-white/30">{smallKnobRingEnabled ? 'Enabled' : 'Disabled'}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSmallKnobRingEnabled(current => !current)}
+                className={`h-7 w-12 rounded-full border p-0.5 transition-all ${smallKnobRingEnabled ? 'border-[#e66a53]/50 bg-[#e66a53]/25' : 'border-white/15 bg-black/20'}`}
+                aria-label="Toggle small knob ring"
+              >
+                <span className={`block h-5 w-5 rounded-full bg-white shadow-[0_2px_5px_rgba(0,0,0,0.45)] transition-transform ${smallKnobRingEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Mix Knob Style</span>
+              <div className="relative w-full h-11">
+                <select value={activeMixKnobStyleIndex} onChange={e => setMixKnobStyle(Number(e.target.value))} className="absolute inset-0 w-full h-full bg-white/5 text-[#edd39a] rounded-xl border border-white/10 px-4 text-[11px] font-bold outline-none cursor-pointer appearance-none">
+                  {MIX_KNOB_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
             <div className="flex flex-col gap-2">
               <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Center Dial Shadow</span>
               <div className="relative w-full h-11">
@@ -7920,6 +12808,314 @@ export default function App() {
                   {MIDDLE_KNOB_STYLES.map((style, i) => <option key={i} value={i}>{style.name}</option>)}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">▼</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Original Copper Tuning</span>
+                  <span className="text-[9px] text-white/35 font-bold">Live controls for the true default copper knob.</span>
+                </div>
+                <button
+                  onClick={resetOriginalCopperTuning}
+                  className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-white/45 transition-all hover:text-white/70"
+                >
+                  Reset
+                </button>
+              </div>
+              {[
+                { key: 'ringInset', label: 'Outer Ring', min: 6, max: 10, step: 0.1, value: originalCopperTuning.ringInset, formatter: value => `${value.toFixed(1)}px` },
+                { key: 'baseOuterShadowOpacity', label: 'Outer Shadow', min: 0, max: 1, step: 0.01, value: originalCopperTuning.baseOuterShadowOpacity, formatter: value => value.toFixed(2) },
+                { key: 'baseInnerHighlightOpacity', label: 'Base Highlight', min: 0, max: 1, step: 0.01, value: originalCopperTuning.baseInnerHighlightOpacity, formatter: value => value.toFixed(2) },
+                { key: 'baseInnerShadowOpacity', label: 'Base Inner Shadow', min: 0, max: 1, step: 0.01, value: originalCopperTuning.baseInnerShadowOpacity, formatter: value => value.toFixed(2) },
+                { key: 'overlayDarkOpacity', label: 'Overlay Dark', min: 0, max: 1, step: 0.01, value: originalCopperTuning.overlayDarkOpacity, formatter: value => value.toFixed(2) },
+                { key: 'overlayLightOpacity', label: 'Overlay Light', min: 0, max: 1, step: 0.01, value: originalCopperTuning.overlayLightOpacity, formatter: value => value.toFixed(2) },
+                { key: 'overlayInnerShadowOpacity', label: 'Lip Shadow', min: 0, max: 1, step: 0.01, value: originalCopperTuning.overlayInnerShadowOpacity, formatter: value => value.toFixed(2) },
+                { key: 'overlayOuterHighlightOpacity', label: 'Lip Highlight', min: 0, max: 1, step: 0.01, value: originalCopperTuning.overlayOuterHighlightOpacity, formatter: value => value.toFixed(2) }
+              ].map(control => (
+                <label key={control.key} className="grid grid-cols-[82px_1fr_46px] items-center gap-3">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/70">{control.label}</span>
+                  <input
+                    type="range"
+                    min={control.min}
+                    max={control.max}
+                    step={control.step}
+                    value={control.value}
+                    onChange={e => updateOriginalCopperTuning({ [control.key]: Number(e.target.value) })}
+                    className="w-full accent-[#edd39a]"
+                  />
+                  <span className="text-right text-[9px] font-bold tabular-nums text-[#edd39a]">{control.formatter(control.value)}</span>
+                </label>
+              ))}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Colors</span>
+                  <button
+                    onClick={resetOriginalCopperTuningColors}
+                    className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-white/45 transition-all hover:text-white/70"
+                  >
+                    Reset Colors
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    ['darkMetalColor', 'Dark Tone'],
+                    ['lightMetalColor', 'Light Tone']
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex flex-col gap-1.5">
+                      <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">{label}</span>
+                      <div className="relative h-9 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                        <input
+                          type="color"
+                          value={originalCopperTuning[key]}
+                          onChange={e => updateOriginalCopperTuning({ [key]: e.target.value })}
+                          className="absolute -inset-2 h-[calc(100%+16px)] w-[calc(100%+16px)] cursor-pointer border-none bg-transparent"
+                          aria-label={`Original Copper ${label}`}
+                        />
+                      </div>
+                      <span className="text-[8px] font-bold uppercase tracking-widest text-white/30">{originalCopperTuning[key]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Aged Champagne Brass Tuning</span>
+                  <span className="text-[9px] text-white/35 font-bold">Only affects the `Aged Champagne Brass` knob.</span>
+                </div>
+                <button
+                  onClick={resetAgedChampagneBrassTuning}
+                  className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-white/45 transition-all hover:text-white/70"
+                >
+                  Reset
+                </button>
+              </div>
+              {[
+                { key: 'ringInset', label: 'Outer Ring', min: 6, max: 10, step: 0.1, value: agedChampagneBrassTuning.ringInset, formatter: value => `${value.toFixed(1)}px` },
+                { key: 'faceHighlightOpacity', label: 'Face Highlight', min: 0, max: 1, step: 0.01, value: agedChampagneBrassTuning.faceHighlightOpacity, formatter: value => value.toFixed(2) },
+                { key: 'faceShadowOpacity', label: 'Face Shadow', min: 0, max: 1, step: 0.01, value: agedChampagneBrassTuning.faceShadowOpacity, formatter: value => value.toFixed(2) },
+                { key: 'baseOuterShadowOpacity', label: 'Outer Shadow', min: 0, max: 1, step: 0.01, value: agedChampagneBrassTuning.baseOuterShadowOpacity, formatter: value => value.toFixed(2) },
+                { key: 'baseInnerHighlightOpacity', label: 'Base Highlight', min: 0, max: 1, step: 0.01, value: agedChampagneBrassTuning.baseInnerHighlightOpacity, formatter: value => value.toFixed(2) },
+                { key: 'baseInnerShadowOpacity', label: 'Base Inner Shadow', min: 0, max: 1, step: 0.01, value: agedChampagneBrassTuning.baseInnerShadowOpacity, formatter: value => value.toFixed(2) },
+                { key: 'ringBorderOpacity', label: 'Ring Border', min: 0, max: 1, step: 0.01, value: agedChampagneBrassTuning.ringBorderOpacity, formatter: value => value.toFixed(2) },
+                { key: 'ringHighlightOpacity', label: 'Ring Highlight', min: 0, max: 1, step: 0.01, value: agedChampagneBrassTuning.ringHighlightOpacity, formatter: value => value.toFixed(2) },
+                { key: 'ringShadowOpacity', label: 'Ring Shadow', min: 0, max: 1, step: 0.01, value: agedChampagneBrassTuning.ringShadowOpacity, formatter: value => value.toFixed(2) },
+                { key: 'sheenOpacity', label: 'Sheen', min: 0, max: 1, step: 0.01, value: agedChampagneBrassTuning.sheenOpacity, formatter: value => value.toFixed(2) }
+              ].map(control => (
+                <label key={control.key} className="grid grid-cols-[82px_1fr_46px] items-center gap-3">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/70">{control.label}</span>
+                  <input
+                    type="range"
+                    min={control.min}
+                    max={control.max}
+                    step={control.step}
+                    value={control.value}
+                    onChange={e => updateAgedChampagneBrassTuning({ [control.key]: Number(e.target.value) })}
+                    className="w-full accent-[#edd39a]"
+                  />
+                  <span className="text-right text-[9px] font-bold tabular-nums text-[#edd39a]">{control.formatter(control.value)}</span>
+                </label>
+              ))}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Colors</span>
+                  <button
+                    onClick={resetAgedChampagneBrassTuningColors}
+                    className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-white/45 transition-all hover:text-white/70"
+                  >
+                    Reset Colors
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    ['darkMetalColor', 'Dark Tone'],
+                    ['midMetalColor', 'Mid Tone'],
+                    ['lightMetalColor', 'Light Tone']
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex flex-col gap-1.5">
+                      <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">{label}</span>
+                      <div className="relative h-9 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                        <input
+                          type="color"
+                          value={agedChampagneBrassTuning[key]}
+                          onChange={e => updateAgedChampagneBrassTuning({ [key]: e.target.value })}
+                          className="absolute -inset-2 h-[calc(100%+16px)] w-[calc(100%+16px)] cursor-pointer border-none bg-transparent"
+                          aria-label={`Aged Champagne Brass ${label}`}
+                        />
+                      </div>
+                      <span className="text-[8px] font-bold uppercase tracking-widest text-white/30">{agedChampagneBrassTuning[key]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Smoked Champagne Bold Clean Tuning</span>
+                  <span className="text-[9px] text-white/35 font-bold">Only affects the `Smoked Champagne Bold Clean` knob.</span>
+                </div>
+                <button
+                  onClick={resetSmokedChampagneBoldCleanTuning}
+                  className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-white/45 transition-all hover:text-white/70"
+                >
+                  Reset
+                </button>
+              </div>
+              {[
+                { key: 'ringInset', label: 'Outer Ring', min: 6, max: 10, step: 0.1, value: smokedChampagneBoldCleanTuning.ringInset, formatter: value => `${value.toFixed(1)}px` },
+                { key: 'faceHighlightOpacity', label: 'Face Highlight', min: 0, max: 1, step: 0.01, value: smokedChampagneBoldCleanTuning.faceHighlightOpacity, formatter: value => value.toFixed(2) },
+                { key: 'faceShadowOpacity', label: 'Face Shadow', min: 0, max: 1, step: 0.01, value: smokedChampagneBoldCleanTuning.faceShadowOpacity, formatter: value => value.toFixed(2) },
+                { key: 'baseOuterShadowOpacity', label: 'Outer Shadow', min: 0, max: 1, step: 0.01, value: smokedChampagneBoldCleanTuning.baseOuterShadowOpacity, formatter: value => value.toFixed(2) },
+                { key: 'baseInnerHighlightOpacity', label: 'Base Highlight', min: 0, max: 1, step: 0.01, value: smokedChampagneBoldCleanTuning.baseInnerHighlightOpacity, formatter: value => value.toFixed(2) },
+                { key: 'baseInnerShadowOpacity', label: 'Base Inner Shadow', min: 0, max: 1, step: 0.01, value: smokedChampagneBoldCleanTuning.baseInnerShadowOpacity, formatter: value => value.toFixed(2) },
+                { key: 'ringBorderOpacity', label: 'Ring Border', min: 0, max: 1, step: 0.01, value: smokedChampagneBoldCleanTuning.ringBorderOpacity, formatter: value => value.toFixed(2) },
+                { key: 'ringHighlightOpacity', label: 'Ring Highlight', min: 0, max: 1, step: 0.01, value: smokedChampagneBoldCleanTuning.ringHighlightOpacity, formatter: value => value.toFixed(2) },
+                { key: 'ringShadowOpacity', label: 'Ring Shadow', min: 0, max: 1, step: 0.01, value: smokedChampagneBoldCleanTuning.ringShadowOpacity, formatter: value => value.toFixed(2) },
+                { key: 'sheenOpacity', label: 'Sheen', min: 0, max: 1, step: 0.01, value: smokedChampagneBoldCleanTuning.sheenOpacity, formatter: value => value.toFixed(2) }
+              ].map(control => (
+                <label key={control.key} className="grid grid-cols-[82px_1fr_46px] items-center gap-3">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/70">{control.label}</span>
+                  <input
+                    type="range"
+                    min={control.min}
+                    max={control.max}
+                    step={control.step}
+                    value={control.value}
+                    onChange={e => updateSmokedChampagneBoldCleanTuning({ [control.key]: Number(e.target.value) })}
+                    className="w-full accent-[#edd39a]"
+                  />
+                  <span className="text-right text-[9px] font-bold tabular-nums text-[#edd39a]">{control.formatter(control.value)}</span>
+                </label>
+              ))}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Colors</span>
+                  <button
+                    onClick={resetSmokedChampagneBoldCleanTuningColors}
+                    className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-white/45 transition-all hover:text-white/70"
+                  >
+                    Reset Colors
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    ['darkMetalColor', 'Dark Tone'],
+                    ['midMetalColor', 'Mid Tone'],
+                    ['lightMetalColor', 'Light Tone']
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex flex-col gap-1.5">
+                      <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">{label}</span>
+                      <div className="relative h-9 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                        <input
+                          type="color"
+                          value={smokedChampagneBoldCleanTuning[key]}
+                          onChange={e => updateSmokedChampagneBoldCleanTuning({ [key]: e.target.value })}
+                          className="absolute -inset-2 h-[calc(100%+16px)] w-[calc(100%+16px)] cursor-pointer border-none bg-transparent"
+                          aria-label={`Smoked Champagne Bold Clean ${label}`}
+                        />
+                      </div>
+                      <span className="text-[8px] font-bold uppercase tracking-widest text-white/30">{smokedChampagneBoldCleanTuning[key]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Power Switch Tuning</span>
+                  <span className="text-[9px] text-white/35 font-bold">Adjust the black switch body and the center insert.</span>
+                </div>
+                <button
+                  onClick={resetPowerSwitchTuning}
+                  className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-white/45 transition-all hover:text-white/70"
+                >
+                  Reset
+                </button>
+              </div>
+              <label className="grid grid-cols-[82px_1fr_46px] items-center gap-3">
+                <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/70">Roundness</span>
+                <input
+                  type="range"
+                  min={2}
+                  max={16}
+                  step={0.1}
+                  value={powerSwitchTuning.bodyRadius}
+                  onChange={e => updatePowerSwitchTuning({ bodyRadius: Number(e.target.value) })}
+                  className="w-full accent-[#edd39a]"
+                />
+                <span className="text-right text-[9px] font-bold tabular-nums text-[#edd39a]">{powerSwitchTuning.bodyRadius.toFixed(1)}px</span>
+              </label>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Colors</span>
+                  <button
+                    onClick={resetPowerSwitchTuningColors}
+                    className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-white/45 transition-all hover:text-white/70"
+                  >
+                    Reset Colors
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    ['insertTopColor', 'Top Tone'],
+                    ['insertBottomColor', 'Bottom Tone']
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex flex-col gap-1.5">
+                      <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">{label}</span>
+                      <div className="relative h-9 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                        <input
+                          type="color"
+                          value={powerSwitchTuning[key]}
+                          onChange={e => updatePowerSwitchTuning({ [key]: e.target.value })}
+                          className="absolute -inset-2 h-[calc(100%+16px)] w-[calc(100%+16px)] cursor-pointer border-none bg-transparent"
+                          aria-label={`Power Switch ${label}`}
+                        />
+                      </div>
+                      <span className="text-[8px] font-bold uppercase tracking-widest text-white/30">{powerSwitchTuning[key]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-white/50 text-[9px] font-bold tracking-[0.2em] uppercase">Filled Flutter Colors</span>
+                <button
+                  onClick={() => setKnobFlutterFilledColors(DEFAULT_KNOB_FLUTTER_FILLED_COLORS)}
+                  className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-white/45 transition-all hover:text-white/70"
+                >
+                  Reset
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  ['highlight', 'High'],
+                  ['mid', 'Main'],
+                  ['tail', 'Tail']
+                ].map(([key, label]) => (
+                  <div key={key} className="flex flex-col gap-1.5">
+                    <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">{label}</span>
+                    <div className="relative h-9 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                      <input
+                        type="color"
+                        value={knobFlutterFilledColors[key] || DEFAULT_KNOB_FLUTTER_FILLED_COLORS[key]}
+                        onChange={e => setKnobFlutterFilledColors(colors => ({ ...colors, [key]: e.target.value }))}
+                        className="absolute -inset-2 h-[calc(100%+16px)] w-[calc(100%+16px)] cursor-pointer border-none bg-transparent"
+                        aria-label={`Knob flutter ${label} color`}
+                      />
+                    </div>
+                    <span className="text-[8px] font-bold uppercase tracking-widest text-white/30">{knobFlutterFilledColors[key] || DEFAULT_KNOB_FLUTTER_FILLED_COLORS[key]}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -8152,11 +13348,11 @@ export default function App() {
 
             {auraShapes.length > 0 && (
               <div className="flex flex-col gap-4 border-t border-white/5 pt-4">
-                {auraShapes.map((shape) => (
+                {auraShapes.map((shape, index) => (
                   <div key={shape.id} className={`p-4 rounded-2xl border transition-all ${selectedAuraShape === shape.id ? 'bg-white/10 border-white/30' : 'bg-white/5 border-transparent'}`}>
                     <div className="flex items-center justify-between mb-4">
                       <button onClick={() => setSelectedAuraShape(shape.id)} className="text-[10px] font-bold text-white uppercase tracking-widest truncate max-w-[120px]">
-                        {shape.id.split('-')[0]} Shape
+                        Layer {index + 1}
                       </button>
                       <div className="flex gap-2">
                         <button onClick={() => updateAuraShape(shape.id, { locked: !shape.locked })} className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] ${shape.locked ? 'bg-red-500/30 text-red-200' : 'bg-white/10 text-white'}`}>
@@ -8165,10 +13361,17 @@ export default function App() {
                         <button onClick={() => removeAuraShape(shape.id)} className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-[10px] text-white/60 hover:bg-red-500/20 hover:text-red-300">✕</button>
                       </div>
                     </div>
+                    <div className="mb-3 grid grid-cols-5 gap-1.5">
+                      <button onClick={() => moveAuraShape(shape.id, 'back')} disabled={index === 0} className="rounded-md border border-white/10 bg-white/5 py-1.5 text-[7px] font-black uppercase tracking-widest text-white/55 transition-all hover:bg-white/10 disabled:opacity-25">Back</button>
+                      <button onClick={() => moveAuraShape(shape.id, 'down')} disabled={index === 0} className="rounded-md border border-white/10 bg-white/5 py-1.5 text-[7px] font-black uppercase tracking-widest text-white/55 transition-all hover:bg-white/10 disabled:opacity-25">Down</button>
+                      <button onClick={() => duplicateAuraShape(shape.id)} className="rounded-md border border-[#e66a53]/30 bg-[#e66a53]/12 py-1.5 text-[7px] font-black uppercase tracking-widest text-[#ffc1b3] transition-all hover:bg-[#e66a53]/20">Dup</button>
+                      <button onClick={() => moveAuraShape(shape.id, 'up')} disabled={index === auraShapes.length - 1} className="rounded-md border border-white/10 bg-white/5 py-1.5 text-[7px] font-black uppercase tracking-widest text-white/55 transition-all hover:bg-white/10 disabled:opacity-25">Up</button>
+                      <button onClick={() => moveAuraShape(shape.id, 'front')} disabled={index === auraShapes.length - 1} className="rounded-md border border-white/10 bg-white/5 py-1.5 text-[7px] font-black uppercase tracking-widest text-white/55 transition-all hover:bg-white/10 disabled:opacity-25">Front</button>
+                    </div>
                     
                     {!shape.locked && (
                       <div className="flex flex-col gap-3">
-                        <SakuraRange label="size" value={shape.size} min={50} max={1000} onChange={v => updateAuraShape(shape.id, { size: v })} />
+                        <SakuraRange label="size" value={shape.size} min={50} max={AURA_SHAPE_MAX_SIZE} onChange={v => updateAuraShape(shape.id, { size: v })} />
                         <SakuraRange label="blur" value={shape.blur} min={0} max={150} onChange={v => updateAuraShape(shape.id, { blur: v })} />
                         <SakuraRange label="opac" value={Math.round(shape.opacity * 100)} min={0} max={100} onChange={v => updateAuraShape(shape.id, { opacity: v/100 })} />
                         <SakuraRange label="angle" value={shape.gradientAngle || 0} min={0} max={360} onChange={v => updateAuraShape(shape.id, { gradientAngle: v })} />
@@ -8196,6 +13399,36 @@ export default function App() {
                               />
                             </div>
                           </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/10 p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Outline</span>
+                            <button
+                              onClick={() => updateAuraShape(shape.id, { outlineEnabled: !shape.outlineEnabled, outlineWidth: shape.outlineWidth || 8, outlineColor: shape.outlineColor || '#e66a53' })}
+                              className={`rounded-full border px-3 py-1 text-[8px] font-black uppercase tracking-widest transition-all ${shape.outlineEnabled ? 'border-[#e66a53]/50 bg-[#e66a53]/20 text-[#ffc1b3]' : 'border-white/15 bg-white/5 text-white/45'}`}
+                            >
+                              {shape.outlineEnabled ? 'On' : 'Off'}
+                            </button>
+                          </div>
+                          {shape.outlineEnabled && (
+                            <>
+                              <SakuraRange label="width" value={shape.outlineWidth ?? 8} min={0} max={80} onChange={v => updateAuraShape(shape.id, { outlineWidth: v })} />
+                              <SakuraRange label="o opac" value={Math.round((shape.outlineOpacity ?? 1) * 100)} min={0} max={100} onChange={v => updateAuraShape(shape.id, { outlineOpacity: v / 100 })} />
+                              <SakuraRange label="o blur" value={shape.outlineBlur ?? 0} min={0} max={80} onChange={v => updateAuraShape(shape.id, { outlineBlur: v })} />
+                              <div className="flex flex-col gap-1.5">
+                                <span className="text-[8px] text-white/40 uppercase font-black tracking-widest">Outline Color</span>
+                                <div className="relative h-8 overflow-hidden rounded-lg border border-white/10">
+                                  <input
+                                    type="color"
+                                    value={shape.outlineColor || '#e66a53'}
+                                    onChange={e => updateAuraShape(shape.id, { outlineColor: e.target.value })}
+                                    className="absolute -inset-2 h-[calc(100%+16px)] w-[calc(100%+16px)] cursor-pointer border-none bg-transparent"
+                                  />
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
 
                         <div className="flex items-center justify-between gap-2 mt-2">
@@ -8247,6 +13480,7 @@ export default function App() {
         </CollapsibleSection>
 
       </div>
+      )}
 
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes nixie-flicker {
@@ -8255,15 +13489,91 @@ export default function App() {
         }
         .anim-nixie { animation: nixie-flicker 4s infinite alternate; }
         @keyframes unstable-led-flicker {
-          0%, 17%, 20%, 23%, 51%, 55%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(239,68,68,0.74)); }
-          18%, 22%, 53% { opacity: 0.76; filter: drop-shadow(0 0 2px rgba(239,68,68,0.32)); }
+          0%, 17%, 20%, 23%, 51%, 55%, 100% { opacity: 1; filter: drop-shadow(0 0 5.5px rgba(239,68,68,0.76)); }
+          18%, 22%, 53% { opacity: 0.76; filter: drop-shadow(0 0 2.25px rgba(239,68,68,0.34)); }
         }
         .anim-unstable-led-flicker { animation: unstable-led-flicker 4.6s infinite alternate; }
         @keyframes vintage-led-flicker {
-          0%, 20%, 23%, 56%, 60%, 100% { opacity: 1; filter: drop-shadow(0 0 5px rgba(251,146,60,0.57)); }
-          21%, 58% { opacity: 0.9; filter: drop-shadow(0 0 3px rgba(251,146,60,0.31)); }
+          0%, 20%, 23%, 56%, 60%, 100% { opacity: 1; filter: drop-shadow(0 0 5.5px rgba(251,146,60,0.6)); }
+          21%, 58% { opacity: 0.9; filter: drop-shadow(0 0 3.25px rgba(251,146,60,0.33)); }
         }
         .anim-vintage-led-flicker { animation: vintage-led-flicker 6.8s infinite alternate; }
+        @keyframes lfo-main-glow-in {
+          0%, 45% { text-shadow: 0 0 0 rgba(223,111,90,0); }
+          100% { text-shadow: 0 0 6px rgba(223,111,90,1); }
+        }
+        .lfo-main-glow-on {
+          text-shadow: 0 0 0 rgba(223,111,90,0);
+          animation: lfo-main-glow-in 760ms ease-out 80ms forwards;
+        }
+        .lfo-main-glow-off {
+          text-shadow: none;
+          animation: none;
+        }
+        @keyframes lfo-satellite-glow-in {
+          0%, 45% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+        .lfo-satellite-glow-on {
+          opacity: 0;
+          box-shadow: 0 0 7px var(--lfo-satellite-glow);
+          animation: lfo-satellite-glow-in 820ms ease-out 120ms forwards;
+        }
+        @keyframes sync-button-ember-on {
+          0% {
+            opacity: 0;
+            background: radial-gradient(circle at 32% 24%, rgba(255, 218, 190, 0.04), rgba(255, 136, 104, 0) 58%);
+            box-shadow: inset 0 0 0 rgba(255, 178, 145, 0), 0 0 0 rgba(173, 81, 70, 0);
+          }
+          42% {
+            opacity: 0.74;
+            background: radial-gradient(circle at 32% 24%, rgba(255, 220, 190, 0.18), rgba(255, 136, 104, 0.03) 62%);
+            box-shadow: inset 0 1px 1px rgba(255, 214, 186, 0.14), 0 0 8px rgba(173, 81, 70, 0.22);
+          }
+          100% {
+            opacity: 0.26;
+            background: radial-gradient(circle at 32% 24%, rgba(255, 220, 190, 0.08), rgba(255, 136, 104, 0) 64%);
+            box-shadow: inset 0 1px 1px rgba(255, 214, 186, 0.08), 0 0 4px rgba(173, 81, 70, 0.1);
+          }
+        }
+        @keyframes sync-button-ember-off {
+          0% {
+            opacity: 0.22;
+            background: radial-gradient(circle at 32% 24%, rgba(255, 220, 190, 0.08), rgba(255, 136, 104, 0) 64%);
+            box-shadow: inset 0 1px 1px rgba(255, 214, 186, 0.08), 0 0 4px rgba(173, 81, 70, 0.1);
+          }
+          100% {
+            opacity: 0;
+            background: radial-gradient(circle at 32% 24%, rgba(255, 220, 190, 0), rgba(255, 136, 104, 0) 64%);
+            box-shadow: inset 0 0 0 rgba(255, 214, 186, 0), 0 0 0 rgba(173, 81, 70, 0);
+          }
+        }
+        .sync-button-ember-on {
+          animation: sync-button-ember-on 520ms ease-out forwards;
+        }
+        .sync-button-ember-off {
+          animation: sync-button-ember-off 360ms ease-out forwards;
+        }
+        @keyframes lfo-button-settle {
+          0% { transform: scale(1, 1); }
+          26% { transform: scale(1.038, 0.962); }
+          58% { transform: scale(0.986, 1.014); }
+          100% { transform: scale(1, 1); }
+        }
+        .lfo-button-settle {
+          transform-origin: center;
+          animation: lfo-button-settle 520ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes option-button-settle {
+          0% { transform: scale(1, 1); }
+          28% { transform: scale(1.045, 0.955); }
+          60% { transform: scale(0.984, 1.016); }
+          100% { transform: scale(1, 1); }
+        }
+        .option-button-settle {
+          transform-origin: center;
+          animation: option-button-settle 460ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .knob-drift-spin {
           animation-name: spin;
@@ -8363,9 +13673,40 @@ export default function App() {
           0%, 100% { opacity: 0.72; }
           50% { opacity: 1; }
         }
+        @keyframes hud-depth-ring {
+          0% { transform: scale(0.86); opacity: 0.12; }
+          48% { opacity: 0.44; }
+          100% { transform: scale(1.16); opacity: 0.08; }
+        }
+        @keyframes hud-depth-liquid {
+          0%, 100% { transform: translateY(1px) scaleX(1); }
+          50% { transform: translateY(-1px) scaleX(1.04); }
+        }
         @keyframes hud-phase-soft {
           0%, 100% { opacity: 0.62; filter: drop-shadow(0 0 1px rgba(230,106,83,0.3)); }
           50% { opacity: 0.9; filter: drop-shadow(0 0 4px rgba(230,106,83,0.62)); }
+        }
+        @keyframes hud-mix-float {
+          0%, 100% { transform: translateX(-0.6px) scaleY(0.96); opacity: 0.86; }
+          50% { transform: translateX(0.8px) scaleY(1.04); opacity: 1; }
+        }
+        @keyframes hud-mix-dots {
+          0%, 100% { transform: translateY(-0.3px); opacity: 0.62; }
+          50% { transform: translateY(0.4px); opacity: 0.9; }
+        }
+        @keyframes hud-sat-reel {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes hud-sat-tube {
+          0%, 100% { opacity: 0.82; filter: drop-shadow(0 0 2px rgba(230,106,83,0.38)); }
+          45% { opacity: 1; filter: drop-shadow(0 0 6px rgba(230,106,83,0.72)); }
+          62% { opacity: 0.9; filter: drop-shadow(0 0 3px rgba(255,186,131,0.54)); }
+        }
+        @keyframes knob-flutter-spill {
+          0%, 100% { transform: rotate(-0.5deg) scale(0.992); opacity: 0.78; }
+          46% { transform: rotate(0.8deg) scale(1.012); opacity: 1; }
+          72% { transform: rotate(0.2deg) scale(1.004); opacity: 0.88; }
         }
         @keyframes hud-drift-wave {
           0%, 100% { filter: drop-shadow(0 0 2px rgba(230,106,83,0.5)); opacity: 0.72; }
@@ -8388,7 +13729,14 @@ export default function App() {
         .hud-glow-breathe { animation: hud-glow-breathe 2.4s ease-in-out infinite; }
         .hud-sweeten-bloom { animation: hud-sweeten-bloom 2.6s ease-in-out infinite; }
         .hud-depth-soft { animation: hud-depth-soft 1.8s ease-in-out infinite; }
+        .hud-depth-ring { animation: hud-depth-ring 2.2s ease-in-out infinite; }
+        .hud-depth-liquid { animation: hud-depth-liquid 2.1s ease-in-out infinite; }
         .hud-phase-soft { animation: hud-phase-soft 2s ease-in-out infinite; }
+        .hud-mix-float { transform-origin: center; animation: hud-mix-float 3.4s ease-in-out infinite; }
+        .hud-mix-dots { transform-origin: center; animation: hud-mix-dots 3.1s ease-in-out infinite; }
+        .hud-sat-reel { animation: hud-sat-reel 2.4s linear infinite; }
+        .hud-sat-tube { transform-origin: center; animation: hud-sat-tube 2.6s ease-in-out infinite; }
+        .knob-flutter-spill { transform-origin: center; animation: knob-flutter-spill var(--spill-speed, 2.4s) ease-in-out infinite; }
         .hud-drift-wave { animation-name: hud-drift-wave; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
         .hud-drift-dot { animation-name: hud-drift-dot; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
         .hud-screen-soft {
@@ -8399,10 +13747,17 @@ export default function App() {
         * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         body { overflow: hidden; touch-action: none; }
         input[type="range"] { -webkit-user-select: auto; user-select: auto; }
+        .top-preset-option:hover {
+          background: var(--preset-option-hover-bg) !important;
+          color: var(--preset-option-hover-text) !important;
+        }
+        .top-preset-option-active {
+          color: var(--preset-option-selected-text) !important;
+        }
         .lfo-scrollbar::-webkit-scrollbar { width: 3px; }
         .lfo-scrollbar::-webkit-scrollbar-track { background: transparent; margin-block: 14px; }
-        .lfo-scrollbar::-webkit-scrollbar-thumb { background: rgba(223,111,90,0.4); border-radius: 4px; }
-        .lfo-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(223,111,90,0.8); }
+        .lfo-scrollbar::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb-color, rgba(223,111,90,0.4)); border-radius: 4px; }
+        .lfo-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover-color, rgba(223,111,90,0.8)); }
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.35); border-radius: 10px; }
